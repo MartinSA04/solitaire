@@ -6,12 +6,24 @@ A solitaire website. Live at
 > **Status: scaffolding.** Toolchain, dev container, CI and deploy are in place.
 > There is no game yet.
 
+## Design
+
+The product is designed before it is built. [`docs/`](docs/README.md) holds the
+brief, the Klondike rules as implemented, the engine and architecture specs, the
+art direction, the interaction and motion language, the
+[win sequence](docs/06-win-sequence.md), accessibility and the roadmap.
+
+Start with the [product brief](docs/01-product-brief.md).
+
 ## Stack
 
-Astro 6, static output, no UI framework. pnpm, TypeScript strict, Prettier,
+Astro 6, static output. pnpm, TypeScript strict, Prettier,
 Playwright, [mise](https://mise.jdx.dev/) for the toolchain — the same setup as
 [StudyCompanion](https://github.com/MartinSA04/StudyCompanion) and
 [martinsundal.no](https://github.com/MartinSA04/martinsundal.no).
+
+The game itself will be a single Svelte island on an otherwise static page —
+the reasoning is in [docs/07](docs/07-architecture.md).
 
 ## Getting started
 

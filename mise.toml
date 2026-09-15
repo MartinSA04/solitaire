@@ -31,6 +31,10 @@ run = "pnpm test:e2e"
 description = "Check formatting"
 run = "pnpm lint"
 
+[tasks.lint-md]
+description = "Markdownlint over the docs"
+run = "pnpm lint:md"
+
 [tasks.fmt]
 description = "Apply formatting"
 run = "pnpm lint:fix"
@@ -41,4 +45,4 @@ run = "pnpm typecheck"
 
 [tasks.check]
 description = "Everything CI runs, in CI's order"
-depends = ["test", "typecheck", "lint"]
+depends = ["test", "typecheck", "lint", "lint-md"]
