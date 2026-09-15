@@ -1,0 +1,15 @@
+# Generated / vendored — never format.
+node_modules
+dist
+.astro
+pnpm-lock.yaml
+
+# Markdown is owned by markdownlint (pnpm lint:md).
+*.md
+
+# Static assets are left exactly as authored/exported.
+public
+
+# Playwright run artifacts.
+test-results
+playwright-report

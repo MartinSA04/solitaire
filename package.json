@@ -1,0 +1,48 @@
+{
+  "name": "solitaire",
+  "version": "0.0.0",
+  "description": "A solitaire website",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "author": "Martin Sundal",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MartinSA04/solitaire.git"
+  },
+  "homepage": "https://solitaire.martinsundal.no",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test": "node --test --disable-warning=ExperimentalWarning 'test/**/*.test.ts'",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
+    "typecheck": "astro sync && tsc --noEmit",
+    "lint": "prettier --check \"{src,test,e2e,scripts}/**/*.{ts,astro,mjs,css}\" \"*.{ts,mjs,json,md}\"",
+    "lint:fix": "prettier --write \"{src,test,e2e,scripts}/**/*.{ts,astro,mjs,css}\" \"*.{ts,mjs,json,md}\"",
+    "lint:md": "markdownlint-cli2 \"**/*.md\""
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.4",
+    "astro": "^6.3.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@types/node": "^22.10.0",
+    "markdownlint-cli2": "^0.22.1",
+    "prettier": "^3.8.3",
+    "prettier-plugin-astro": "^0.14.1",
+    "typescript": "^6.0.3"
+  }
+}

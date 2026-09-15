@@ -1,0 +1,17 @@
+node_modules
+dist
+.astro
+.pnpm-store
+*.log
+
+# Playwright run artifacts. Committed baselines live under e2e/*-snapshots/ and
+# are NOT ignored — they are the test's expected output.
+test-results
+playwright-report
+blob-report
+
+# Claude Code: share plugin config (settings.json), keep personal perms local.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+.vscode

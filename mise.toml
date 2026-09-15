@@ -1,0 +1,44 @@
+# Toolchain for the solitaire dev container. `mise install` (run from the
+# devcontainer postCreate step) provisions these. pnpm is pinned to match the
+# `packageManager` field in package.json — the two must move together, or a
+# container install and a CI install resolve different trees. Node 22 is the
+# current LTS and is what every workflow pins.
+[tools]
+node = "22"
+pnpm = "10.33.0"
+
+[tasks.dev]
+description = "Astro dev server on :4321"
+run = "pnpm dev"
+
+[tasks.build]
+description = "Static build to dist/"
+run = "pnpm build"
+
+[tasks.preview]
+description = "Serve the built site on :4321"
+run = "pnpm preview"
+
+[tasks.test]
+description = "Unit suite over the pure game engine (node --test)"
+run = "pnpm test"
+
+[tasks.e2e]
+description = "Playwright suite against a real build"
+run = "pnpm test:e2e"
+
+[tasks.lint]
+description = "Check formatting"
+run = "pnpm lint"
+
+[tasks.fmt]
+description = "Apply formatting"
+run = "pnpm lint:fix"
+
+[tasks.typecheck]
+description = "astro sync + tsc --noEmit"
+run = "pnpm typecheck"
+
+[tasks.check]
+description = "Everything CI runs, in CI's order"
+depends = ["test", "typecheck", "lint"]

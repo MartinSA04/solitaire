@@ -1,0 +1,56 @@
+name: Deploy to GitHub Pages
+
+# Push-to-deploy from main. The site is fully static, so there is nothing to
+# deploy but dist/ — no Worker, no secrets. The custom domain comes from
+# public/CNAME, which the build copies verbatim into dist/; Pages reads it from
+# there on every deploy, so the domain setting survives a fresh deploy without
+# being re-entered in the repo settings.
+#
+# One-time setup on the repo: Settings → Pages → Source: "GitHub Actions", and
+# a CNAME record for solitaire.martinsundal.no → martinsa04.github.io in the
+# martinsundal.no Cloudflare zone, set to DNS-only (grey cloud) so GitHub can
+# issue the certificate.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Deploys are not gated on ci.yml (Actions has no cross-workflow "needs"),
+      # so re-run the cheap checks here. Without this a red main still ships.
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

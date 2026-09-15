@@ -1,0 +1,23 @@
+{
+  // Markdown lint config for the repo's docs (README, docs/*). Read by both
+  // `markdownlint-cli2` (pnpm lint:md) and the VS Code markdownlint extension,
+  // so the editor and CI agree.
+  "config": {
+    "default": true,
+    // Line length: prose and tables wrap freely — matches the editor default.
+    "MD013": false,
+    // Padded header + compact separator is standard GFM and renders identically.
+    "MD060": false,
+    // Duplicate headings are fine under different parents (e.g. a repeated
+    // "Rules" under each variant).
+    "MD024": { "siblings_only": true },
+  },
+  "globs": ["**/*.md"],
+  "ignores": [
+    "**/node_modules/**",
+    "dist/**",
+    ".astro/**",
+    ".superpowers/**",
+    "playwright-report/**",
+  ],
+}

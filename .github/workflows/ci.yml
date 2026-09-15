@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    # Every branch, not just main: this repo works on long-lived branches and
+    # often merges without a PR, so a branch push is the main line of defence.
+    branches: ["**"]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+# A rapid push series only needs the newest commit checked.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Branch pushes already run this suite; the pull_request event would re-run
+    # the identical thing for same-repo PRs. Gate it to fork PRs, whose pushes
+    # don't trigger workflows here.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # No `version:` here on purpose — action-setup reads packageManager from
+      # package.json, and specifying both is an error.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm lint:md
+      # The build is the only gate on build-time contracts (route generation,
+      # the sitemap integration, asset handling). It is also what e2e drives.
+      - run: pnpm build
+
+  e2e:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      # playwright.config.ts owns the build + `astro preview` webServer, so this
+      # drives the real static output rather than the dev server — dealing,
+      # dragging and the win animation all behave differently under HMR.
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

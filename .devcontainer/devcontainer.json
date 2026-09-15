@@ -1,0 +1,75 @@
+{
+  "name": "solitaire",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+
+  // Personal baseline (mise + git + gh + Claude Code, and zsh/starship),
+  // published from github.com/MartinSA04/devcontainer-base (feature:
+  // mise-and-tools). As of feature v1.2.0, Claude persistence — the
+  // CLAUDE_CONFIG_DIR env, the claude-${devcontainerId} volume and its chown —
+  // is baked into the feature itself, so there is nothing to wire up here for
+  // it. Rebuild as often as you like; the login, history and memory survive.
+  "features": {
+    "ghcr.io/martinsa04/devcontainer-base/mise-and-tools:1": {
+      "installZsh": true,
+      "installClaudeCode": true,
+      "claudeCodeVersion": "latest"
+    }
+  },
+
+  // node_modules lives in a named volume keyed by ${devcontainerId}, so it is
+  // isolated per project and survives rebuilds. The workspace itself is a bind
+  // mount from the host: without this, a pnpm install inside the container
+  // writes linux/glibc binaries (esbuild, sharp) onto the host's tree and the
+  // two installs corrupt each other. It is also markedly faster.
+  //
+  // The id_git mount gives the container your GitHub SSH key (read-only). Only
+  // ~/.ssh/id_git is exposed — never your other keys — and post-create.sh
+  // writes an ~/.ssh/config that pins github.com to it. Without that pin the
+  // forwarded SSH agent may offer another key first, which wins the handshake
+  // and blocks pushes. Requires ~/.ssh/id_git on the host.
+  //
+  // The gh mount persists the GitHub CLI's credentials (~/.config/gh) from the
+  // host, so `gh` stays authenticated across rebuilds without re-running
+  // `gh auth login`. Read-write on purpose: gh rewrites hosts.yml on token
+  // refresh. Requires ~/.config/gh on the host.
+  //
+  // NOTE: each host source must exist at rebuild time — Docker silently creates
+  // an empty root-owned directory at the target for any missing source.
+  "mounts": [
+    "source=node-modules-${devcontainerId},target=${containerWorkspaceFolder}/node_modules,type=volume",
+    "source=${localEnv:HOME}/.ssh/id_git,target=/home/vscode/.ssh/id_git,type=bind,readonly",
+    "source=${localEnv:HOME}/.config/gh,target=/home/vscode/.config/gh,type=bind"
+  ],
+
+  // Provisioning (volume ownership, the mise toolchain, pnpm install, the
+  // Playwright Chromium build, and the GitHub SSH config) lives in
+  // .devcontainer/post-create.sh. Note: mise's managed tools are NOT
+  // auto-activated in that non-interactive shell, so install steps go through
+  // `mise exec --`.
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "remoteUser": "vscode",
+
+  // Astro dev server / `astro preview`.
+  "forwardPorts": [4321],
+  "portsAttributes": {
+    "4321": { "label": "astro", "onAutoForward": "notify" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "astro-build.astro-vscode",
+        "esbenp.prettier-vscode",
+        "DavidAnson.vscode-markdownlint",
+        "EditorConfig.EditorConfig",
+        "ms-playwright.playwright"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "[astro]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }
+      }
+    }
+  }
+}
