@@ -15,6 +15,15 @@ product yet.
   Different suffixes so neither runner picks up the other's files.
 - **`mise.toml`'s pnpm pin and `package.json`'s `packageManager` must match**,
   or a container install and a CI install resolve different trees.
+- **The deal number → deal mapping is frozen forever.** `src/engine/rng.ts` and
+  `src/engine/deal.ts` may be rewritten but never made to behave differently;
+  `test/engine/rng.test.ts` and `test/engine/deal.test.ts` pin them. Deal
+  numbers are shared between players, a saved game is a seed plus a move list,
+  and bests are keyed by seed — a changed shuffle silently invalidates all
+  three. A different generator ships as a *named second* one.
+- **`src/engine/` is pure**: it imports nothing outside itself and touches no
+  browser API, `Math.random` or `Date`. `test/engine/purity.test.ts` reads the
+  source to enforce it.
 
 ## Commands
 

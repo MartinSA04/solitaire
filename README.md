@@ -3,8 +3,9 @@
 A solitaire website. Live at
 [solitaire.martinsundal.no](https://solitaire.martinsundal.no/).
 
-> **Status: scaffolding.** Toolchain, dev container, CI and deploy are in place.
-> There is no game yet.
+> **Status: the engine.** [Milestone 0](docs/09-roadmap.md) is built —
+> [`src/engine/`](src/engine/) is the complete Klondike rules as a pure
+> TypeScript library, tested. There is nothing to look at yet.
 
 ## Design
 

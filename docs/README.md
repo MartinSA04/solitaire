@@ -19,8 +19,10 @@ Read them in order the first time; after that they stand alone.
 
 ## Status
 
-Design only. No product code exists yet — see the
-[roadmap](09-roadmap.md) for the order things get built in.
+[Milestone 0](09-roadmap.md) is built: `src/engine/` is the rules from
+[02](02-game-spec.md) as the pure library described in [03](03-engine.md),
+with the test suite that doc specifies. Everything a player can see is still
+design only — see the [roadmap](09-roadmap.md) for the order it gets built in.
 
 ## Decisions already made
 
