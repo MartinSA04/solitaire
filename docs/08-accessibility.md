@@ -278,7 +278,27 @@ the board is inert.
 ## Testing
 
 - `axe-core` runs in Playwright against the game page, the settings sheet, the
-  stats sheet and the result panel. Zero violations is the gate.
+  stats sheet, the shortcut list, the result panel and `/credits` —
+  `e2e/axe.pw.ts`. Zero violations is the gate, and the tags are WCAG 2.2 AA
+  plus axe's best-practice pack, which objects to things that are not failures
+  and are still worth knowing.
+
+  The board is audited on all three tables, because two of the rules are about
+  colour and there are three of them to get it wrong on, and once more with a
+  card picked up — a pickup changes what the board *is* without changing a line
+  of its markup, which is exactly how a label ends up describing the wrong pile.
+
+  Worth saying plainly, because an automated audit is the easiest accessibility
+  work to mistake for all of it: axe finds perhaps a third of what can be wrong
+  with a page, and none of the third that matters most here — whether the game
+  can be played at all. That is the keyboard test's job and the manual passes'.
+  What the gate catches is a control that lost its name in a refactor, a
+  heading order that drifted, a token nudged under 4.5:1: cheap to find,
+  embarrassing to ship.
+
+  It found one thing on the way in, and it was real. Every page has a landmark
+  now: the game *is* its page, so `.game` is a `<main>`, and content outside a
+  landmark is content a screen reader has no way to jump to.
 - A **keyboard-only Playwright test plays a complete game to a win** using nothing
   but key events — `e2e/keyboard.pw.ts`. This is the real proof; an audit tool
   can't tell you the game is completable. It has a twin in

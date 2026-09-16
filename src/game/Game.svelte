@@ -1093,7 +1093,13 @@
   });
 </script>
 
-<div class="game" data-win={winStage}>
+<!--
+  A landmark, because everything on this page is inside it: the bars, the
+  board, the live regions. The game *is* the page, which is exactly the case
+  the rule about landmarks exists for — content outside one is content a screen
+  reader has no way to jump to.
+-->
+<main class="game" data-win={winStage}>
   <h1 class="sr-only">Solitaire</h1>
   <TopBar {elapsedMs} {moves} showClock={settings.timer} {bestMs} />
 
@@ -1322,4 +1328,4 @@
   <p class="sr-only" aria-live="polite" aria-atomic="true">{politeB}</p>
   <p class="sr-only" aria-live="assertive" aria-atomic="true">{shouted}</p>
   <p id="board-help" class="sr-only">{BOARD_HELP}</p>
-</div>
+</main>
