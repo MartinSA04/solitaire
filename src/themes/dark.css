@@ -1,0 +1,58 @@
+/*
+ * Dark premium — the third table from docs/04-art-direction.md.
+ *
+ * The one that makes the win sequence look like a firework, because there is
+ * nothing else bright on screen: a near-black ground, cyan used sparingly, and
+ * `--win-trail-blend: lighter` so the cascade's trails add rather than paint.
+ *
+ * The light model is inverted here. The *card* is the light source, so the
+ * shadow under a lifted one is a glow as much as a shadow, and the card back
+ * is deliberately dark — 28 of them at deal time, and a pale back would be the
+ * brightest thing on the table before the game has even started.
+ */
+[data-theme="dark"] {
+  --table-bg: radial-gradient(
+    ellipse 110% 80% at 50% 38%,
+    #10141a 0%,
+    #0b0d10 100%
+  );
+  --table-texture: none;
+  --table-vignette: radial-gradient(
+    ellipse 95% 75% at 50% 45%,
+    transparent 60%,
+    rgb(0 0 0 / 45%) 100%
+  );
+
+  --slot-stroke: rgb(226 240 244 / 38%);
+  --slot-fill: rgb(255 255 255 / 3%);
+
+  --card-shadow-rest: 0 1px 3px rgb(0 0 0 / 70%);
+  --card-shadow-lift:
+    0 14px 34px rgb(0 0 0 / 75%), 0 0 42px rgb(79 209 217 / 16%);
+  --card-stroke: rgb(255 255 255 / 10%);
+  --card-stroke-width: 1px;
+
+  --accent: #4fd1d9;
+  --accent-contrast: #04181a;
+
+  --chrome-bg: #0f1216;
+  --chrome-fg: #eaeef2;
+  --chrome-fg-dim: rgb(234 238 242 / 58%);
+  --sheet-bg: #14181d;
+
+  --win-bloom: #4fd1d9;
+  /* The whole point of this table: additive trails have somewhere to go. */
+  --win-trail-blend: lighter;
+
+  --card-bg: #f6f7f8;
+  --card-fg: #101316;
+  --suit-clubs: #101316;
+  --suit-spades: #101316;
+  --suit-hearts: #96131b;
+  --suit-diamonds: #96131b;
+
+  /* Dark enough not to blaze, with a cyan edge so a face-down card still reads. */
+  --back-bg: #16202b;
+  --back-ink: rgb(120 220 226 / 14%);
+  --back-edge: rgb(140 230 235 / 40%);
+}

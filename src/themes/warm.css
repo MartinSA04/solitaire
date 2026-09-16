@@ -5,8 +5,9 @@
  * seen a screen made after 1998: deep desaturated felt, a single soft key light
  * from above-left, real offset shadows, warm brass for emphasis.
  *
- * Selected by `[data-theme="warm"]` as well as `:root` so that the settings
- * sheet in milestone 4 can switch themes without this file changing.
+ * Selected by `[data-theme="warm"]` as well as `:root`, so that a visitor who
+ * has never opened the settings sheet gets it without an attribute having to
+ * be written before first paint.
  */
 :root,
 [data-theme="warm"] {
@@ -15,19 +16,35 @@
     #1e4636 0%,
     #173528 100%
   );
-  --table-texture: none;
+  /*
+   * The woven felt: two fine diagonal threads at a few per cent, which at this
+   * scale reads as texture rather than as stripes. It is one static background
+   * on one full-screen element, so it costs a single paint and nothing after.
+   */
+  --table-texture:
+    repeating-linear-gradient(
+      45deg,
+      rgb(255 255 255 / 3.5%) 0 1px,
+      transparent 1px 3px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgb(0 0 0 / 4%) 0 1px,
+      transparent 1px 3px
+    );
   --table-vignette: radial-gradient(
     ellipse 90% 70% at 50% 45%,
     transparent 55%,
     rgb(0 0 0 / 28%) 100%
   );
 
-  --slot-stroke: rgb(255 255 255 / 20%);
+  --slot-stroke: rgb(236 244 238 / 42%);
   --slot-fill: rgb(0 0 0 / 12%);
 
   --card-shadow-rest: 0 1px 2px rgb(9 26 19 / 55%);
   --card-shadow-lift: 0 12px 28px rgb(9 26 19 / 55%);
   --card-stroke: rgb(23 53 40 / 22%);
+  --card-stroke-width: 1px;
 
   --accent: #c89b3c;
   --accent-contrast: #1a1205;
@@ -45,10 +62,10 @@
   --card-fg: #1c1a16;
   --suit-clubs: #1c1a16;
   --suit-spades: #1c1a16;
-  --suit-hearts: #a8232a;
-  --suit-diamonds: #a8232a;
+  --suit-hearts: #93141b;
+  --suit-diamonds: #93141b;
 
   --back-bg: #7d4a2e;
   --back-ink: rgb(255 226 190 / 20%);
-  --back-edge: rgb(255 226 190 / 40%);
+  --back-edge: rgb(255 226 190 / 42%);
 }

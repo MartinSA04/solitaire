@@ -31,10 +31,11 @@ test.
 --table-vignette     /* radial darkening at the edges, or none */
 --slot-stroke        /* the empty-pile outline */
 --slot-fill          /* the empty-pile interior */
---card-radius
+--card-radius        /* geometry: written per resize by Layout.ts, not by a theme */
 --card-shadow-rest   /* card lying on the table */
 --card-shadow-lift   /* card held by the pointer */
 --card-stroke        /* card edge, for contrast on similar backgrounds */
+--card-stroke-width  /* how heavy that edge — and the empty-slot outline — is */
 --accent             /* legal-drop highlight, focus ring, primary button */
 --accent-contrast    /* text on --accent */
 --chrome-bg          /* top bar and bottom bar */
@@ -51,12 +52,31 @@ reading comes from; on a light or mid table additive trails blow out to white,
 so those leave it at `source-over`. It is a theme's decision, which is why it
 is a token rather than a flag in the canvas code.
 
-Two hard constraints on any theme, checked in review:
+`--card-radius` is in the contract because everything reads it, but no theme
+writes it: it is geometry, and geometry has one owner —
+[`Layout.ts`](07-architecture.md) puts it on `.board` on every resize. A theme
+that sets it is overriding the layout, which is a bug.
 
-- A face-up card must reach **4.5:1** contrast against the table.
+Two hard constraints on any theme, checked by `test/themes/theme.test.ts`
+rather than by remembering to look:
+
+- A face-up card must be **separable from the table at 3:1** — by its own
+  background, or by the stroke at its edge. Originally this was written as
+  4.5:1 against the table, which turns out to be a rule only a dark table can
+  keep: white on Minimal's warm paper ground is 1.2:1, and making it 4.5 would
+  mean a mid-grey table, which is not that theme. **That is what the hairline
+  is for**, and it is why `--card-stroke-width` is a token: a theme with no
+  shadows has nothing else to draw the card's boundary with. Contrast *within*
+  the card is unaffected — the ink is still 7:1 on the face, which is the
+  number that decides whether a card can be read.
 - The legal-drop highlight must be distinguishable **without relying on hue** — it
   changes lightness and adds a border, not just a colour. See
   [08 — Accessibility](08-accessibility.md).
+
+A consequence of that 7:1, visible in every theme's tokens: **the red suits are
+darker than a printed card's**. Pillarbox red on white is about 6.5:1, so the
+decks here run nearer `#96131b`. At a 46px card, held at arm's length, this is
+an improvement rather than a compromise.
 
 ## The three tables
 

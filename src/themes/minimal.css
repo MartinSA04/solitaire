@@ -1,0 +1,84 @@
+/*
+ * Minimal Scandinavian — the second table from docs/04-art-direction.md.
+ *
+ * For people who find the green felt kitsch. Cards as typographic objects on a
+ * flat ground: no texture, no vignette, and — the decision the whole theme
+ * hangs off — no shadow at rest anywhere on the board. What separates a card
+ * from the table here is a 1.5px hairline, which is why `--card-stroke-width`
+ * is in the token contract at all.
+ *
+ * It is also the one theme that respects `prefers-color-scheme`. The other two
+ * *are* a light choice: someone who picks Dark premium at nine in the morning
+ * has said what they want. Minimal is a preference about restraint rather than
+ * about brightness, so it follows the OS.
+ */
+[data-theme="minimal"] {
+  --table-bg: #ede8e0;
+  --table-texture: none;
+  --table-vignette: none;
+
+  --slot-stroke: rgb(26 28 30 / 55%);
+  --slot-fill: rgb(26 28 30 / 3%);
+
+  /*
+   * The only shadow in the theme is the one under a lifted card, which is
+   * exactly what makes it read so loudly when it appears.
+   */
+  --card-shadow-rest: none;
+  --card-shadow-lift: 0 10px 24px rgb(40 34 26 / 22%);
+  --card-stroke: rgb(26 28 30 / 70%);
+  --card-stroke-width: 1.5px;
+
+  --accent: #a85636;
+  --accent-contrast: #ffffff;
+
+  --chrome-bg: #e4ded4;
+  --chrome-fg: #2a2724;
+  --chrome-fg-dim: rgb(42 39 36 / 62%);
+  --sheet-bg: #f7f4ee;
+
+  --win-bloom: #c0663d;
+  --win-trail-blend: source-over;
+
+  --card-bg: #ffffff;
+  --card-fg: #16181a;
+  --suit-clubs: #16181a;
+  --suit-spades: #16181a;
+  --suit-hearts: #9c1218;
+  --suit-diamonds: #9c1218;
+
+  /* Solid: flat, with just a border. The theme's own back, per docs/04. */
+  --back-bg: #7e7669;
+  --back-ink: rgb(255 255 255 / 14%);
+  --back-edge: rgb(26 28 30 / 45%);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="minimal"] {
+    --table-bg: #1a1c1e;
+
+    --slot-stroke: rgb(240 240 236 / 40%);
+    --slot-fill: rgb(255 255 255 / 3%);
+
+    --card-shadow-lift: 0 10px 24px rgb(0 0 0 / 55%);
+    --card-stroke: rgb(255 255 255 / 16%);
+
+    --accent: #7fa1c4;
+    --accent-contrast: #0a0f14;
+
+    --chrome-bg: #131517;
+    --chrome-fg: #e8e6e1;
+    --chrome-fg-dim: rgb(232 230 225 / 62%);
+    --sheet-bg: #1e2124;
+
+    --win-bloom: #9fc3e8;
+    /* Dark enough for additive trails; slate, not black, so it stays in gamut. */
+    --win-trail-blend: lighter;
+
+    --card-bg: #faf9f6;
+
+    --back-bg: #2c3034;
+    --back-ink: rgb(255 255 255 / 12%);
+    --back-edge: rgb(240 240 236 / 38%);
+  }
+}

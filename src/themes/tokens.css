@@ -6,9 +6,13 @@
  * incomplete. The values here are a plain, neutral fallback so a missing or
  * half-written theme still renders something legible — they are not a theme.
  *
- * Two hard constraints on any theme: a face-up card reaches 4.5:1 against the
- * table, and the legal-drop highlight is distinguishable without relying on
- * hue. See docs/08-accessibility.md.
+ * `--card-radius` is the one name in the contract no theme sets: it is
+ * geometry, and geometry has one owner. Layout.ts writes it onto `.board` on
+ * every resize. The value below is only there for anything outside the board.
+ *
+ * Every theme is checked against the contrast table in
+ * docs/08-accessibility.md by test/themes/theme.test.ts, which is what notices
+ * when a nudged colour makes the empty slots vanish.
  */
 :root {
   /* The table surface. */
@@ -17,14 +21,22 @@
   --table-vignette: none;
 
   /* Empty piles. */
-  --slot-stroke: rgb(255 255 255 / 18%);
+  --slot-stroke: rgb(255 255 255 / 42%);
   --slot-fill: rgb(255 255 255 / 4%);
 
   /* Cards. --card-radius is overwritten per resize by Layout.ts. */
   --card-radius: 6px;
   --card-shadow-rest: 0 1px 2px rgb(0 0 0 / 35%);
   --card-shadow-lift: 0 12px 28px rgb(0 0 0 / 40%);
-  --card-stroke: rgb(0 0 0 / 20%);
+  --card-stroke: rgb(0 0 0 / 22%);
+  /*
+   * How heavy every hairline on the board is — the card's edge and the empty
+   * slots', which have to agree or the table looks drawn by two people. A
+   * theme with no shadows at rest has nothing *but* that edge separating a
+   * card from the table, which is why Minimal's is 1.5px and everyone else's
+   * is 1.
+   */
+  --card-stroke-width: 1px;
 
   /* Emphasis. */
   --accent: #6f9ceb;
@@ -50,16 +62,19 @@
    * table — but the decks we draw ourselves need somewhere to read their
    * colours from, and keeping the four suits separate is what makes the
    * four-colour deck a token swap rather than a second deck.
+   *
+   * The reds are deeper than a printed card's, because docs/08 asks for 7:1
+   * against the card and the traditional pillarbox red is nowhere near it.
    */
   --card-bg: #fbfaf7;
   --card-fg: #16181c;
   --suit-clubs: #16181c;
   --suit-spades: #16181c;
-  --suit-hearts: #b3242b;
-  --suit-diamonds: #b3242b;
+  --suit-hearts: #96131b;
+  --suit-diamonds: #96131b;
 
   /* Card backs — a tiling pattern in two colours, per docs/04. */
-  --back-bg: #3a5f8a;
+  --back-bg: #35587f;
   --back-ink: rgb(255 255 255 / 22%);
-  --back-edge: rgb(255 255 255 / 45%);
+  --back-edge: rgb(255 255 255 / 52%);
 }

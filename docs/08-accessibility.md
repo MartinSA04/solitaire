@@ -15,14 +15,24 @@ by keyboard alone and by screen reader alone.
 | Element | Ratio | Against |
 | ------- | ----- | ------- |
 | Card face (rank/suit) | 7:1 | Card background |
-| Card against table | 4.5:1 | Table surface |
+| Card against table | 3:1 | Table surface — by the card's background **or** its edge |
 | Chrome text | 4.5:1 | Chrome background |
 | Clock/move counter at rest | 3:1 minimum | Deliberately dim, but readable |
 | Empty-slot outline | 3:1 | Table |
 | Legal-drop highlight | 3:1 | Table **and** the un-highlighted state |
 
-Every theme in [04](04-art-direction.md) is checked against this table in review,
-and a unit test asserts the token values still pass — themes drift.
+Every theme in [04](04-art-direction.md) is checked against this table by
+`test/themes/theme.test.ts`, which reads the theme stylesheets, composites the
+translucent tokens onto whatever is behind them, and fails on the ratio —
+themes drift, and a colour nudged to look right on the one screen the person
+nudging it owns is how empty slots disappear on everyone else's.
+
+The card-against-table row asks for 3:1 rather than the 4.5:1 it was first
+written as, and allows a theme to meet it with the card's edge instead of its
+background. See [04](04-art-direction.md#token-contract) for why: a light table
+with white cards cannot clear 4.5 without ceasing to be a light table, and the
+hairline is the honest answer. The 7:1 row is untouched, and it is the one that
+decides whether a card can be *read*.
 
 ### Never hue alone
 

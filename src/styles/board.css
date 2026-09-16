@@ -30,12 +30,26 @@ body {
   user-select: none;
 }
 
+/*
+ * The two layers a theme may put on top of its ground: a weave, and a
+ * darkening at the edges. Both are one static full-screen paint and neither is
+ * ever animated, so they cost nothing after the first frame; a theme that
+ * wants neither sets both tokens to `none` and these paint nothing at all.
+ */
+.game::before,
 .game::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--table-vignette);
   pointer-events: none;
+}
+
+.game::before {
+  background-image: var(--table-texture);
+}
+
+.game::after {
+  background: var(--table-vignette);
 }
 
 /* ---------------------------------------------------------------- board */
@@ -76,7 +90,7 @@ body {
 
 .slot {
   aspect-ratio: 2.5 / 3.5;
-  border: 1px solid var(--slot-stroke);
+  border: var(--card-stroke-width) solid var(--slot-stroke);
   border-radius: var(--card-radius);
   background: var(--slot-fill);
   display: grid;
@@ -97,7 +111,15 @@ body {
 .slot-mark {
   font-size: calc(var(--card-w) * 0.5);
   line-height: 1;
+  /*
+   * The outline has to clear 3:1 against the table — it is the only thing
+   * telling you an empty pile is there. The glyph inside it is a reminder of
+   * which suit goes where, not a control, and docs/04 asks for it to be very
+   * low contrast, so it takes the same colour at a little over half the
+   * strength rather than a token of its own.
+   */
   color: var(--slot-stroke);
+  opacity: 0.55;
 }
 
 /* ------------------------------------------------------------ the cards */
@@ -158,7 +180,7 @@ body {
 .card-face {
   background: var(--card-bg);
   color: var(--suit);
-  box-shadow: inset 0 0 0 1px var(--card-stroke);
+  box-shadow: inset 0 0 0 var(--card-stroke-width) var(--card-stroke);
 }
 
 .card-back {
@@ -176,7 +198,7 @@ body {
       var(--back-ink) 0 1px,
       transparent 1px 6px
     );
-  box-shadow: inset 0 0 0 1px var(--back-edge);
+  box-shadow: inset 0 0 0 var(--card-stroke-width) var(--back-edge);
   transform: rotateY(180deg);
 }
 
