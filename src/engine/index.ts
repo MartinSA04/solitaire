@@ -9,10 +9,16 @@
  *
  * Time is not modelled here. The clock is the UI's problem.
  *
- * Two functions docs/03-engine.md puts on this surface are missing on purpose:
- * `dailySeed` and `randomWinnableSeed` both index into the winnable-deal pools,
- * which are the build-time solver's output and arrive with milestone 5. Until
- * then a new deal is any seed the caller likes.
+ * Two functions docs/03-engine.md once put on this surface are deliberately not
+ * here: `dailySeed` needs `Date` and `randomWinnableSeed` needs a pool that
+ * arrives over `fetch`, and purity.test.ts refuses to find either word in this
+ * directory. They live in src/game/pool.ts as pure functions of a pool handed
+ * to them. The engine's half of choosing a deal is `deal(seed, drawCount)`: a
+ * deal number is a deal number, whoever picked it.
+ *
+ * The solver in solve.ts is not re-exported either, for a different reason —
+ * it runs at build time to write those pools, and a search has no business in
+ * a phone's JS bundle.
  */
 
 export {

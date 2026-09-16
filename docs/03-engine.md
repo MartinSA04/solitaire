@@ -162,15 +162,27 @@ perfect play". Klondike is hard here — the search space is large, draw-3 espec
 and a naive DFS will not terminate on interesting positions.
 
 **It does not run in the browser.** It runs at build time, in Node, and the site
-ships its *output*.
+ships its *output*. `src/engine/solve.ts` is the one engine module that is not
+re-exported from `index.ts`, so nothing on the public surface can drag a search
+into a phone's JS bundle.
 
 ```text
 scripts/generate-winnable.ts
-  for seed in candidates:
-    if solve(deal(seed, draw)) == SOLVED: keep
+  for seed in 0, 1, 2, …:
+    if solve(deal(seed, draw)).outcome === "solved": keep
   → src/data/winnable-1.bin
   → src/data/winnable-3.bin
 ```
+
+`solve` returns one of three outcomes, and the third is the load-bearing one:
+
+```ts
+type SolveOutcome = "solved" | "unsolvable" | "unknown";
+```
+
+`"unknown"` is a search that ran out of budget. It is never rounded to
+`"unsolvable"`: discarding a winnable seed costs nothing, and promising a deal
+is winnable when it isn't costs somebody their afternoon.
 
 ### Approach
 
@@ -186,28 +198,68 @@ Depth-first search with:
   *unknown*, not recorded as unwinnable. A pool of known-good deals doesn't need to
   be exhaustive, so we can be lazy where the game is hard.
 
+Two details of the implementation are worth writing down, because they are where
+the time went:
+
+- **The transposition key sorts the columns.** Two boards that differ only in
+  *which* column a run sits in are the same position, and a run that can go to
+  either of two empty columns is two moves worth one search. Collapsing that
+  symmetry is most of what makes draw-3 tractable at all.
+- **Forced-move collapse uses the standard safe-autoplay rule** — a card whose
+  two opposite-colour neighbours one rank below are already home can never be
+  wanted in the tableau again — which is `isSafeToSendHome` in `assists.ts`, the
+  same fact the interface asks before it sends a card up on a tap.
+
+At a 200,000-node budget the solver settles about three-quarters of draw-1 deals
+and a little over half of draw-3 ones, at a few hundred milliseconds each. That
+is what makes a ten-thousand-seed pool an hour of one machine rather than a day
+of one.
+
 ### Output format
 
-A packed `Uint32Array` of seeds, ~10,000 per draw mode, sorted. 40KB each, which
-is fine, and gzips well. Picking a new deal is an index into it; picking the daily
-is `hash(YYYY-MM-DD) % length`.
+A packed `Uint32Array` of seeds, little-endian, 10,000 per draw mode. 40KB each,
+which is fine, and gzips well. Picking a new deal is an index into it; picking
+the daily is `hash(YYYY-MM-DD) % 4096`.
+
+The candidates are **consecutive seeds from 0 upward**, and the pool is the
+winnable ones among them in order. That one decision is what makes the file
+sorted and append-only *at the same time*: extending the pool means scanning
+further up, which appends, so the frozen prefix the daily indexes into cannot
+move under it. It also means deal numbers a player sees are small enough to read
+out loud, which is worth something for a number whose whole purpose is being
+shared.
+
+Append-only holds only while the node budget is what it was. A bigger budget
+would find extra winnable seeds *inside* the range already scanned, and they
+would land in the middle of the file and move everybody's daily. If the pool ever
+needs regenerating at a different budget, that is a new pool file under a new
+name, exactly as a second RNG would be.
 
 A pool that size means a daily player sees no repeat for 27 years, and a random
-player will essentially never notice the pool is finite. If that ever feels small,
-regenerating a larger pool is a build-time cost only — but note that **the daily
-deal for a given date must not change when the pool is regenerated**, so the daily
-indexes into a frozen first 4,096 entries that are append-only.
+player will essentially never notice the pool is finite. What it is *not* is
+"every winnable deal": a deal the solver cannot crack inside the budget is
+discarded, so the pool is biased towards deals that are winnable **and
+findable**, and the hardest quarter of winnable draw-1 deals is not in it. For a
+pool whose entire job is "deal me one I can win", that bias points the right
+way.
 
 ### Testing the solver
 
 The solver is the one component where "it compiles" is meaningless. It gets:
 
-- Known-solvable positions from published Klondike test sets, asserted solvable.
-- Trivially-unsolvable constructed positions, asserted unsolvable.
-- A replay test: for a sample of pool seeds, re-run the solver's move list through
-  `applyMove` and assert it reaches 52 on the foundations. This catches the
-  dangerous failure — a solver that says "winnable" via a move the real rules
-  forbid.
+- Deals from our own frozen mapping, asserted solvable. (Published Klondike test
+  sets are stated as layouts rather than as seeds, and typing one in by hand is a
+  transcription error waiting to be trusted; our own deals are a test set we
+  cannot get wrong.)
+- A constructed full-deck deadlock — seven black cards on top, no ace exposed, no
+  column empty, stock spent — asserted unsolvable rather than unknown.
+- A budget assertion: a search cut short reports `"unknown"`, and the same deal
+  with room to think is solved.
+- **A replay test**: for a sample of pool seeds, re-run the solver's move list
+  through `applyMove` and assert it reaches 52 on the foundations. This is the one
+  that catches the dangerous failure — a solver that says "winnable" via a move
+  the real rules forbid — and it is why the sample is re-derived from the shipped
+  `.bin` rather than from anything the solver remembers.
 
 ## Undo
 
@@ -231,16 +283,19 @@ deal" is the same operation.
 ```ts
 export function newGame(seed: number, drawCount: 1 | 3): Game;
 export function fromSeedUrl(params: URLSearchParams): Game | null;
-export function dailySeed(date: Date, drawCount: 1 | 3): number;
-export function randomWinnableSeed(drawCount: 1 | 3): number;
+export function deserialise(saved: string): Game | null;
 
 interface Game {
   readonly state: GameState;
+  readonly seed: number;
+  readonly drawCount: 1 | 3;
   readonly canUndo: boolean;
   readonly isWon: boolean;
-  readonly canAutoComplete: boolean;   // every card face up in the tableau
+  readonly canAutoComplete: boolean;   // every card face up, stock spent
+  readonly movesPlayed: number;        // monotonic; undo does not decrement
   play(move: Move): boolean;           // false if illegal; never throws
   undo(): boolean;
+  restart(): void;                     // same deal, from the start
   hint(): Move | null;
   autoCompleteSequence(): Move[];      // the ordered finishing run
   serialise(): string;                 // for localStorage
@@ -249,7 +304,18 @@ interface Game {
 
 `play` returning `false` rather than throwing is deliberate: the UI will
 speculatively try moves (a tap means "do the obvious thing here"), and that should
-not be exceptional.
+not be exceptional. `deserialise` is its mirror: a save that does not replay
+cleanly through the rules returns `null`, because a corrupt save is a new game
+rather than an error dialog.
+
+**`dailySeed` and `randomWinnableSeed` are not here.** This document used to put
+them on this surface, and they cannot be: one needs `Date` and the other needs the
+pool, which arrives over `fetch`, and both are on the list of things
+`test/engine/purity.test.ts` refuses to find in this directory. They live in
+`src/game/pool.ts` as pure functions of a pool you hand them — which is also what
+lets the daily's mapping be pinned by a test rather than trusted. The engine's
+half of that job is `deal(seed, drawCount)`, and a deal number is a deal number
+whoever chose it.
 
 ## Testing strategy
 
@@ -264,7 +330,7 @@ not be exceptional.
 | `enumerate`   | Enumerated moves are all legal; no legal move is missed (brute force on small constructed states). |
 | `history`     | Undo to arbitrary depth reproduces byte-identical state.                |
 | `invariants`  | Property test: from 1,000 random seeds, play 200 random legal moves and assert all 52 cards are present exactly once, `down <= length`, foundations ascend in suit. |
-| `solver`      | As above.                                                               |
+| `solve`       | As above: known-solvable deals, a constructed deadlock, the budget's `"unknown"`, and the replay test over a sample of the shipped pools. |
 | `purity`      | The engine imports and runs a full game with `window` undefined.        |
 
 The property test is the one that finds real bugs. Card conservation and foundation
