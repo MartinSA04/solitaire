@@ -20,6 +20,7 @@
   import { CardLayer, type Motion } from "./CardLayer.ts";
   import { Drag, type DragHost } from "./Drag.ts";
   import { FOUNDATION_ORDER, metricsFor } from "./Layout.ts";
+  import { dealOrder, drawnCards, predealt } from "./motion.ts";
   import { PULSE_GAP_MS, WinSequence, type WinStage } from "./WinSequence.ts";
   import { Stopwatch } from "./clock.ts";
   import BottomBar from "./chrome/BottomBar.svelte";
@@ -116,9 +117,25 @@
   }
 
   function play(move: Move, motion: Motion): boolean {
-    if (won || !game.play(move)) return false;
+    if (won) return false;
+    const before = game.state;
+    if (!game.play(move)) return false;
     clock.start();
-    render(motion);
+
+    // Two moves have a motion of their own, and neither of them is something
+    // the gesture that asked for it can know: the cards a draw turns over fan
+    // out one after another, and a recycle sweeps the waste back as a block.
+    switch (move.kind) {
+      case "draw":
+        render("draw", drawnCards(before, game.state));
+        break;
+      case "recycle":
+        render("recycle");
+        break;
+      default:
+        render(motion);
+    }
+
     sync();
     return true;
   }
@@ -143,7 +160,8 @@
   function reset(): void {
     sequence?.destroy();
     sequence = null;
-    staged = null;
+    // Every card back on the stock, ready to be dealt out of it again.
+    staged = predealt(game.state);
     winStage = "none";
     dismissed = false;
     clock.reset();
@@ -157,21 +175,51 @@
 
   let layer: CardLayer | null = null;
   let sequence: WinSequence | null = null;
+  /** The pending first-frame callback, cancelled if the deal is torn down. */
+  let dealFrame = 0;
   /** The debug trigger fires once a page load, not once a deal. */
   let debugged = false;
 
   /**
-   * What the card layer is showing. The same thing as the game, except under
-   * the debug trigger — see {@link wonBoard}.
+   * What the card layer is showing, when that is not simply the game: the
+   * undealt board until the deal runs, and the won one under `?win`. Not
+   * reactive, for the same reason `game` is not — every read of it is driven
+   * by an explicit render.
    */
-  let staged: GameState | null = null;
+  let staged: GameState | null = predealt(game.state);
 
   function displayed(): GameState {
     return staged ?? game.state;
   }
 
-  function render(motion: Motion): void {
-    layer?.render(displayed(), motion);
+  function render(motion: Motion, order?: readonly number[]): void {
+    layer?.render(displayed(), motion, order);
+  }
+
+  /**
+   * The deal: twenty-eight cards leaving the stock a row at a time, in the
+   * order they were dealt into the columns.
+   *
+   * `staged` is already the undealt board, so the cards are genuinely sitting
+   * on the stock — there is nothing to fake and nothing to measure. Two frames
+   * rather than one, because a transition runs from the last style the browser
+   * *painted*: one frame only gets the cards as far as being computed on the
+   * stock, and they would fly from wherever they happened to be before that.
+   */
+  function dealOut(): number {
+    return requestAnimationFrame(() => {
+      dealFrame = requestAnimationFrame(() => {
+        staged = null;
+        render("deal", dealOrder(game.state));
+      });
+    });
+  }
+
+  function reducedMotion(): boolean {
+    return (
+      typeof matchMedia !== "undefined" &&
+      matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
   }
 
   /**
@@ -222,7 +270,7 @@
       canvas,
       board,
       seed: flags.seed,
-      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      reducedMotion: reducedMotion(),
       // The sound setting is milestone 5's, along with the storage it lives
       // in. Until then the win sequence is audible, per docs/07.
       muted: false,
@@ -279,7 +327,7 @@
     const node = layerEl;
     if (board === undefined || node === undefined) return;
 
-    const cards = new CardLayer(node);
+    const cards = new CardLayer(node, reducedMotion());
     layer = cards;
 
     const host: DragHost = {
@@ -292,7 +340,9 @@
     };
     const drag = new Drag(board, cards, host);
 
-    // Geometry is computed once per resize and never during a move.
+    // Geometry is computed once per resize and never during a move. The first
+    // one is taken here rather than waited for, so that the undealt board is on
+    // screen in the frame the island mounts in.
     const relayout = (): void => {
       cards.setMetrics(
         metricsFor({ width: board.clientWidth, height: board.clientHeight }),
@@ -300,20 +350,23 @@
       );
       cards.render(displayed(), "instant");
     };
+    relayout();
     const observer = new ResizeObserver(relayout);
     observer.observe(board);
 
     if (flags.debug && !debugged) {
       debugged = true;
-      // One frame, so the ResizeObserver above has handed over the geometry.
-      requestAnimationFrame(() => {
+      dealFrame = requestAnimationFrame(() => {
         staged = wonBoard();
         render("instant");
         celebrate();
       });
+    } else {
+      dealFrame = dealOut();
     }
 
     return () => {
+      cancelAnimationFrame(dealFrame);
       observer.disconnect();
       drag.destroy();
       cards.destroy();
@@ -394,14 +447,17 @@
             data-card={card}
             data-suit={suitOf(card)}
           >
-            <span class="card-face">
-              <span class="card-index">
-                <span>{RANKS[rankOf(card)]}</span>
-                <span class="card-index-suit">{SUITS[suitOf(card)]}</span>
+            <!-- The face and the back turn together: see .card-flip in board.css. -->
+            <span class="card-flip">
+              <span class="card-face">
+                <span class="card-index">
+                  <span>{RANKS[rankOf(card)]}</span>
+                  <span class="card-index-suit">{SUITS[suitOf(card)]}</span>
+                </span>
+                <span class="card-pip">{SUITS[suitOf(card)]}</span>
               </span>
-              <span class="card-pip">{SUITS[suitOf(card)]}</span>
+              <span class="card-back"></span>
             </span>
-            <span class="card-back"></span>
           </div>
         {/each}
       </div>

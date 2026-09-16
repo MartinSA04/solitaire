@@ -116,13 +116,35 @@ body {
   width: var(--card-w);
   height: var(--card-h);
   border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow-rest);
   /*
    * No transition by default. A card animates because a motion class was put
    * on it for exactly one move, which is also what keeps `will-change` off the
    * other 51 elements.
    */
   transition: none;
+}
+
+/*
+ * The flip. `rotateY` with no perspective is exactly `scaleX(cos θ)`, so this
+ * is the two-halves flip from the catalogue — 0→90° with the face showing,
+ * 90°→180° with the back — without putting fifty-two elements into a 3D
+ * rendering context, which is the part that would cost frames. The back
+ * carries its own 180°, which cancels the wrapper's at the end of the turn and
+ * leaves it the right way round rather than mirrored.
+ *
+ * The card's shadow lives here rather than on `.card` so that it turns with
+ * the card. On the outer element it would stay a full-width rectangle while
+ * the card itself pinched to nothing, which is exactly as odd as it sounds.
+ */
+.card-flip {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--card-shadow-rest);
+}
+
+.card.is-face-down .card-flip {
+  transform: rotateY(180deg);
 }
 
 .card-face,
@@ -155,6 +177,7 @@ body {
       transparent 1px 6px
     );
   box-shadow: inset 0 0 0 1px var(--back-edge);
+  transform: rotateY(180deg);
 }
 
 .card.is-face-down .card-face {
@@ -217,9 +240,50 @@ body {
 
 /* ----------------------------------------------------------- the motion */
 
+/*
+ * `--delay` is a staggered motion's per-card start, written by CardLayer as an
+ * inline custom property. It inherits, which is how the flip inside a dealt
+ * card starts at the same moment the card itself leaves the stock; it defaults
+ * to nothing at all, which is how every other move stays a one-class change.
+ */
 .card.is-moving {
-  transition: transform var(--t-quick) var(--e-out);
+  transition: transform var(--t-quick) var(--e-out) var(--delay, 0ms);
   will-change: transform;
+}
+
+/*
+ * Two halves of `--t-instant`, and the faces swap at the join. `--e-inout` is
+ * symmetric, so the wrapper is edge-on at exactly half the duration — which is
+ * why the swap can be a delayed zero-length transition instead of a second
+ * animation that would have to be kept in step with the first.
+ */
+.card.is-flipping .card-flip {
+  transition: transform calc(var(--t-instant) * 2) var(--e-inout)
+    var(--delay, 0ms);
+  will-change: transform;
+}
+
+.card.is-flipping .card-face,
+.card.is-flipping .card-back {
+  transition: opacity 0s linear calc(var(--delay, 0ms) + var(--t-instant));
+}
+
+/*
+ * The waste going back under the stock: one block, one sweep, with a slight
+ * arc. The arc is on `translate` rather than inside the transform, so it
+ * composes with the transform carrying the card across instead of fighting it
+ * — the same trick the shake below uses.
+ */
+.card.is-sweeping {
+  transition: transform var(--t-settle) var(--e-inout);
+  animation: card-sweep var(--t-settle) var(--e-inout);
+  will-change: transform;
+}
+
+@keyframes card-sweep {
+  50% {
+    translate: 0 calc(var(--card-h) * -0.16);
+  }
 }
 
 .card.is-settling {
@@ -241,8 +305,11 @@ body {
 .card.is-dragging {
   /* Zero smoothing on the follow. Any lag reads as the game being slow. */
   transition: none;
-  box-shadow: var(--card-shadow-lift);
   will-change: transform;
+}
+
+.card.is-dragging .card-flip {
+  box-shadow: var(--card-shadow-lift);
 }
 
 .card.is-shaking {
@@ -272,9 +339,31 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .card.is-shaking {
     animation: none;
+  }
+
+  .card.is-shaking .card-flip {
     box-shadow:
       var(--card-shadow-rest),
       0 0 0 2px var(--accent);
+  }
+
+  /*
+   * The one piece of motion that survives reduced motion, because an instant
+   * flip is genuinely hard to follow — as a 90ms crossfade rather than a turn.
+   * Every duration above is 1ms here, so this one is written out.
+   */
+  .card.is-face-down .card-flip,
+  .card-back {
+    transform: none;
+  }
+
+  .card.is-flipping .card-flip {
+    transition: none;
+  }
+
+  .card.is-flipping .card-face,
+  .card.is-flipping .card-back {
+    transition: opacity 90ms linear;
   }
 }
 

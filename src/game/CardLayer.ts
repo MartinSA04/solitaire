@@ -25,19 +25,48 @@ import {
  */
 
 /** How a change of position should look. The catalogue is in docs/05. */
-export type Motion = "instant" | "move" | "drop" | "undo";
+export type Motion =
+  "instant" | "move" | "deal" | "draw" | "drop" | "undo" | "recycle";
 
-const MOTION_CLASS: Record<Exclude<Motion, "instant">, string> = {
-  move: "is-moving",
-  drop: "is-settling",
+interface Style {
+  className: string;
+  /** Milliseconds between one staggered card leaving and the next. */
+  stagger: number;
+}
+
+const MOTION: Record<Exclude<Motion, "instant">, Style> = {
+  move: { className: "is-moving", stagger: 0 },
+  // A deal is the workhorse move twenty-eight times over. The stagger is the
+  // whole of why it reads as dealt rather than drawn, and at 22ms the last
+  // card leaves the stock a little over 600ms after the first.
+  deal: { className: "is-moving", stagger: 22 },
+  // Draw-3 fans out one card after another; in draw-1 there is only ever one
+  // card in the order, so the stagger costs nothing.
+  draw: { className: "is-moving", stagger: 60 },
+  drop: { className: "is-settling", stagger: 0 },
   // Deliberately slower than the move it reverses, so you can see what came back.
-  undo: "is-undoing",
+  undo: { className: "is-undoing", stagger: 0 },
+  // The whole waste, back under the stock as one block with a slight arc.
+  recycle: { className: "is-sweeping", stagger: 0 },
 };
 
 /**
- * Long enough for the slowest of those transitions plus slack. It only decides
- * when the flight z-lift and `will-change` come off, both of which are
- * invisible, so it does not need to be exact.
+ * Every class that arms a transition. A card wears one for exactly as long as
+ * it is moving, which is also what keeps `will-change` off the other fifty-one.
+ */
+const MOTION_CLASSES = [
+  "is-moving",
+  "is-settling",
+  "is-undoing",
+  "is-sweeping",
+  "is-flipping",
+] as const;
+
+/**
+ * Long enough for the slowest of those transitions plus slack, over and above
+ * whatever the stagger added. It only decides when the flight z-lift and
+ * `will-change` come off, both of which are invisible, so it does not need to
+ * be exact.
  */
 const FLIGHT_MS = 400;
 
@@ -47,6 +76,7 @@ const RETURN_MS = 220;
 export class CardLayer {
   readonly #layer: HTMLElement;
   readonly #elements: HTMLElement[];
+  readonly #reduced: boolean;
   #metrics: Metrics | null = null;
   #placements: Placement[] = [];
   #held: readonly Card[] = [];
@@ -54,8 +84,15 @@ export class CardLayer {
   #rect: DOMRect | null = null;
   #surrendered = false;
 
-  constructor(layer: HTMLElement) {
+  /**
+   * `reducedMotion` zeroes the staggers. The durations take care of
+   * themselves — they are custom properties that the media query in
+   * `motion.css` collapses to 1ms — but a stagger is an index times a number
+   * and the number has to come from somewhere.
+   */
+  constructor(layer: HTMLElement, reducedMotion = false) {
     this.#layer = layer;
+    this.#reduced = reducedMotion;
     const found = layer.querySelectorAll<HTMLElement>("[data-card]");
     if (found.length !== DECK_SIZE) {
       throw new Error(`card layer holds ${found.length} cards, expected 52`);
@@ -109,48 +146,70 @@ export class CardLayer {
    * Put every card where the position says it belongs. Cards that did not move
    * are written anyway (it is one string assignment and the compositor ignores
    * an unchanged transform) so there is no bookkeeping to get wrong.
+   *
+   * `order` is the cards a staggered motion runs along, first to leave first.
+   * Everything not in it starts immediately; for an unstaggered motion it is
+   * ignored entirely.
    */
-  render(state: GameState, motion: Motion = "move"): void {
+  render(
+    state: GameState,
+    motion: Motion = "move",
+    order: readonly Card[] = [],
+  ): void {
     const m = this.#metrics;
     // Once the win sequence owns the cards, a resize must not put them back on
     // their foundations mid-flight.
     if (m === null || this.#surrendered) return;
 
     const next = placeAll(m, state);
-    const instant = motion === "instant";
+    // `null` is "arrive immediately": no class, so no transition is armed.
+    const style = motion === "instant" ? null : MOTION[motion];
+    const delays = this.#delays(style, order);
     let inFlight = false;
+    let last = 0;
+
     for (let card = 0; card < DECK_SIZE; card++) {
       const to = next[card] as Placement;
       const element = this.#elements[card] as HTMLElement;
       const was = this.#placements[card];
       const moved = was === undefined || was.x !== to.x || was.y !== to.y;
+      const turned = was !== undefined && was.faceUp !== to.faceUp;
 
       // A card under the pointer is the drag's to write. Its new resting place
       // is still recorded below, because that is what it springs back to.
       if (this.#held.includes(card)) continue;
 
-      element.classList.toggle("is-face-down", !to.faceUp);
       element.classList.remove("is-returning");
 
-      if (instant) {
+      if (style === null) {
         // A card only ever animates because it is wearing a motion class, so
         // taking them off is the whole of "arrive immediately". No transition
         // is armed, so nothing needs flushing first.
-        element.classList.remove("is-moving", "is-settling", "is-undoing");
+        element.classList.remove(...MOTION_CLASSES);
+        element.style.removeProperty("--delay");
+        element.style.zIndex = String(to.z);
+      } else {
+        const delay = delays[card] ?? 0;
+        if (delay > 0) element.style.setProperty("--delay", `${delay}ms`);
+        else element.style.removeProperty("--delay");
+
+        // A card that turns over animates even when it does not move: the
+        // column top a move exposes is the commonest flip in the game.
+        if (turned) element.classList.add("is-flipping");
+        if (moved) element.classList.add(style.className);
+        if (turned || moved) {
+          inFlight = true;
+          last = Math.max(last, delay);
+        }
+        element.style.zIndex = String(moved ? Z_FLIGHT + to.z : to.z);
       }
 
-      if (moved && !instant) {
-        element.classList.add(MOTION_CLASS[motion]);
-        element.style.zIndex = String(Z_FLIGHT + to.z);
-        inFlight = true;
-      } else {
-        element.style.zIndex = String(to.z);
-      }
+      element.classList.toggle("is-face-down", !to.faceUp);
       element.style.transform = translate(to.x, to.y);
     }
 
     this.#placements = next;
-    if (inFlight) this.#scheduleLanding();
+    if (inFlight) this.#scheduleLanding(last);
   }
 
   /**
@@ -163,12 +222,8 @@ export class CardLayer {
     cards.forEach((card, i) => {
       const element = this.#elements[card] as HTMLElement;
       element.classList.add("is-dragging");
-      element.classList.remove(
-        "is-moving",
-        "is-settling",
-        "is-undoing",
-        "is-returning",
-      );
+      element.classList.remove(...MOTION_CLASSES, "is-returning");
+      element.style.removeProperty("--delay");
       element.style.zIndex = String(Z_DRAG + i);
     });
   }
@@ -250,12 +305,11 @@ export class CardLayer {
     for (let card = 0; card < DECK_SIZE; card++) {
       const element = this.#elements[card] as HTMLElement;
       element.classList.remove(
-        "is-moving",
-        "is-settling",
-        "is-undoing",
+        ...MOTION_CLASSES,
         "is-returning",
         "is-dragging",
       );
+      element.style.removeProperty("--delay");
       element.classList.add("is-cascading");
       element.style.zIndex = String(Z_FLIGHT + card);
     }
@@ -296,20 +350,35 @@ export class CardLayer {
     }
   }
 
+  /** Per-card start times, sparse: only a staggered motion writes any. */
+  #delays(style: Style | null, order: readonly Card[]): number[] {
+    const delays: number[] = [];
+    const step = style === null || this.#reduced ? 0 : style.stagger;
+    if (step > 0) {
+      order.forEach((card, index) => {
+        delays[card] = index * step;
+      });
+    }
+    return delays;
+  }
+
   /**
-   * Drop the flight lift and `will-change` once everything has landed.
-   * Permanent `will-change` on 52 elements costs real memory on cheap GPUs.
+   * Drop the flight lift and `will-change` once everything has landed —
+   * `last` is when the last staggered card set off, so a deal is watched for
+   * as long as a deal takes. Permanent `will-change` on 52 elements costs real
+   * memory on cheap GPUs.
    */
-  #scheduleLanding(): void {
+  #scheduleLanding(lastMs: number): void {
     clearTimeout(this.#flight);
     this.#flight = setTimeout(() => {
       for (let card = 0; card < DECK_SIZE; card++) {
         if (this.#held.includes(card)) continue;
         const element = this.#elements[card] as HTMLElement;
-        element.classList.remove("is-moving", "is-settling", "is-undoing");
+        element.classList.remove(...MOTION_CLASSES);
+        element.style.removeProperty("--delay");
         element.style.zIndex = String((this.#placements[card] as Placement).z);
       }
-    }, FLIGHT_MS);
+    }, FLIGHT_MS + lastMs);
   }
 
   destroy(): void {
