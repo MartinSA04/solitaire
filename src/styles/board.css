@@ -119,7 +119,8 @@ body {
   text-align: inherit;
   cursor: default;
 
-  aspect-ratio: 2.5 / 3.5;
+  /* Poker until Layout.ts has measured; the deck's own shape after. */
+  aspect-ratio: var(--card-aspect, 2.5 / 3.5);
   border: var(--card-stroke-width) solid var(--slot-stroke);
   border-radius: var(--card-radius);
   background: var(--slot-fill);

@@ -16,6 +16,7 @@ import {
   type Placement,
   FOUNDATION_ORDER,
   HIT_PAD,
+  POKER_ASPECT,
   columnHeight,
   columnOffsets,
   dropTarget,
@@ -120,6 +121,63 @@ describe("board measurements", () => {
     assert.equal(loose[1], m.fanUp);
     assert.ok((tight[1] as number) < m.fanUp);
     assert.ok(columnHeight(m, WORST_COLUMN) <= m.tableauH + 1e-9);
+  });
+});
+
+/**
+ * A deck brings its own proportions, and the board is laid out at them rather
+ * than squeezing a sheet into a poker card. The sixteen sourced decks run from
+ * 1 : 1.357 (Tango Nuevo) to 1 : 1.568 (Guyenne); those two are the ends, so
+ * they are what gets tested.
+ *
+ * This is the whole reason `aspect` is an argument rather than a constant: the
+ * board holding a bridge-shaped deck is arithmetic, and arithmetic is a unit
+ * test. See `deckAspect` in src/decks/sourced.ts.
+ */
+describe("a deck's own shape", () => {
+  const WIDEST = 190 / 140;
+  const TALLEST = 121.5 / 77.5;
+
+  it("takes the card height from the deck, not from poker", () => {
+    for (const aspect of [POKER_ASPECT, WIDEST, TALLEST]) {
+      const m = metricsFor(DESKTOP, "comfortable", 0, aspect);
+      assert.ok(Math.abs(m.cardH - m.cardW * aspect) < 1e-9);
+    }
+  });
+
+  it("leaves the width alone, so seven columns still fit a phone", () => {
+    // The width rule has nothing to do with how tall a card is, and a player
+    // who picks a bridge-shaped deck on a phone should not lose two columns to
+    // it.
+    const poker = metricsFor(PHONE);
+    for (const aspect of [WIDEST, TALLEST]) {
+      const m = metricsFor(PHONE, "comfortable", 0, aspect);
+      assert.equal(m.visibleColumns, TABLEAU_COLUMNS);
+      assert.ok(Math.abs(m.cardW - poker.cardW) < 1e-9);
+    }
+  });
+
+  it("still fits the worst column the game can deal", () => {
+    // The board never scrolls, whatever shape the cards are. A taller card
+    // eats the height budget, so this is the assertion that says the height
+    // limit in `metricsFor` was given the same aspect everything else was.
+    for (const aspect of [POKER_ASPECT, WIDEST, TALLEST]) {
+      for (const area of [PHONE, PHONE_LARGE, TABLET, DESKTOP]) {
+        const m = metricsFor(area, "comfortable", 0, aspect);
+        assert.ok(
+          columnHeight(m, WORST_COLUMN) <= m.tableauH + 1e-9,
+          `a 19-card column overflows at ${area.width}x${area.height}, aspect ${aspect}`,
+        );
+      }
+    }
+  });
+
+  it("is poker when nothing says otherwise", () => {
+    assert.deepEqual(
+      metricsFor(DESKTOP),
+      metricsFor(DESKTOP, "comfortable", 0, POKER_ASPECT),
+    );
+    assert.equal(POKER_ASPECT, 1.4);
   });
 });
 

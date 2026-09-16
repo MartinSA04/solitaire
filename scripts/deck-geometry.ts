@@ -77,7 +77,17 @@ const round = (n: number): number => Math.round(n * 1000) / 1000;
  * a deck whose art bleeds past its own edge, as a drop shadow does, measures
  * wider than the card it is drawn on.
  */
-const BASE_IDS = ["card", "base", "cf", "cardface", "card_face", "blank"];
+const BASE_IDS = [
+  "card",
+  "base",
+  "cf",
+  "cardface",
+  "card_face",
+  "blank",
+  // The back is a whole card too, and it is the only one of these that every
+  // sprite in the registry has. See `ownCard`.
+  "back",
+];
 
 async function measure(
   sprite: string,
@@ -318,9 +328,65 @@ async function report(sprite: string): Promise<void> {
  */
 const CENTRED_WITHIN = 0.5;
 
+/**
+ * The deck's own statement of how big a card is, out of {@link BASE_IDS} and
+ * the back.
+ *
+ * The largest of them, by area, because some sheets use one of those ids for
+ * something else — Plastic's `#cf` is a 21×22 corner flourish sitting beside a
+ * 100×140 `#card` — and a card is the biggest thing any of these names is ever
+ * given to.
+ *
+ * A blank **face** is preferred over the back, and only three decks here need
+ * the back at all. The two are not always the same rectangle: Atlasnye draws
+ * its back 0.58 units taller than any of its faces, which is nothing to look
+ * at and enough to fail a comparison the faces should never have been part of.
+ */
+function ownCard(bases: [string, Box][]): [string, Box] | null {
+  const faces = bases.filter(([id]) => id !== "back");
+  let best: [string, Box] | null = null;
+  for (const entry of faces.length > 0 ? faces : bases) {
+    if (best === null || entry[1].w * entry[1].h > best[1].w * best[1].h) {
+      best = entry;
+    }
+  }
+  return best;
+}
+
+/**
+ * How much smaller than its own card a committed cell may be. Nothing, to a
+ * rounding error.
+ *
+ * This is the check the French deck needed and did not have. Its cell was
+ * committed as a crop — 164.075 × 232.77 against a card of 166.575 × 242.14 —
+ * on the reasoning that the deck's printed border was ours to drop. Eight of
+ * those missing units are the bottom of the card, and what a Bellot card keeps
+ * in its bottom eight units is the rotated index. Every face in the deck lost
+ * both corner indices and all four edges of its border, at every size, on
+ * every table, and {@link verify} said "all where the registry says" because
+ * a crop and a card are centred on the same point.
+ */
+const CROP_TOLERANCE = 0.5;
+
 async function verify(deck: SourcedDeck): Promise<string[]> {
-  const { boxes } = await measure(`public${deck.sprite}`);
+  const { boxes, bases } = await measure(`public${deck.sprite}`);
   const wrong: string[] = [];
+
+  const own = ownCard(bases);
+  if (own === null) {
+    wrong.push(`${deck.id}: the sprite names no blank card and no back`);
+  } else {
+    const [id, card] = own;
+    const cell = deck.grid;
+    if (cell.w < card.w - CROP_TOLERANCE || cell.h < card.h - CROP_TOLERANCE) {
+      wrong.push(
+        `${deck.id}: the committed cell is ${round(cell.w)}×${round(cell.h)}, ` +
+          `inside the ${round(card.w)}×${round(card.h)} card the sheet draws as #${id} — ` +
+          `that difference is card art that never reaches the screen`,
+      );
+    }
+  }
+
   const seen = new Set<string>();
   for (let card = 0; card < DECK_SIZE; card++) {
     const drawn = boxes[card];

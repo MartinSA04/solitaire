@@ -37,10 +37,21 @@
    * every screen reader.
    */
 
-  /** Which sprites are already on this device. Asked of the cache, not of us. */
   let onDevice = $state<Set<string>>(new Set());
 
+  /**
+   * Which sprites are already on this device. Asked of the cache, not of us.
+   *
+   * `pending` and `failed` are read rather than used, and that read is the
+   * whole point: they are the only two things that change what the cache
+   * holds while this sheet is open, so touching them here is what re-runs the
+   * effect when a download settles. Without it the answer was taken once at
+   * mount, and a deck you had just watched arrive went on saying nothing until
+   * you closed the gallery and opened it again.
+   */
   $effect(() => {
+    void pending;
+    void failed;
     let live = true;
     void (async () => {
       const found = new Set<string>();
@@ -91,9 +102,10 @@
 
 <Sheet title="Decks" {onClose}>
   <p class="sheet-note">
-    All of them, now, free. The ones we did not draw ourselves are somebody
-    else's artwork and are fetched when you pick one — the size is what that
-    costs on this connection, and a deck you have used before is already here.
+    Every deck is here from the start. The ones we did not draw are somebody
+    else's artwork and download when you pick one; the size on a tile is what
+    that download costs, and a deck you have used before is already on this
+    device.
   </p>
 
   <div class="deck-grid" role="radiogroup" aria-label="Deck">
@@ -300,6 +312,13 @@
     position: relative;
     aspect-ratio: 154 / 101;
     background: none;
+    /*
+     * The container the swatch measures itself against, so `cqw` below is the
+     * width of the picture rather than of the tile around it — which is what
+     * lets the index be sized off the card the way the card layer sizes it off
+     * `--card-w`.
+     */
+    container-type: inline-size;
   }
 
   .swatch-card {
@@ -340,23 +359,42 @@
   }
 
   /*
+   * The index, in the corner, exactly where `.card-index` puts it on the board
+   * — same 3% and 7% offsets, same baseline, same rank-then-suit order.
+   *
+   * It used to be centred in the card, which put it under the card fanned over
+   * the top of it: every swatch in the gallery showed half a K and half a 7.
+   * A card's index is in its corner because that is the part of it a fan
+   * leaves showing, and a swatch of a fan needs it there for the same reason.
+   *
    * Sized against the swatch rather than in pixels, so a tile that grows on a
    * wide screen grows the index with it — the same way the card layer scales
-   * everything on the board off the card's own width.
+   * everything on the board off the card's own width. A swatch card is 46.75%
+   * of the picture, so 46.75cqw is this deck's `--card-w`.
    */
   .swatch-index {
+    position: absolute;
+    top: 3%;
+    left: 7%;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 6% 0 0 7%;
+    align-items: baseline;
+    gap: 0.1em;
     font-family: var(--index-font);
     font-weight: var(--index-weight, 600);
-    font-size: 12cqw;
+    /*
+     * A swatch card is 46.75% of the picture, so 46.75cqw is this deck's
+     * `--card-w`. The cap is what the strip left by the card fanned over the
+     * top will hold: High contrast sets `--index-size: 0.44` and prints its
+     * suit at 0.95 of the rank, which on the board is the whole point of that
+     * deck and in a three-card fan ran a sliced ♠ under the next card.
+     */
+    font-size: calc(46.75cqw * min(var(--index-size, 0.36), 0.33));
     line-height: 1;
+    font-variant-numeric: tabular-nums;
   }
 
   .swatch-index span {
-    font-size: 8.5cqw;
+    font-size: calc(1em * var(--index-suit-scale, 0.8));
   }
 
   .switch {

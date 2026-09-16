@@ -26,6 +26,7 @@
     type PileRef,
     FOUNDATION_ORDER,
     PILE_ORDER,
+    POKER_ASPECT,
     metricsFor,
     pageOf,
     pileCards,
@@ -52,6 +53,7 @@
   import {
     type SourcedDeck,
     cardBox,
+    deckAspect,
     sourcedDeck,
     viewBox,
   } from "../decks/sourced.ts";
@@ -1068,6 +1070,7 @@
         { width: board.clientWidth, height: board.clientHeight },
         settings.cardSize,
         page,
+        boardAspect,
       );
       pages = m.pages;
       // A board that has stopped paging, or never started, takes the page back
@@ -1172,9 +1175,15 @@
    * A different card size is a different board, so it is measured again from
    * scratch. The page goes back to the first one: the column you were looking
    * at may not be on the page it was on, and there may be no pages at all.
+   *
+   * A different *shape* of card is the same story, and {@link boardAspect}
+   * changes only when a sprite has actually landed — so the board reshapes in
+   * the same moment the art crosses over it rather than a second earlier on an
+   * empty promise.
    */
   $effect(() => {
     void settings.cardSize;
+    void boardAspect;
     // Untracked for the same reason as above, and the page needs no resetting:
     // a board that cannot page clamps it back to zero on the way through.
     untrack(() => remeasure?.("move"));
@@ -1208,6 +1217,21 @@
   let deckPending = $state<string | null>(null);
   let deckFailed = $state<string | null>(null);
 
+  /**
+   * How tall a card is against its own width, for the deck actually on the
+   * table.
+   *
+   * The decks we draw are poker-shaped and the sixteen we did not run from
+   * 1.36 to 1.57, because that is the range real card patterns are printed at.
+   * The board is laid out at whichever one is in hand, so a sheet is shown at
+   * the proportion it was drawn at instead of being squeezed into ours.
+   *
+   * It follows the sprite rather than the setting. A deck that is still being
+   * fetched, or that never arrives, leaves the number where it is — the board
+   * has a perfectly good poker-shaped deck on it either way.
+   */
+  let boardAspect = $state(POKER_ASPECT);
+
   /** The registry's shape, translated into the four things the layer wants. */
   function artOf(deck: SourcedDeck): DeckArt {
     return {
@@ -1224,6 +1248,7 @@
       layer?.setArt(null);
       clearDeckArt();
       deckPending = null;
+      boardAspect = POKER_ASPECT;
       return;
     }
     deckPending = deck.id;
@@ -1233,7 +1258,10 @@
     if (chosenArt()?.id !== deck.id) return;
     deckPending = null;
     deckFailed = arrived ? null : deck.id;
-    if (arrived) layer?.setArt(artOf(deck));
+    if (arrived) {
+      layer?.setArt(artOf(deck));
+      boardAspect = deckAspect(deck);
+    }
   }
 
   $effect(() => {
@@ -1399,9 +1427,13 @@
                   pointed at that deck's sprite by CardLayer.setArt rather than
                   by anything reactive — including the viewBox, which is a
                   different cell of the sheet for every card.
-                  `preserveAspectRatio="none"` fits a deck's own proportions to
-                  a poker card: one per cent for the French deck, ten for a
-                  bridge-sized one, instead of cropping an index off.
+
+                  The card element is already the shape of this deck's own
+                  cell, so `preserveAspectRatio="none"` has nothing left to
+                  stretch. It stays because the two agree to within a rounding
+                  error, and `none` spends that error on a fraction of a pixel
+                  of scale rather than on a hairline of bare paper down one
+                  edge.
                 -->
                 <svg
                   class="card-art"

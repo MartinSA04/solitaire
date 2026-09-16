@@ -138,7 +138,7 @@ async function dress(
   const decks = page.getByRole("dialog", { name: "Decks" });
   await expect(decks).toBeVisible();
   await decks.locator(`label:has(input[value="${deck}"])`).click();
-  await decks.getByRole("button", { name: "Done" }).click();
+  await decks.getByRole("button", { name: "Close" }).click();
   await expect(decks).toHaveCount(0);
 
   await expect

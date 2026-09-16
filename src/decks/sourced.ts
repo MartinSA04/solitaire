@@ -173,6 +173,20 @@ export function viewBox(box: Box): string {
 }
 
 /**
+ * How tall a card is against its own width, for the deck in hand.
+ *
+ * A poker card is 1.4. The sixteen sheets here run from 1.36 to 1.57, because
+ * a Russian pattern and a bridge pattern and an 18th-century woodblock are
+ * different shapes of card, and each of these was drawn at the shape its
+ * pattern is printed at. The board takes this number from the deck and lays
+ * the table out at it, so what a player sees is the proportion the artist
+ * drew. See docs/04-art-direction.md.
+ */
+export function deckAspect(deck: SourcedDeck): number {
+  return deck.grid.h / deck.grid.w;
+}
+
+/**
  * Everything below `french` comes from one place and shares one shape, so the
  * common half is written once: the Aisleriot source, the licence file beside
  * the sprite, and the id convention. What is left per deck is what is actually
@@ -463,50 +477,40 @@ export const SOURCED: readonly SourcedDeck[] = [
     name: "French",
     sprite: "/decks/french/deck.svg",
     /*
-     * **Not the sprite's own viewBox**, which is what shipped first and is why
-     * the French deck looked broken: every card was drawn small and high
-     * inside its element, with the deck's own black border cutting across the
-     * face on two edges and its bottom-right index falling off the corner.
+     * **Not the sprite's own viewBox**, which is what shipped first: the
+     * declared 169.075 × 244.640 carries 8 units of empty margin, so every
+     * card came out small and high inside its element.
      *
-     * Two things are wrong with the declared 169.075 × 244.640. The first is
-     * that 8.12 units of that height are bleed: a card in this file is the
-     * `#base` path, x from 1.25 to 167.825 and y from 1.25 to 236.52, with a
-     * 2.5-wide stroke centred on that outline. The second is that `#base` is a
-     * whole card — white paper, rounded corners, black edge — and so is the
-     * element it is being drawn into. Two cards, one drawn by a stylesheet at
-     * an 8px radius and one by a 19th-century engraving at 4.5px, cannot be
-     * made to coincide; and because our `.card-face` clips to its own rounded
-     * rectangle, which edge of the drawn one survived depended on where the
-     * card happened to land on the pixel grid.
+     * What replaced it cropped too far the other way. It cut to the *inside*
+     * of the deck's printed border — x 2.5 to 166.575, y 2.5 to 235.27 — on
+     * the reasoning that the border was a second card drawn over ours. The
+     * card is 242.14 units tall, so that dropped 8 units off the bottom, and
+     * what lives in the bottom 8 units of a Bellot card is the rotated index.
+     * Both corner indices and all four edges of the border came off, at every
+     * size, on every table.
      *
-     * So this crops to the *inside* of the deck's own border — x 2.5 to
-     * 166.575, y 2.5 to 235.27 — and the deck's paper, corners and edge are
-     * simply not drawn. What is left is the engraving, on the card this
-     * product draws for every other deck. `paper` below is what that card is
-     * then filled with, so the sliver of it visible at each corner is this
-     * deck's white rather than the table's.
+     * The box below is the card itself, measured: `#back` reports
+     * 1.25 1.25 166.575 242.14 and every one of the 52 faces reports the same
+     * rectangle. The deck's border, corners and paper are drawn because the
+     * deck drew them.
      *
-     * 164.075 × 232.77 is 1 : 1.419 against the 1 : 1.4 of a poker card, so
-     * `preserveAspectRatio="none"` stretches it by a bit over one per cent.
+     * 166.575 × 242.14 is 1 : 1.454, and the board is laid out at 1.454 while
+     * this deck is in hand — see {@link deckAspect}.
      *
      * The steps are zero because this sheet draws all 52 cards in the same
-     * place — the one deck here that is not a contact sheet.
+     * place, the one deck here that is not a contact sheet.
      */
     grid: {
-      x: 2.5,
-      y: 2.5,
-      w: 164.075,
-      h: 232.77,
+      x: 1.25,
+      y: 1.25,
+      w: 166.575,
+      h: 242.14,
       dx: 0,
       dy: 0,
       rows: [0, 0, 0, 0],
     },
-    /*
-     * Its own back, cropped the same way as its faces: the drawn box is
-     * 1.25 1.25 166.575 242.14, and the 1.25 on each edge is the same printed
-     * border the faces drop.
-     */
-    back: { x: 2.5, y: 2.5, w: 164.075, h: 239.64 },
+    /** Its own back, which is drawn on exactly the rectangle its faces are. */
+    back: { x: 1.25, y: 1.25, w: 166.575, h: 242.14 },
     paper: "#ffffff",
     bytes: 332897,
     symbol: bellotSymbol,

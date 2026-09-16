@@ -22,10 +22,14 @@
  * ## What it draws
  *
  * The cards as the board draws them — the same `viewBox` per card out of
- * {@link cardBox}, the same `preserveAspectRatio="none"` fitting a deck's own
- * proportions to a poker card, the same rounded corners over the deck's own
- * paper. A preview that flattered a deck would be a lie about the thing being
- * chosen.
+ * {@link cardBox}, the same shape of card, the same rounded corners over the
+ * deck's own paper. A preview that flattered a deck would be a lie about the
+ * thing being chosen.
+ *
+ * Every preview is the same {@link BOX} of pixels, and the deck is drawn at
+ * the largest size that fits inside it at the deck's own proportions. So the
+ * tiles line up in a grid and a bridge-shaped deck still looks like one, which
+ * is the thing a player is choosing between. See {@link fit}.
  *
  * The background is transparent, because the tile it sits on is a different
  * colour on each of the three tables.
@@ -38,6 +42,7 @@ import {
   SOURCED,
   type SourcedDeck,
   cardBox,
+  deckAspect,
   viewBox,
 } from "../src/decks/sourced.ts";
 
@@ -47,13 +52,38 @@ import {
  */
 const SHOWN = [cardOf(3, 12), cardOf(1, 6)];
 
-/** Card size in the preview, and how far each card is fanned over the last. */
-const CARD_W = 72;
-const CARD_H = 101;
-const FAN = 41;
+/**
+ * The box every preview is drawn into, at 1.5x. It is the same for all sixteen
+ * so the gallery is a grid rather than a ragged edge, and it is the aspect the
+ * `<img>` in DecksSheet.svelte reserves before the file has loaded.
+ */
+const BOX = { w: 154, h: 101 };
+
+/** How far each card is fanned over the last, as a fraction of card width. */
+const FAN_RATIO = 41 / 72;
+
+/**
+ * The biggest a deck's cards can be drawn in {@link BOX} without changing
+ * their shape.
+ *
+ * Either the height runs out or the fanned row runs out of width, and which
+ * one bites depends on the deck: the tall, narrow patterns (Guyenne at 1 :
+ * 1.57) are stopped by the height, the wide ones (Tango Nuevo at 1 : 1.36) by
+ * the width. Everything else in the picture follows from the card width this
+ * returns.
+ */
+function fit(aspect: number, cards: number): { w: number; h: number } {
+  const spread = 1 + (cards - 1) * FAN_RATIO;
+  const w = Math.min(BOX.w / spread, BOX.h / aspect);
+  return { w, h: w * aspect };
+}
 
 async function draw(deck: SourcedDeck): Promise<Buffer> {
   const svg = readFileSync(`public${deck.sprite}`, "utf8");
+  const card = fit(
+    deckAspect(deck),
+    SHOWN.length + (deck.back === null ? 0 : 1),
+  );
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({
@@ -74,10 +104,15 @@ async function draw(deck: SourcedDeck): Promise<Buffer> {
 
         const out = document.getElementById("out") as HTMLElement;
         const shown = back === null ? faces : [...faces, back];
-        out.style.cssText = `position:relative;width:${metrics.fan * (shown.length - 1) + metrics.w}px;height:${metrics.h}px`;
+        // The box is the same for every deck; the fan is centred in it, so a
+        // narrow deck sits in the middle rather than against the left edge.
+        const row = metrics.fan * (shown.length - 1) + metrics.w;
+        const left = (metrics.box.w - row) / 2;
+        const top = (metrics.box.h - metrics.h) / 2;
+        out.style.cssText = `position:relative;width:${metrics.box.w}px;height:${metrics.box.h}px`;
         shown.forEach((card, index) => {
           const holder = document.createElement("div");
-          holder.style.cssText = `position:absolute;left:${index * metrics.fan}px;top:0;width:${metrics.w}px;height:${metrics.h}px;border-radius:${Math.round(metrics.w / 12)}px;overflow:hidden;background:${card.paper};box-shadow:0 1px 3px rgba(0,0,0,.35)`;
+          holder.style.cssText = `position:absolute;left:${left + index * metrics.fan}px;top:${top}px;width:${metrics.w}px;height:${metrics.h}px;border-radius:${Math.round(metrics.w / 12)}px;overflow:hidden;background:${card.paper};box-shadow:0 1px 3px rgba(0,0,0,.35)`;
           const s = document.createElementNS(NS, "svg");
           s.setAttribute("viewBox", card.viewBox);
           s.setAttribute("preserveAspectRatio", "none");
@@ -104,7 +139,11 @@ async function draw(deck: SourcedDeck): Promise<Buffer> {
                 symbol: "back",
                 paper: deck.paper,
               },
-        metrics: { w: CARD_W, h: CARD_H, fan: FAN },
+        metrics: {
+          ...card,
+          fan: card.w * FAN_RATIO,
+          box: BOX,
+        },
       },
     );
     const png = await page

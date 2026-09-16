@@ -173,7 +173,7 @@ test("goes back to one page when the cards do", async ({ page }) => {
     .getByRole("group", { name: "Card size" })
     .getByText("Comfortable", { exact: true })
     .click();
-  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Close" }).click();
 
   // Every column back on screen, and nothing left to page through — including
   // the page that was showing, which had no business surviving. Polled,

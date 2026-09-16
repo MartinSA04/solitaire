@@ -142,7 +142,7 @@ test("the table, the deck and the sound are remembered", async ({ page }) => {
     .getByText("Dark", { exact: true })
     .click();
   await page.getByText("Sound").click();
-  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Close" }).click();
 
   await page.goto("/?deal=24");
   expect(JSON.parse((await stored(page, SETTINGS)) ?? "{}")).toMatchObject({

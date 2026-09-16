@@ -35,7 +35,7 @@ async function openGallery(page: Page) {
 async function pick(page: Page, id: string) {
   const decks = page.getByRole("dialog", { name: "Decks" });
   await decks.locator(`label:has(input[value="${id}"])`).click();
-  await decks.getByRole("button", { name: "Done" }).click();
+  await decks.getByRole("button", { name: "Close" }).click();
   await expect(decks).toHaveCount(0);
 }
 
@@ -164,7 +164,7 @@ test("the large index is a choice, and it is off", async ({ page }) => {
 
   const decks = await openGallery(page);
   await decks.getByText("Large index over the art").click();
-  await decks.getByRole("button", { name: "Done" }).click();
+  await decks.getByRole("button", { name: "Close" }).click();
 
   // Ours, on the deck's own paper, in the corner a fanned column shows.
   await expect(index).toBeVisible();

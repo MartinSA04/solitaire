@@ -45,6 +45,21 @@ which opens the menu sheet. A new deal is two taps rather than one, and over
 about five moves it asks before it throws the game away; see
 [02](02-game-spec.md).
 
+**A sheet has four ways out and none of them is "Done".** Every control inside a
+sheet applies the moment it is pressed: a theme repaints behind it, a deck starts
+downloading, a new deal is already dealt. A confirm button would name a step that
+does not exist, and it is the one way out of four that claims to be finishing
+something. What the head carries instead is a close button — a `×` with a
+`Close` label for a screen reader — beside Escape, the backdrop, and the grabber
+a phone is pushed down by.
+
+The head itself does not scroll. It holds the sheet's title and its way out, and
+in the deck gallery there are twenty-one tiles under it; a way out you have to
+scroll back up to find is not one. **A sheet has exactly one scroller**, which is
+the body: a `<dialog>` is `overflow: auto` in the user-agent stylesheet, so a
+scrolling body inside one puts two nested scrollbars on the same gesture and an
+empty strip of the outer one under the last row.
+
 When a hint has nothing to point at, a line appears above the bar — "No moves
 left — undo, or try a new deal." — and leaves on its own. It is the only text
 the game puts over the board, and it is a fact about the position rather than a
@@ -57,7 +72,7 @@ Sizing on a 360×780 viewport:
 | Side gutter | 8px | |
 | Inter-column gap | 4px | |
 | Card width | `(100vw - 16 - 24) / 7` ≈ **46px** | The binding constraint on everything |
-| Card height | 46 × 1.4 ≈ **64px** | Locked aspect ratio |
+| Card height | 46 × 1.4 ≈ **64px** | The deck's aspect ratio; 1.4 is poker, and a sourced deck may ask for 1.36 to 1.57 |
 | Fan offset, face-down | 0.14 × height ≈ 9px | Only the edge needs to be visible |
 | Fan offset, face-up | 0.30 × height ≈ 19px | The corner index must be fully legible |
 | Top bar | 44px | |

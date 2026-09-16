@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { describe, it } from "node:test";
 import { DECK_SIZE, cardName } from "../../src/engine/index.ts";
-import { OURS, SOURCED, cardBox } from "../../src/decks/sourced.ts";
+import { OURS, SOURCED, cardBox, deckAspect } from "../../src/decks/sourced.ts";
 import { CATALOGUE, wireSize } from "../../src/decks/catalogue.ts";
 import { DECKS } from "../../src/game/settings.ts";
 
@@ -169,6 +169,37 @@ describe("sourced decks", () => {
     const named = OURS.map((credit) => credit.name).join(" ");
     for (const deck of ["Minimal", "High contrast", "Four colour"]) {
       assert.ok(named.includes(deck), `${deck} is not credited`);
+    }
+  });
+});
+
+/**
+ * A deck's shape is now load-bearing: `deckAspect` feeds `metricsFor`, so a
+ * typo in a committed cell no longer draws a slightly wrong card, it lays the
+ * whole board out wrong. Whether a cell points at the right part of the sheet
+ * needs a browser and is `scripts/deck-geometry.ts --verify`'s job; whether the
+ * number it yields is a card at all is arithmetic, and belongs here.
+ */
+describe("every deck is a card shape", () => {
+  // Real playing cards run from about 1 : 1.35 (bridge and poker patterns) to
+  // 1 : 1.6 (the tall French patterns). Anything outside that is a mistyped
+  // cell rather than an unusual deck.
+  const SHORTEST = 1.3;
+  const TALLEST = 1.6;
+
+  for (const deck of SOURCED) {
+    it(`${deck.name} is between ${SHORTEST} and ${TALLEST} times as tall as it is wide`, () => {
+      const aspect = deckAspect(deck);
+      assert.ok(
+        aspect >= SHORTEST && aspect <= TALLEST,
+        `${deck.id} is ${aspect.toFixed(3)}, from a ${deck.grid.w}×${deck.grid.h} cell`,
+      );
+    });
+  }
+
+  it("reads the shape off the committed cell and nowhere else", () => {
+    for (const deck of SOURCED) {
+      assert.equal(deckAspect(deck), deck.grid.h / deck.grid.w);
     }
   });
 });

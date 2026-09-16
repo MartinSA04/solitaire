@@ -112,13 +112,25 @@ in the same commit.
   Storage under `sol:decks:v1`, wrapped like `Persist`, falling through to a
   plain fetch in silence; it is **not** a service worker and must not become
   one.
-- **Where a sourced card is on its sheet is measured, not derived.** The sheets
-  are contact sheets, so a card is one cell of a committed lattice —
-  `scripts/deck-geometry.ts` measures it in a browser and `--verify` re-checks
-  every deck. Getting it wrong draws 52 perfectly good cards of the wrong rank,
-  which only a person looking at `e2e/visual.pw.ts`'s one shot per deck will
-  catch; `e2e/decks.pw.ts` catches everything coarser than that by putting all
-  sixteen on the table and asking each for its 52 cards.
+- **Where a sourced card is on its sheet is measured, not derived, and the cell
+  is the whole card.** The sheets are contact sheets, so a card is one cell of a
+  committed lattice — `scripts/deck-geometry.ts` measures it in a browser and
+  `--verify` re-checks every deck. Getting the *cell* wrong draws 52 perfectly
+  good cards of the wrong rank, which only a person looking at
+  `e2e/visual.pw.ts`'s one shot per deck will catch; `e2e/decks.pw.ts` catches
+  everything coarser than that by putting all sixteen on the table and asking
+  each for its 52 cards. Getting the cell *small* is quieter still, and is what
+  the French deck shipped with: a committed crop 8 units shorter than the card
+  took the printed border and both corner indices off every face, and `--verify`
+  passed it because a crop and a card are centred on the same point. It now
+  refuses any cell smaller than the blank card the sheet itself draws.
+- **A deck brings its own shape.** `deckAspect()` reads it off the committed
+  cell and `metricsFor()` takes it as an argument, so the sixteen sourced decks
+  are laid out at the 1 : 1.36 to 1 : 1.57 they were drawn at rather than
+  squeezed into a poker card. The board falls back to poker, and only changes
+  shape when a sprite has actually landed — so the reshape happens inside the
+  crossfade rather than a second ahead of it on a deck that may never arrive.
+  `--card-aspect` is how the empty slots hear about it.
 - **The gallery is a library, not a shop.** `docs/01` rules out anything locked,
   earned, bought or timed, and `src/game/chrome/DecksSheet.svelte` is where a
   product usually breaks that. The only thing a tile says beyond what the deck
@@ -157,12 +169,18 @@ in the same commit.
   cards and numbers spelled out, because the failure mode of a suit glyph in a
   live region is silence. There are **two polite live regions, written in
   turn**: one cannot say the same thing twice.
-- **`Layout.ts` still takes an area and returns numbers** with the card size and
-  the page as two more arguments, so the Large board is a unit test rather than
-  a browser. It is the only thing that decides how big a card is; the card size
-  is not a look and never reaches the three attributes. A page turn is a
-  re-measure — which is also the whole of the animation — and the top row never
-  moves, because it is where every move ends up.
+- **`Layout.ts` still takes an area and returns numbers** with the card size,
+  the page and the deck's aspect ratio as three more arguments, so the Large
+  board and the bridge-shaped deck are both unit tests rather than browsers. It
+  is the only thing that decides how big a card is; the card size is not a look
+  and never reaches the three attributes. A page turn is a re-measure — which is
+  also the whole of the animation — and the top row never moves, because it is
+  where every move ends up.
+- **A sheet is dismissed, never confirmed.** Everything in one applies on the
+  press, so `Sheet.svelte` gives it a close button, Escape, the backdrop and a
+  grabber, and no "Done". The head is outside the scroller and the dialog is
+  `overflow: hidden`: a `<dialog>` scrolls itself in the user-agent stylesheet,
+  so a scrolling body inside one is two scrollbars on one gesture.
 - **The pageview counter is named once and disclosed once.** `src/site.ts`
   holds the GoatCounter endpoint and `src/layouts/Layout.astro` is the only
   thing that loads it, so every page gets it by going through the one layout —

@@ -485,8 +485,19 @@ attribute on `<html>` and the card element never learns there is more than one.
 
 Regardless of deck:
 
-- **Aspect ratio 2.5 : 3.5** (poker), locked. `aspect-ratio` in CSS, never
-  height-and-width.
+- **Aspect ratio: the deck's own.** 2.5 : 3.5 (poker) for the five we draw, and
+  for the board before any sprite has arrived. A deck we did not draw brings its
+  own, measured off its sheet by `deckAspect()` and handed to `metricsFor()`,
+  because a Russian pattern, a bridge pattern and an 18th-century woodblock are
+  printed at different shapes and the sixteen sheets here run from 1 : 1.36 to
+  1 : 1.57. `aspect-ratio` in CSS from `--card-aspect`, never height-and-width.
+
+  This used to read "locked", and the cost of that was paid twice. Every sourced
+  deck was stretched to poker — a bit over one per cent for the French deck, and
+  twelve for Guyenne — and the French deck was additionally *cropped* to fit,
+  which took its printed border and both corner indices off all 52 cards. The
+  card is the shape the artist drew it; see `scripts/deck-geometry.ts --verify`,
+  which now refuses a committed cell smaller than the card the sheet draws.
 - **Corner radius** from `--card-radius`: 8px at desktop size, scaling down
   proportionally — a 48px-wide card with an 8px radius looks like a lozenge.
 - **The corner index is the critical element.** In a fanned tableau column, only

@@ -38,8 +38,17 @@ import {
 const GAP_RATIO = 0.087;
 const GUTTER_RATIO = 2 * GAP_RATIO;
 
-/** Poker, 2.5 : 3.5, locked. Height is never set independently. */
-const ASPECT = 3.5 / 2.5;
+/**
+ * A poker card, 2.5 : 3.5. The shape of every deck we draw ourselves, and the
+ * shape the board falls back to before a deck has said otherwise.
+ *
+ * It used to be the shape of every card on the table. A deck we did not draw
+ * was fitted to it, which meant a sheet drawn at 1 : 1.57 was squeezed by
+ * twelve per cent to sit in a box this file had already decided on. The shape
+ * of a card is the deck's, so it arrives as an argument now — see
+ * {@link metricsFor} and `deckAspect` in src/decks/sourced.ts.
+ */
+export const POKER_ASPECT = 3.5 / 2.5;
 
 /**
  * Past this a solitaire table stops being a table and starts being a poster.
@@ -110,9 +119,9 @@ const FIRST_FOUNDATION_COLUMN = 3;
  * How big the cards are asked to be. docs/08-accessibility.md: "Comfortable"
  * is the game, and "Large" is for somebody who cannot read a 46px card.
  *
- * The only thing it changes is **how many columns are on screen at once**. The
- * aspect ratio is locked and the height is never the binding constraint on a
- * phone, so the one way to make a card bigger is to show fewer of them — and
+ * The only thing it changes is **how many columns are on screen at once**. A
+ * card's shape is the deck's and the height is never the binding constraint on
+ * a phone, so the one way to make a card bigger is to show fewer of them — and
  * the tableau pages sideways to reach the rest. That is the one place the
  * no-scrolling rule bends, and it bends because for someone who cannot see a
  * 46px card, a page is better than a game they cannot read.
@@ -191,14 +200,22 @@ export interface Metrics extends Area {
  * the columns that are on screen, the height has to hold the top row plus the
  * worst column the game can deal, and past 110px we simply stop growing.
  *
- * `size` decides how many columns "on screen" means, and `page` which of them.
- * Both are ordinary inputs — this is still an area in, numbers out — so what a
- * Large board measures is a unit test rather than a browser.
+ * `size` decides how many columns "on screen" means, `page` which of them, and
+ * `aspect` how tall a card is against its own width. All three are ordinary
+ * inputs — this is still an area in, numbers out — so what a Large board
+ * measures, or a board holding a bridge-shaped deck, is a unit test rather
+ * than a browser.
+ *
+ * `aspect` comes from the deck in hand, and it moves every number below it: a
+ * taller card takes more height per row, so the height limit bites sooner and
+ * the cards come out smaller. The width limit does not move, which is why a
+ * phone holding the tallest deck here still shows seven columns.
  */
 export function metricsFor(
   area: Area,
   size: CardSize = "comfortable",
   page = 0,
+  aspect: number = POKER_ASPECT,
 ): Metrics {
   const visible = VISIBLE_COLUMNS[size];
   // A row is `visible` cards, the gaps between them, and two gutters, each of
@@ -212,14 +229,14 @@ export function metricsFor(
   const topRowBudget = size === "large" ? 2 : 1;
   const byHeight =
     area.height /
-    (ASPECT *
+    (aspect *
       (TOP_PAD_RATIO +
         topRowBudget * (1 + ROW_GAP_RATIO) +
         1 +
         (WORST_COLUMN - 1) * MIN_FAN_RATIO));
 
   const cardW = Math.max(1, Math.min(MAX_CARD_W, byWidth, byHeight));
-  const cardH = cardW * ASPECT;
+  const cardH = cardW * aspect;
   const gap = cardW * GAP_RATIO;
   const rowGap = cardH * ROW_GAP_RATIO;
 
@@ -670,6 +687,10 @@ export function cssVariables(m: Metrics): Record<string, string> {
   return {
     "--card-w": `${m.cardW}px`,
     "--card-h": `${m.cardH}px`,
+    // The empty slots are sized by the CSS grid rather than by these pixels,
+    // so they take the shape on its own. A deck that is not poker-shaped moves
+    // this, and the slots change shape with the cards that land on them.
+    "--card-aspect": `${m.cardW} / ${m.cardH}`,
     "--gap": `${m.gap}px`,
     "--gutter": `${m.gutter}px`,
     "--row-gap": `${m.rowGap}px`,

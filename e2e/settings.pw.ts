@@ -61,7 +61,7 @@ async function chooseDeck(page: Page, id: string) {
   const decks = page.getByRole("dialog", { name: "Decks" });
   await expect(decks).toBeVisible();
   await decks.locator(`label:has(input[value="${id}"])`).click();
-  await decks.getByRole("button", { name: "Done" }).click();
+  await decks.getByRole("button", { name: "Close" }).click();
   await expect(decks).toHaveCount(0);
 }
 
@@ -262,7 +262,7 @@ test("a new deal mid-game asks before it throws the game away", async ({
   await page.getByRole("button", { name: "New deal" }).first().click();
   await expect(page.getByText("6 moves in.")).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
-  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Close" }).click();
   await expect(page.locator(".moves")).toHaveText("6 moves");
 
   await openMenu(page);
