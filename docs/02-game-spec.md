@@ -94,18 +94,39 @@ deals that are known to be winnable with perfect play.
 
 The pool is generated at build time by running a solver over candidate seeds and
 keeping the ones that solve; the site ships the list, not the solver. Separate
-pools for draw-1 and draw-3, since winnability differs.
+pools for draw-1 and draw-3, since winnability differs. Ten thousand deals each,
+taken in order from deal number 0 upward — which is why pooled deal numbers are
+small enough to read out loud, and why the list can be extended later without
+any existing entry moving. See [03](03-engine.md).
+
+"Known to be winnable" is exactly what it says and no more: a deal the solver
+cannot crack inside its budget is left out rather than marked unwinnable, so the
+pool is the deals that are winnable *and* findable. The hardest winnable deals
+are not in it, which for a setting that exists to spare a casual player a dead
+end is the right way round.
 
 When off, deals are drawn from the whole 2³² space and some are unwinnable — which
-is the honest version of the game, and some people want it.
+is the honest version of the game, and some people want it. The pool is a 40KB
+file fetched alongside the page and waited for by nothing; until it lands, and
+if it never does, deals come from the whole space and the game is a little
+harder.
 
 This is a strictly more generous default than MSC, which does not offer it at all.
 
 ### The daily deal
 
 One deal per calendar day, the same for everyone, picked deterministically from the
-winnable pool by date. No server: the date is the input, the pool is static, so
-every visitor computes the same answer.
+winnable pool by date: `hash(YYYY-MM-DD) % 4096` into the pool's frozen prefix. No
+server: the date is the input, the pool is static, so every visitor computes the
+same answer.
+
+It is **per draw mode** — there is a daily draw-1 deal and a daily draw-3 deal,
+because the two pools are different lists and a draw-3 player should not have to
+switch modes to play today's. One streak covers both: the day is what is being
+counted, not the mode.
+
+Until the pool has arrived the daily is simply unavailable, and says so by being
+disabled. A deal nobody else is playing would not be the daily.
 
 - Local streak counter: consecutive days the daily was completed.
 - The streak is **never used to nag**. No notifications, no "don't lose your
@@ -170,11 +191,18 @@ opening beat of the win, not a skip of it.
 ### Replay and restart
 
 - **Replay this deal** — same seed, same draw mode, from the start. Clock and
-  moves reset. Your previous best on this deal is shown so you're racing yourself.
+  moves reset. Your previous best on this deal is shown next to the clock —
+  "best 4:12" — from the moment the deal opens, whether you got there by
+  replaying it, by a shared link or by the daily. It appears only if you have
+  won that deal before, and it is hidden along with the clock by the setting
+  that hides the clock.
 - **New deal** — a fresh seed, honouring the winnable-only setting.
 
-Both are one tap with no confirmation if the current game has fewer than ~5 moves
-made, and a confirm otherwise.
+Both live in the `⋯` menu, and both go straight through with no confirmation if
+the current game has fewer than ~5 moves made. Over that they ask — "12 moves
+in. A new deal ends the game on the table." — which is a modal in direct
+response to something just pressed, and so the one kind
+[01](01-product-brief.md) allows.
 
 ## Time and moves
 

@@ -93,11 +93,11 @@ async function dress(
   label: { table: string; deck: string },
 ): Promise<void> {
   await page.goto(DEAL);
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Menu" }).click();
   await choose(page, "Table", label.table);
   await choose(page, "Cards", label.deck);
   await page.getByRole("button", { name: "Done" }).click();
-  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
 
   await expect
     .poll(() => page.evaluate(() => document.documentElement.dataset.theme))

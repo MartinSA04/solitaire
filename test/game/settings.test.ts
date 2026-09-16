@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   AUTO,
+  BACKS,
+  BOOTSTRAP,
+  DECKS,
   DEFAULTS,
+  SETTINGS_KEY,
+  THEMES,
   type Settings,
   apply,
   resolve,
@@ -64,5 +69,74 @@ describe("settings", () => {
       deck: "four-colour",
       back: "lattice",
     });
+  });
+});
+
+/**
+ * The pre-paint bootstrap is a second implementation of `apply(resolve(…))`,
+ * written as a string so it can run in the document head before anything is
+ * fetched. Two implementations of one rule drift, so this runs the real script
+ * against every combination of stored settings and asserts the two agree.
+ */
+describe("the bootstrap in the document head", () => {
+  function run(stored: unknown): Record<string, string> {
+    const dataset: Record<string, string> = {};
+    const storage = {
+      getItem: (key: string) =>
+        key === SETTINGS_KEY && stored !== undefined
+          ? JSON.stringify(stored)
+          : null,
+    };
+    new Function("localStorage", "document", BOOTSTRAP)(storage, {
+      documentElement: { dataset },
+    });
+    return dataset;
+  }
+
+  it("writes what apply() would, for every choice a player can make", () => {
+    for (const theme of THEMES) {
+      for (const deck of [AUTO, ...DECKS] as Settings["deck"][]) {
+        for (const back of [AUTO, ...BACKS] as Settings["back"][]) {
+          const settings = with_({ theme, deck, back });
+          const root = { dataset: {} as Record<string, string> };
+          apply(settings, root as never);
+          assert.deepEqual(
+            run(settings),
+            root.dataset,
+            `${theme} / ${deck} / ${back}`,
+          );
+        }
+      }
+    }
+  });
+
+  it("writes the defaults when there is nothing stored", () => {
+    assert.deepEqual(run(undefined), { ...resolve(DEFAULTS) });
+  });
+
+  /**
+   * Storage holds whatever was last pasted into it, and this script runs
+   * before the validating reader in Persist.ts exists. A bad value here would
+   * be a frame of cards with no deck tokens at all.
+   */
+  it("writes a real table for anything else it finds in storage", () => {
+    const fallback = { ...resolve(DEFAULTS) };
+    assert.deepEqual(run({ theme: "neon", deck: "wombat", back: 4 }), fallback);
+    assert.deepEqual(run(null), fallback);
+    assert.deepEqual(run("a string"), fallback);
+    assert.deepEqual(run({ deck: AUTO }), fallback);
+  });
+
+  it("survives a browser that will not hand over storage at all", () => {
+    const dataset: Record<string, string> = {};
+    const hostile = {
+      getItem: () => {
+        throw new Error("SecurityError");
+      },
+    };
+    new Function("localStorage", "document", BOOTSTRAP)(hostile, {
+      documentElement: { dataset },
+    });
+    assert.deepEqual(dataset, { ...resolve(DEFAULTS) });
   });
 });

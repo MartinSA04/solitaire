@@ -271,10 +271,72 @@ test("the same deal number deals the same game", async ({ page }) => {
   expect(second).toEqual(first);
 });
 
+/**
+ * The hint points at a *move*: the card to play and the card to play it onto,
+ * pulsing together. Scale and an outline rather than a colour wash, so it
+ * reads the same to somebody who cannot separate the wash from the table —
+ * docs/08-accessibility.md.
+ */
+test("a hint points at both ends of a move", async ({ page }) => {
+  const hint = page.getByRole("button", { name: "Hint" });
+  const hinted = page.locator(".card.is-hinting");
+
+  // The obvious first move on this deal: the ace of hearts, to a foundation
+  // that is still empty — so there is one card to point at and no other end.
+  await hint.click();
+  await expect(hinted).toHaveCount(1);
+  await expect(card(page, CARD.aceOfHearts)).toHaveClass(/is-hinting/);
+
+  // Taking the advice takes the hint off.
+  await tapCard(page, card(page, CARD.aceOfHearts));
+  await expect(hinted).toHaveCount(0);
+
+  // The next one is a move between columns, which has two ends: the six of
+  // spades onto the seven of hearts. Both pulse, in phase.
+  await hint.click();
+  await expect(hinted).toHaveCount(2);
+  await expect(card(page, CARD.sixOfSpades)).toHaveClass(/is-hinting/);
+});
+
+/**
+ * docs/08-accessibility.md: under reduced motion the two pulses become a
+ * persistent outline. An animation that is simply switched off would leave a
+ * hint that points at nothing, which is the failure mode that doc exists to
+ * prevent — the alternative is designed, not absent.
+ */
+test("a hint under reduced motion is an outline that stays", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await dealt(page);
+
+  await page.getByRole("button", { name: "Hint" }).click();
+  const hinted = card(page, CARD.aceOfHearts);
+  await expect(hinted).toHaveClass(/is-hinting/);
+
+  const look = await hinted.locator(".card-flip").evaluate((element) => {
+    const style = getComputedStyle(element.parentElement as HTMLElement);
+    return {
+      animation: style.animationName,
+      shadow: getComputedStyle(element).boxShadow,
+    };
+  });
+  expect(look.animation).toBe("none");
+  expect(look.shadow).not.toBe("none");
+
+  // And it is still there a second later, because nothing is animating it away.
+  await page.waitForTimeout(1000);
+  await expect(hinted).toHaveClass(/is-hinting/);
+});
+
 test("a new deal starts over", async ({ page }) => {
   await page.locator(".slot-stock").tap();
   await expect(page.locator(".top-bar")).toContainText("1 move");
 
+  // A new deal lives in the menu now: the bottom bar's middle slot is the
+  // assist, per the sketch in docs/05-interaction-and-motion.md.
+  await page.getByRole("button", { name: "Menu" }).click();
   await page.getByRole("button", { name: "New deal" }).click();
 
   await expect(page.locator(".top-bar")).toContainText("0 moves");

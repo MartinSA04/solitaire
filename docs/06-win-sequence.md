@@ -237,11 +237,15 @@ on `--e-out`.
 The panel is dismissible — tap outside it, or `Escape` — and behind it is the
 empty table with a fresh deal already available.
 
-Two things on it wait for milestone 5, which is where the storage they read
-from arrives: **the record line** and **share**. A record line that can only
-ever say nothing is worse than no record line, and a share button belongs with
-the rest of sharing. The chrome fades back in with the panel, so New deal is
-reachable whether the panel is up or dismissed.
+The record line and the share button arrived with milestone 5, which is where
+the storage one reads from and the deal numbers the other shares came from. The
+record line appears only when something was actually beaten — a first win on a
+deal beats nothing, since "you set a record on the deal you have played once" is
+a participation trophy — and there is no line for missing one. Share copies the
+link where there is no native share sheet, and says "Link copied" for a couple
+of seconds; a share that fails says nothing at all, because the deal number is
+on screen anyway. The chrome fades back in with the panel, so the menu — and a
+new deal — is reachable whether the panel is up or dismissed.
 
 ## Skipping
 

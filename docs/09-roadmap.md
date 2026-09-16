@@ -163,6 +163,57 @@ phone, not by a ratio. The visual baselines are where to look.
 refresh, a browser restart, and a corrupted storage key. `localStorage` being
 unavailable entirely does not break the game.
 
+Built: the solver and the two 10,000-deal pools it writes, the winnable-only
+setting, the daily and its streak, `localStorage` for the settings, the game in
+progress, the lifetime counters and the per-deal bests, the statistics sheet,
+the record line and the share button the result panel was drawn with, and the
+two assists that were waiting on a pool and a stopwatch — Hint, and Finish.
+
+It is also the first milestone whose bar a machine can hold all of.
+
+The solver is a depth-first search with the four things [03](03-engine.md)
+names, and one it didn't: the transposition key **sorts the columns**, so two
+boards that differ only in which column a run sits in are one position. At a
+200,000-node budget it settles about three-quarters of draw-1 deals and a little
+over half of draw-3 ones, which is what makes 10,000 seeds per mode a couple of
+machine-hours rather than a couple of days.
+
+Every pooled seed's winning line is replayed through `applyMove` before it goes
+in the file, `--verify` re-runs that over a committed pool, and
+`test/engine/solve.test.ts` re-derives a sample on every test run. That is the
+first clause, met three times over, and it is the one that matters: a solver
+that wins by a move the rules forbid would ship a pool that promises deals
+nobody can win.
+
+The second and third clauses are `e2e/persistence.pw.ts`: a game reloaded out of
+storage comes back to the same fifty-two transforms with its undo stack intact,
+a corrupt save and a save from another schema version are both just a new game,
+and a browser that throws on the very mention of `localStorage` plays exactly as
+well as one that doesn't. "A browser restart" is the one phrase a test cannot
+say literally — nothing in the save is session-scoped, so a restart is a reload
+as far as any of this is concerned.
+
+Two things this milestone changed:
+
+- **`dailySeed` and `randomWinnableSeed` are not on the engine's public
+  surface**, where [03](03-engine.md) put them. One needs `Date` and the other
+  needs a `fetch`, and `test/engine/purity.test.ts` refuses both. They live in
+  `src/game/pool.ts` as pure functions of a pool handed to them, which is also
+  what lets the daily's mapping be pinned by a test rather than trusted.
+- **The bottom bar's middle slot is the assist**, which is what
+  [05](05-interaction-and-motion.md) always drew: Hint, and Finish once the
+  board has proved it cannot get stuck. New deal moved into the `⋯` menu with
+  the daily, replay and the statistics — one tap further away, and over about
+  five moves it asks first, which is the one kind of modal
+  [01](01-product-brief.md) allows.
+
+What is *not* claimed: that the pool is every winnable deal. A deal the solver
+cannot crack inside its budget is discarded rather than marked unwinnable, so
+the pools are deals that are winnable **and findable**, and the hardest quarter
+of winnable draw-1 deals is not in them. For a setting whose whole job is "deal
+me one I can win", that bias points the right way — but it is a bias, and
+[03](03-engine.md) says so where the format is defined.
+
 ---
 
 ## M6 — Desktop, accessibility, ship

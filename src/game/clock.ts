@@ -74,6 +74,18 @@ export class Stopwatch {
     if (this.#started) this.start();
   }
 
+  /**
+   * A resumed game brings its clock with it. It comes back *paused*: the next
+   * move starts it again, so a reload you stare at for a minute does not cost
+   * you the minute. Time is honest, which cuts both ways.
+   */
+  restore(elapsedMs: number): void {
+    this.reset();
+    if (elapsedMs <= 0) return;
+    this.#accumulated = elapsedMs;
+    this.#started = true;
+  }
+
   reset(): void {
     this.#accumulated = 0;
     this.#from = null;

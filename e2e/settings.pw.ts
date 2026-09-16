@@ -1,8 +1,9 @@
 import { type Page, expect, test } from "@playwright/test";
 
 /**
- * The settings sheet: every table, deck and back available on first load, and
- * a choice that shows on the board before the sheet has even closed.
+ * The menu sheet: the deals you can start, every table, deck and back
+ * available on first load, and a choice that shows on the board before the
+ * sheet has even closed.
  *
  * What is asserted here is the *wiring* — that a choice becomes the one
  * attribute the stylesheets hang off, and that the sheet behaves like a dialog
@@ -37,8 +38,12 @@ function look(page: Page) {
 
 async function openSheet(page: Page) {
   await page.goto(DEAL);
-  await page.getByRole("button", { name: "Settings" }).click();
-  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await openMenu(page);
+}
+
+async function openMenu(page: Page) {
+  await page.getByRole("button", { name: "Menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
 }
 
 test("a table brings its own deck and back with it", async ({ page }) => {
@@ -122,8 +127,8 @@ test("a deck we did not draw is fetched, once, when it is asked for", async ({
 
   // A new deal rebuilds the 52 elements and must point them again — from the
   // copy of the sprite that is already in the document.
-  await page.getByRole("button", { name: "Done" }).click();
   await page.getByRole("button", { name: "New deal" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
   await expect(page.locator(".card-layer.has-art")).toHaveCount(1);
   expect(sprites).toHaveLength(1);
 });
@@ -158,7 +163,7 @@ test("escape closes it, and it takes the dialog with it", async ({ page }) => {
   // The dialog is unmounted rather than left closed in the document: a dozen
   // controls that cannot be reached are still a dozen controls in the
   // accessibility tree.
-  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
 });
 
 test("changing the draw mode mid-game asks first", async ({ page }) => {
@@ -170,15 +175,55 @@ test("changing the draw mode mid-game asks first", async ({ page }) => {
   await page.mouse.click(stock.x + stock.width / 2, stock.y + stock.height / 2);
   await expect(page.locator(".moves")).toHaveText("1 move");
 
-  await page.getByRole("button", { name: "Settings" }).click();
+  await openMenu(page);
   await choose(page, "Draw", "3 cards");
 
   // Draw-1 and draw-3 make different games out of the same seed, so this
   // cannot be applied to the game on the table — docs/02-game-spec.md.
-  const confirm = page.getByRole("button", { name: "New deal", exact: true });
-  await expect(confirm.last()).toBeVisible();
+  const confirm = page
+    .getByRole("group", { name: "Draw" })
+    .getByRole("button", { name: "New deal" });
+  await expect(confirm).toBeVisible();
   await expect(page.locator(".moves")).toHaveText("1 move");
 
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(page.locator(".moves")).toHaveText("1 move");
+});
+
+/**
+ * docs/02-game-spec.md: a new deal is one tap under about five moves and asks
+ * first over it. The asking is a modal in direct response to a press, which is
+ * the only kind docs/01 allows — and it is the difference between a stray tap
+ * costing nothing and it costing the game you were in the middle of.
+ */
+test("a new deal mid-game asks before it throws the game away", async ({
+  page,
+}) => {
+  await page.goto(DEAL);
+  const stock = page.locator(".slot-stock");
+  for (let at = 0; at < 6; at++) await stock.tap();
+  await expect(page.locator(".moves")).toHaveText("6 moves");
+
+  await openMenu(page);
+  await page.getByRole("button", { name: "New deal" }).first().click();
+  await expect(page.getByText("6 moves in.")).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.locator(".moves")).toHaveText("6 moves");
+
+  await openMenu(page);
+  await page.getByRole("button", { name: "New deal" }).first().click();
+  await page.getByRole("button", { name: "New deal" }).last().click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
+  await expect(page.locator(".moves")).toHaveText("0 moves");
+});
+
+test("under five moves there is nothing to ask about", async ({ page }) => {
+  await page.goto(DEAL);
+  await page.locator(".slot-stock").tap();
+
+  await openMenu(page);
+  await page.getByRole("button", { name: "Replay this deal" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
+  await expect(page.locator(".moves")).toHaveText("0 moves");
 });

@@ -374,6 +374,33 @@ body {
   box-shadow: var(--card-shadow-lift);
 }
 
+/*
+ * A hint: the card to move and the card to move it onto, pulsing twice in
+ * phase over 600ms. Scale and an outline, never a colour wash — docs/08
+ * asks for that so the hint reads the same to someone who cannot separate
+ * the wash from the table. `scale` is its own property so it composes with
+ * the transform that positions the card, the same trick the shake uses.
+ */
+.card.is-hinting {
+  animation: card-hint 600ms var(--e-inout) 2;
+}
+
+.card.is-hinting .card-flip {
+  box-shadow:
+    var(--card-shadow-rest),
+    0 0 0 2px var(--accent);
+}
+
+@keyframes card-hint {
+  0%,
+  100% {
+    scale: 1;
+  }
+  50% {
+    scale: 1.06;
+  }
+}
+
 .card.is-shaking {
   /* `translate` composes with the transform that positions the card. */
   animation: card-shake 300ms var(--e-inout);
@@ -400,6 +427,12 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .card.is-shaking {
+    animation: none;
+  }
+
+  /* A persistent outline instead of two pulses, per docs/08. It stays until
+     the move is made or another hint replaces it. */
+  .card.is-hinting {
     animation: none;
   }
 
@@ -484,6 +517,38 @@ body {
 .control:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/*
+ * What a hint says when there is nothing to point at, and the only text the
+ * game ever puts over the board. It sits above the bottom bar so a thumb on
+ * the button that summoned it is not covering it, and it leaves by itself.
+ *
+ * "No moves left" is a fact about the position, not a loss screen — docs/02 is
+ * specific that there isn't one of those.
+ */
+.notice {
+  position: absolute;
+  left: 50%;
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 12px);
+  z-index: 200;
+  translate: -50% 0;
+  max-width: min(320px, calc(100% - 32px));
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--sheet-bg);
+  color: var(--chrome-fg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  font-size: 14px;
+  text-align: center;
+  animation: notice-in var(--t-settle) var(--e-out);
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
 }
 
 .sr-only {

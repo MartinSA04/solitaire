@@ -13,10 +13,11 @@ import {
 import {
   dealOrder,
   drawnCards,
+  hintCards,
   homedCard,
   predealt,
 } from "../../src/game/motion.ts";
-import { makeState, parseCards } from "../engine/helpers.ts";
+import { makeState, parseCards, showCards } from "../engine/helpers.ts";
 
 /**
  * The move catalogue's two staggered motions read their order from here, and
@@ -151,5 +152,83 @@ describe("drawnCards", () => {
   it("is nothing at all when no card was turned", () => {
     const state = deal(SEED, 1);
     assert.deepEqual(drawnCards(state, state), []);
+  });
+});
+
+describe("hintCards", () => {
+  const shown = (
+    state: Parameters<typeof hintCards>[0],
+    move: Parameters<typeof hintCards>[1],
+  ) => showCards(hintCards(state, move));
+
+  it("is the card to move and the card to move it onto", () => {
+    const state = makeState({ tableau: ["7♥", "K♠ | 6♠"] });
+    assert.equal(
+      shown(state, { kind: "tableauToTableau", from: 1, to: 0, count: 1 }),
+      "6♠ 7♥",
+    );
+  });
+
+  it("takes the bottom of a run, which is the card that moves", () => {
+    const state = makeState({ tableau: ["9♠", "K♦ | 8♥ 7♣ 6♦"] });
+    assert.equal(
+      shown(state, { kind: "tableauToTableau", from: 1, to: 0, count: 3 }),
+      "8♥ 9♠",
+    );
+  });
+
+  it("points at the foundation's top card, where there is one", () => {
+    const state = makeState({ foundations: "A♥", tableau: ["K♠ | 2♥"] });
+    assert.equal(
+      shown(state, { kind: "tableauToFoundation", from: 0 }),
+      "2♥ A♥",
+    );
+  });
+
+  /**
+   * An empty destination has no card to pulse — an empty column, an empty
+   * foundation — so the hint is one-ended and the player reads the rest off
+   * the board. Highlighting the slot would mean the card layer knowing about
+   * the slot grid, which is the one thing it is kept out of.
+   */
+  it("points at one end when the other end is an empty pile", () => {
+    assert.equal(
+      shown(makeState({ tableau: ["K♠ | A♥"] }), {
+        kind: "tableauToFoundation",
+        from: 0,
+      }),
+      "A♥",
+    );
+    assert.equal(
+      shown(makeState({ tableau: ["", "Q♦ | K♣"] }), {
+        kind: "tableauToTableau",
+        from: 1,
+        to: 0,
+        count: 1,
+      }),
+      "K♣",
+    );
+    assert.equal(
+      shown(makeState({ waste: "A♠" }), { kind: "wasteToFoundation" }),
+      "A♠",
+    );
+  });
+
+  it("points at the stock for a draw, and at the waste for a recycle", () => {
+    const state = makeState({ stock: "4♣ 5♣", waste: "9♦ 3♥" });
+    assert.equal(shown(state, { kind: "draw" }), "4♣");
+    assert.equal(
+      shown(makeState({ waste: "9♦ 3♥" }), { kind: "recycle" }),
+      "9♦",
+    );
+  });
+
+  it("is empty when there is nothing there at all", () => {
+    assert.deepEqual(hintCards(makeState({}), { kind: "draw" }), []);
+    assert.deepEqual(hintCards(makeState({}), { kind: "recycle" }), []);
+    assert.deepEqual(
+      hintCards(makeState({}), { kind: "wasteToTableau", to: 2 }),
+      [],
+    );
   });
 });

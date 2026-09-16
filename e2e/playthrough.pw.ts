@@ -1,6 +1,13 @@
 import { type Page, expect, test } from "@playwright/test";
 
-import { type GameState, type Move, deal } from "../src/engine/index.ts";
+import {
+  type GameState,
+  type Move,
+  autoCompleteSequence,
+  canAutoComplete,
+  deal,
+  hint,
+} from "../src/engine/index.ts";
 import { applyMove } from "../src/engine/moves.ts";
 import { playGreedily } from "../test/engine/helpers.ts";
 
@@ -161,7 +168,135 @@ test("a whole game, dealt to won, by pointer alone", async ({ page }) => {
   await expect(panel).toBeVisible();
   await expect(panel).toContainText(`Deal #${SEED}`);
 
+  // A first win on a deal beats nothing, so there is no record line — and no
+  // line saying you missed one either, which would be a small punishment for
+  // winning. What there is, is a win written down.
+  await expect(
+    panel.getByText(/Best time|Fewest moves|Fastest game/),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("sol:v1:stats") ?? "{}"),
+    ),
+  ).toMatchObject({ 1: { played: 1, won: 1 } });
+  expect(
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("sol:v1:records") ?? "{}"),
+    ),
+  ).toMatchObject({ deals: [{ seed: SEED, drawCount: 1 }] });
+  // The finished game is not in progress any more.
+  expect(
+    await page.evaluate(() => localStorage.getItem("sol:v1:game")),
+  ).toBeNull();
+
   await panel.getByRole("button", { name: "New deal" }).click();
   await expect(panel).toBeHidden();
   await expect(page.locator(".top-bar")).toContainText("0 moves");
+});
+
+/**
+ * The other way a game ends, and the one most games actually end with: play
+ * until every card is face up and the stock is spent, at which point the deal
+ * is already won and the player is owed the ceremony rather than another forty
+ * taps. docs/02-game-spec.md calls that condition a proof, and this is it
+ * being taken at its word — the button appears exactly when it holds, and
+ * pressing it sends the rest home and runs straight into the win sequence.
+ */
+const FINISHABLE = 20;
+
+test("Finish plays out a deal that is already won", async ({ page }) => {
+  test.setTimeout(180_000);
+
+  const { moves } = playGreedily(deal(FINISHABLE, 1));
+  let state = deal(FINISHABLE, 1);
+  const gestures: Gesture[] = [];
+  for (const move of moves) {
+    if (canAutoComplete(state)) break;
+    gestures.push(gestureFor(state, move));
+    state = applyMove(state, move);
+  }
+  const rest = autoCompleteSequence(state);
+  expect(rest.length).toBeGreaterThan(30);
+
+  await page.goto(`/?deal=${FINISHABLE}`);
+  await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(7);
+
+  const finish = page.getByRole("button", { name: "Finish" });
+  const stock = page.locator(".slot-stock");
+  for (const gesture of gestures) {
+    // Never before the board has proved it cannot get stuck: a Finish that
+    // sometimes stops halfway would be worse than none.
+    await expect(finish).toHaveCount(0);
+    if (gesture.card === null) {
+      await stock.tap();
+      continue;
+    }
+    const at = await coordinates(page, gesture);
+    const [fx, fy] = (at as NonNullable<typeof at>).from;
+    const [tx, ty] = (at as NonNullable<typeof at>).to;
+    await page.mouse.move(fx, fy);
+    await page.mouse.down();
+    await page.mouse.move(tx, ty, { steps: 3 });
+    await page.mouse.up();
+  }
+
+  await expect(finish).toBeVisible();
+  await finish.click();
+
+  await expect(page.locator(".top-bar")).toContainText(
+    `${gestures.length + rest.length} moves`,
+  );
+  await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(52);
+  await expect(page.locator(".win-veil")).toBeVisible();
+});
+
+/**
+ * The other thing a hint has to be able to say. docs/02-game-spec.md is exact
+ * about it: "No moves left — undo, or try a new deal", said plainly, rather
+ * than a "you lose" screen — there isn't one of those, because with unlimited
+ * undo and unlimited redeals the player decides when a deal is over.
+ *
+ * Deal 357 walks into a dead end in thirty greedy moves, which is the cheapest
+ * one of these the frozen deal mapping offers.
+ */
+const DEAD_END = 357;
+
+test("a hint with nothing to point at says so", async ({ page }) => {
+  const { moves } = playGreedily(deal(DEAD_END, 1));
+  let state = deal(DEAD_END, 1);
+  const gestures: Gesture[] = [];
+  for (const move of moves) {
+    if (hint(state) === null) break;
+    gestures.push(gestureFor(state, move));
+    state = applyMove(state, move);
+  }
+  expect(hint(state)).toBeNull();
+
+  await page.goto(`/?deal=${DEAD_END}`);
+  await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(7);
+
+  const stock = page.locator(".slot-stock");
+  for (const gesture of gestures) {
+    if (gesture.card === null) {
+      await stock.tap();
+      continue;
+    }
+    const at = await coordinates(page, gesture);
+    const [fx, fy] = (at as NonNullable<typeof at>).from;
+    const [tx, ty] = (at as NonNullable<typeof at>).to;
+    await page.mouse.move(fx, fy);
+    await page.mouse.down();
+    await page.mouse.move(tx, ty, { steps: 3 });
+    await page.mouse.up();
+  }
+
+  await page.getByRole("button", { name: "Hint" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "No moves left — undo, or try a new deal.",
+  );
+  await expect(page.locator(".card.is-hinting")).toHaveCount(0);
+
+  // It leaves on its own, and undo is still right there.
+  await expect(page.getByRole("status")).toHaveCount(0, { timeout: 8000 });
+  await expect(page.getByRole("button", { name: /undo/i })).toBeEnabled();
 });

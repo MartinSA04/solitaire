@@ -37,6 +37,19 @@ everything else.
 is the hardest place on the screen to reach. Undo is the most-pressed button in the
 game and it belongs under your thumb.
 
+Three buttons, and only three. The middle one is Hint, and becomes **Finish**
+once the board has proved it cannot get stuck — the two never both apply, since
+at that point the only hint worth giving is "press this". Everything else — a
+new deal, the daily, replay, the statistics, every setting — is behind `⋯`,
+which opens the menu sheet. A new deal is two taps rather than one, and over
+about five moves it asks before it throws the game away; see
+[02](02-game-spec.md).
+
+When a hint has nothing to point at, a line appears above the bar — "No moves
+left — undo, or try a new deal." — and leaves on its own. It is the only text
+the game puts over the board, and it is a fact about the position rather than a
+loss screen.
+
 Sizing on a 360×780 viewport:
 
 | Thing | Value | Why |

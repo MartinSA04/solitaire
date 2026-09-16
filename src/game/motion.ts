@@ -5,6 +5,7 @@ import {
   type Move,
   SUIT_COUNT,
   TABLEAU_COLUMNS,
+  suitOf,
   topOf,
 } from "../engine/index.ts";
 
@@ -93,4 +94,66 @@ export function homedCard(state: GameState, move: Move): Card | null {
 export function drawnCards(before: GameState, after: GameState): Card[] {
   const turned = after.waste.length - before.waste.length;
   return turned > 0 ? after.waste.slice(after.waste.length - turned) : [];
+}
+
+/**
+ * The cards a hint should point at: the one to move, and the one to move it
+ * onto. Both pulse together, which is what makes a hint a *move* rather than
+ * a card with an outline round it.
+ *
+ * Empty destinations have no card to pulse — an empty column, an empty
+ * foundation, a spent stock — so a hint at one of those pulses only its
+ * source, and the player reads the rest from the board. Highlighting the slot
+ * instead would mean the card layer knowing about the slot grid, which is the
+ * one thing docs/07 keeps it out of.
+ *
+ * Asked of the position *before* the move, because that is where the cards
+ * still are.
+ */
+export function hintCards(state: GameState, move: Move): Card[] {
+  const cards: Card[] = [];
+  const push = (card: Card | undefined): void => {
+    if (card !== undefined) cards.push(card);
+  };
+  const columnTop = (index: number): Card | undefined =>
+    topOf((state.tableau[index] as Column).cards);
+
+  switch (move.kind) {
+    // The stock, and the card that is next off it: the top of the face-down
+    // pile is the card the player taps.
+    case "draw":
+      push(state.stock[0]);
+      break;
+    // Nothing is face up to point at, so the waste going back is the hint.
+    case "recycle":
+      push(state.waste[0]);
+      break;
+    case "wasteToFoundation":
+      push(topOf(state.waste));
+      push(topOf(state.foundations[suitOf(topOf(state.waste) ?? 0)] as Card[]));
+      break;
+    case "wasteToTableau":
+      push(topOf(state.waste));
+      push(columnTop(move.to));
+      break;
+    case "tableauToFoundation": {
+      const card = columnTop(move.from);
+      push(card);
+      if (card !== undefined) {
+        push(topOf(state.foundations[suitOf(card)] as Card[]));
+      }
+      break;
+    }
+    case "tableauToTableau": {
+      const column = state.tableau[move.from] as Column;
+      push(column.cards[column.cards.length - move.count]);
+      push(columnTop(move.to));
+      break;
+    }
+    case "foundationToTableau":
+      push(topOf(state.foundations[move.suit] as Card[]));
+      push(columnTop(move.to));
+      break;
+  }
+  return cards;
 }

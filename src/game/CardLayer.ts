@@ -97,6 +97,7 @@ export class CardLayer {
   #rect: DOMRect | null = null;
   #peek: number | null = null;
   #surrendered = false;
+  #hinted: Card[] = [];
 
   /**
    * `reducedMotion` zeroes the staggers. The durations take care of
@@ -329,6 +330,46 @@ export class CardLayer {
   }
 
   /**
+   * The move a hint is pointing at: the card to move, and the card it would
+   * be moved onto, pulsing together. Scale and an outline rather than a
+   * colour wash, per docs/08-accessibility.md — and under reduced motion the
+   * CSS turns the two pulses into an outline that stays until it is cleared.
+   *
+   * It survives a re-render, because the class is on the element and nothing
+   * in render() takes it off. A hint you can still see while you act on it is
+   * the point of one.
+   *
+   * The lift is an inline z-index rather than a rule in the stylesheet,
+   * because render() writes one on every card and an inline style wins: a
+   * card pulsing *under* the card fanned on top of it is not a highlight.
+   */
+  hint(cards: readonly Card[]): void {
+    this.clearHint();
+    for (const card of cards) {
+      const element = this.#elements[card] as HTMLElement;
+      void element.offsetWidth;
+      element.classList.add("is-hinting");
+      element.style.zIndex = String(Z_FLIGHT + card);
+      this.#hinted.push(card);
+    }
+  }
+
+  /**
+   * Taken off by the next move, a new deal, the win, or a second hint — and
+   * the lift goes back to where the card was resting, because a card left
+   * above the fan it belongs under would be a glitch rather than a highlight.
+   */
+  clearHint(): void {
+    for (const card of this.#hinted) {
+      const element = this.#elements[card] as HTMLElement;
+      element.classList.remove("is-hinting");
+      const resting = this.#placements[card];
+      if (resting !== undefined) element.style.zIndex = String(resting.z);
+    }
+    this.#hinted = [];
+  }
+
+  /**
    * A tap with nowhere to go. A shake is enough; a red flash reads as being
    * told off.
    */
@@ -360,6 +401,7 @@ export class CardLayer {
    */
   surrender(): void {
     clearTimeout(this.#flight);
+    this.clearHint();
     this.#surrendered = true;
     this.#held = [];
     for (let card = 0; card < DECK_SIZE; card++) {

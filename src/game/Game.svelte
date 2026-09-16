@@ -7,11 +7,11 @@
     type Rank,
     type Suit,
     DECK_SIZE,
-    MAX_SEED,
     RANK_COUNT,
     SUIT_COUNT,
     TABLEAU_COLUMNS,
     cardOf,
+    deserialise,
     fromSeedUrl,
     newGame,
     rankOf,
@@ -22,15 +22,31 @@
   import { CardLayer, type Motion } from "./CardLayer.ts";
   import { Drag, type DragHost } from "./Drag.ts";
   import { FOUNDATION_ORDER, metricsFor } from "./Layout.ts";
-  import { dealOrder, drawnCards, homedCard, predealt } from "./motion.ts";
+  import {
+    dealOrder,
+    drawnCards,
+    hintCards,
+    homedCard,
+    predealt,
+  } from "./motion.ts";
   import { PULSE_GAP_MS, WinSequence, type WinStage } from "./WinSequence.ts";
   import { Stopwatch } from "./clock.ts";
+  import { type BeatenRecord, Persist, beatenRecord } from "./Persist.ts";
+  import {
+    EMPTY_POOL,
+    Pools,
+    dailySeed,
+    dayKey,
+    newSeed,
+    previousDayKey,
+  } from "./pool.ts";
   import { type SourcedDeck, sourcedDeck } from "../decks/sourced.ts";
   import { loadDeckArt } from "./DeckArt.ts";
-  import { DEFAULTS, type Settings, apply, resolve } from "./settings.ts";
+  import { type Settings, apply, resolve } from "./settings.ts";
   import BottomBar from "./chrome/BottomBar.svelte";
   import ResultPanel from "./chrome/ResultPanel.svelte";
   import SettingsSheet from "./chrome/SettingsSheet.svelte";
+  import StatsSheet from "./chrome/StatsSheet.svelte";
   import TopBar from "./chrome/TopBar.svelte";
 
   /**
@@ -70,6 +86,17 @@
   /** The clock ticks four times a second; a second-accurate display needs no more. */
   const TICK_MS = 250;
 
+  /**
+   * The finishing cascade: ~40ms between cards, accelerating, per docs/02. It
+   * runs straight into the win sequence without a break — the auto-complete
+   * *is* the opening beat of the win, not a skip of it.
+   */
+  const FINISH_MS = 40;
+  const FINISH_FLOOR_MS = 14;
+
+  /** How long a hint's "there's nothing there" stays on screen. */
+  const NOTICE_MS = 3600;
+
   let boardEl: HTMLDivElement | undefined = $state();
   let layerEl: HTMLDivElement | undefined = $state();
   let canvasEl: HTMLCanvasElement | undefined = $state();
@@ -81,21 +108,68 @@
   let elapsedMs = $state(0);
   let winStage: WinStage = $state("none");
   let dismissed = $state(false);
+  /** Every card face up and the stock spent: Finish replaces Hint. docs/02. */
+  let canFinish = $state(false);
+  /** Your best time on the deal you are playing, if you have won it before. */
+  let bestMs: number | null = $state(null);
+  /** Which record the win just beat, for the panel's one line. */
+  let record: BeatenRecord | null = $state(null);
+  /** A hint with nothing to point at says so, in the only text over the board. */
+  let notice = $state("");
+
+  /**
+   * Everything that outlives a tab. `Persist` is defensive to the point of
+   * tedium on purpose — storage throws in private browsing and holds whatever
+   * anyone last pasted into it — and with none available it is a complete
+   * working object that remembers nothing, which is the whole of docs/07's
+   * "the game is fully playable with storage unavailable".
+   */
+  const persist = new Persist();
+  const stored = persist.settings();
+
+  /**
+   * The winnable pools. Fetched alongside hydration and awaited by nothing:
+   * the first deal of a load can come from the URL, from the save, or from the
+   * whole seed space, and the pool applies from the next one onward.
+   */
+  const pools = new Pools();
+
+  /** The clock a resumed game brings with it, read during openingGame(). */
+  let resumedMs = 0;
 
   // Not reactive: the engine's Game is mutated in place, and every read of it
   // is driven by an explicit sync() rather than by Svelte watching it.
   let game: Game = openingGame();
   let clock = new Stopwatch(() => performance.now());
 
+  let stats = $state(persist.stats());
+  let daily = $state(persist.daily());
+  let statsOpen = $state(false);
+  /** Today's daily, once a pool has arrived. `null` until then. */
+  let dailyToday: number | null = $state(null);
+  const dailyDone = $derived(daily.lastWon === dayKey(new Date()));
+
+  // A resumed game arrives with its clock and its moves already on it, so the
+  // chrome starts from the game rather than from zero — and whatever is on the
+  // table now is what a reload should bring back, including a deal nobody has
+  // moved yet. Below every piece of state it touches: `sync` on a game that is
+  // somehow already won writes to all of them, and storage is untrusted input.
+  clock.restore(resumedMs);
+  elapsedMs = resumedMs;
+  bestMs = persist.record(game.seed, game.drawCount)?.bestTimeMs ?? null;
+  sync();
+  save();
+
   /**
-   * The table, the deck, the back, the sound, the clock and the draw mode.
+   * The table, the deck, the back, the sound, the clock, the draw mode and
+   * whether deals come out of the winnable pool.
    *
-   * They last as long as the tab: `localStorage` is milestone 5, and the
-   * module they will be read out of writes into exactly this shape. The draw
-   * mode starts from the game rather than from the defaults, because
-   * `?deal=…&draw=3` has already decided it by the time this runs.
+   * Read out of storage, field by validated field, and written back whenever
+   * one changes. The draw mode starts from the game rather than from what was
+   * stored, because `?deal=…&draw=3` has already decided it by the time this
+   * runs.
    */
-  let settings: Settings = $state({ ...DEFAULTS, drawCount: game.drawCount });
+  let settings: Settings = $state({ ...stored, drawCount: game.drawCount });
   let settingsOpen = $state(false);
 
   /**
@@ -105,45 +179,108 @@
    * noise.
    *
    * It is audible from the first move, per docs/07, and the settings sheet can
-   * turn it off — through one master gain that ramps rather than clicks. What
-   * is still missing is the *remembering*: a muted tab comes back audible
-   * until milestone 5 gives the setting somewhere to live.
+   * turn it off — through one master gain that ramps rather than clicks — and
+   * a tab that was muted comes back muted.
    */
   const sound = new Sound();
 
-  function randomSeed(): number {
-    return Math.floor(Math.random() * (MAX_SEED + 1));
+  /**
+   * A deal number for a new game: out of the pool when the player asked for
+   * winnable-only and one has arrived, and out of the whole 2³² space
+   * otherwise.
+   */
+  function dealNumber(drawCount: DrawCount, winnableOnly: boolean): number {
+    return newSeed(winnableOnly ? pools.get(drawCount) : EMPTY_POOL);
   }
 
   /**
-   * `/?deal=24` opens that exact deal, which is the whole of sharing one —
-   * the seed to deal mapping is frozen forever, so the number means the same
-   * game on every device and in a year's time. A mistyped number is not an
-   * error, just a fresh deal.
+   * What is on the table when the page opens, in order of what the player most
+   * obviously asked for:
    *
-   * Only the *reading* half ships here, because it is what makes the
-   * interaction tests deterministic; the share button, the daily deal and the
-   * winnable-only pool are milestone 5. There is no `location` while Astro
-   * renders this on the server, and nothing about the markup depends on which
-   * deal it is.
+   * 1. `/?deal=24` — that exact deal, which is the whole of sharing one. The
+   *    seed-to-deal mapping is frozen forever, so the number means the same
+   *    game on every device and in a year's time. A mistyped number is not an
+   *    error, just a fresh deal.
+   * 2. The game that was in progress when the tab was last closed, replayed
+   *    move by move through the rules. A save that does not replay cleanly is
+   *    a new game rather than an error — see `deserialise`.
+   * 3. A new deal.
+   *
+   * There is no `location` while Astro renders this on the server, and nothing
+   * about the markup depends on which deal it is.
    */
   function openingGame(): Game {
-    if (typeof location === "undefined") return newGame(randomSeed());
-    return (
-      fromSeedUrl(new URLSearchParams(location.search)) ?? newGame(randomSeed())
+    if (typeof location === "undefined") {
+      return newGame(dealNumber(1, false), 1);
+    }
+
+    const shared = fromSeedUrl(new URLSearchParams(location.search));
+    if (shared !== null) return shared;
+
+    const saved = persist.savedGame();
+    if (saved !== null) {
+      const resumed = deserialise(saved.game);
+      if (resumed !== null) {
+        resumedMs = saved.elapsedMs;
+        return resumed;
+      }
+    }
+
+    return newGame(
+      dealNumber(stored.drawCount, stored.winnableOnly),
+      stored.drawCount,
     );
   }
 
   function sync(): void {
     moves = game.movesPlayed;
     canUndo = game.canUndo;
+    canFinish = game.canAutoComplete;
     if (game.isWon && !won) {
       won = true;
       // The clock stops at Stage 0, before anything has moved — see docs/06.
       clock.pause();
       elapsedMs = clock.elapsed;
+      keep();
       celebrate();
     }
+  }
+
+  /**
+   * A win, written down: the lifetime counters, this deal's record, and the
+   * daily streak if this was today's daily. Read *before* it is recorded,
+   * because "did this beat anything" is a question about the figures as they
+   * were a moment ago.
+   */
+  function keep(): void {
+    const seed = game.seed;
+    const drawCount = game.drawCount;
+    const played = game.movesPlayed;
+
+    record = beatenRecord(
+      {
+        record: persist.record(seed, drawCount),
+        stats: persist.stats()[drawCount],
+      },
+      elapsedMs,
+      played,
+    );
+    stats = persist.countWon(drawCount, elapsedMs, played);
+    bestMs = persist.saveRecord(seed, drawCount, elapsedMs, played).bestTimeMs;
+
+    const today = new Date();
+    if (seed === dailySeed(pools.get(drawCount), today)) {
+      daily = persist.winDaily(dayKey(today), previousDayKey(today));
+    }
+
+    // A finished game is not a game in progress.
+    persist.clearGame();
+  }
+
+  /** The move list, after every move, so a refresh loses nothing. */
+  function save(): void {
+    if (won) return;
+    persist.saveGame({ game: game.serialise(), elapsedMs: clock.elapsed });
   }
 
   function play(move: Move, motion: Motion): boolean {
@@ -151,6 +288,12 @@
     const before = game.state;
     if (!game.play(move)) return false;
     clock.start();
+    layer?.clearHint();
+
+    // A deal counts as played the moment a move is made on it. Dealing and
+    // walking away is not a game, and counting it would make the win rate a
+    // measure of how often the tab was opened.
+    if (game.movesPlayed === 1) stats = persist.countPlayed(game.drawCount);
 
     // This runs inside the pointer or click handler that asked for the move,
     // which is the user gesture the autoplay policy wants. A card going home
@@ -176,17 +319,82 @@
     }
 
     sync();
+    save();
     return true;
   }
 
   function undo(): void {
     if (!game.undo()) return;
+    layer?.clearHint();
     render("undo");
     sync();
+    save();
   }
 
   function newDeal(): void {
     redeal(settings.drawCount);
+  }
+
+  /**
+   * Today's deal, the same one everybody else gets today. Unavailable until a
+   * pool has arrived, because a deal nobody else is playing is not the daily —
+   * the button in the menu is disabled until then rather than dealing
+   * something else and calling it the daily.
+   */
+  function startDaily(): void {
+    const seed = dailyToday;
+    if (seed === null) return;
+    game = newGame(seed, settings.drawCount);
+    reset();
+  }
+
+  /**
+   * One move worth making, pulsing on the board — or, when there genuinely is
+   * none, a sentence saying so. Not a loss screen: with unlimited undo and
+   * unlimited redeals the player decides when a deal is over, and docs/02 is
+   * specific that there is no such thing as losing.
+   */
+  function hint(): void {
+    if (won) return;
+    const move = game.hint();
+    if (move === null) {
+      say("No moves left — undo, or try a new deal.");
+      return;
+    }
+    layer?.hint(hintCards(game.state, move));
+  }
+
+  /**
+   * Every remaining card home, ~40ms apart and accelerating, straight into the
+   * win sequence. Offered only when the board proves it cannot get stuck —
+   * see `canAutoComplete`.
+   */
+  function finish(): void {
+    if (finishing || won) return;
+    const sequence = game.autoCompleteSequence();
+    if (sequence.length === 0) return;
+
+    finishing = true;
+    let at = 0;
+    const step = (): void => {
+      const move = sequence[at++];
+      if (move === undefined || !play(move, "move")) {
+        finishing = false;
+        return;
+      }
+      if (at >= sequence.length) {
+        finishing = false;
+        return;
+      }
+      finishTimer = setTimeout(step, Math.max(FINISH_FLOOR_MS, FINISH_MS - at));
+    };
+    step();
+  }
+
+  function say(text: string): void {
+    notice = text;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => (notice = ""), NOTICE_MS);
   }
 
   /**
@@ -197,7 +405,7 @@
    * that asked for it.
    */
   function redeal(drawCount: DrawCount): void {
-    game = newGame(randomSeed(), drawCount);
+    game = newGame(dealNumber(drawCount, settings.winnableOnly), drawCount);
     reset();
   }
 
@@ -210,6 +418,13 @@
   function reset(): void {
     sequence?.destroy();
     sequence = null;
+    clearTimeout(finishTimer);
+    finishing = false;
+    layer?.clearHint();
+    notice = "";
+    record = null;
+    // Race yourself: the time to beat on this deal, if you have beaten it.
+    bestMs = persist.record(game.seed, game.drawCount)?.bestTimeMs ?? null;
     // Every card back on the stock, ready to be dealt out of it again.
     staged = predealt(game.state);
     winStage = "none";
@@ -221,10 +436,15 @@
     // re-attaches the card layer to the new ones.
     gameId += 1;
     sync();
+    save();
   }
 
   let layer: CardLayer | null = null;
   let sequence: WinSequence | null = null;
+  /** The finishing cascade, and the notice's own lifetime. */
+  let finishing = false;
+  let finishTimer: ReturnType<typeof setTimeout> | undefined;
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   /** The pending first-frame callback, cancelled if the deal is torn down. */
   let dealFrame = 0;
   /** The debug trigger fires once a page load, not once a deal. */
@@ -435,6 +655,33 @@
     return () => sound.close();
   });
 
+  /** Nothing else in the island outlives it either. */
+  $effect(() => {
+    return () => {
+      clearTimeout(finishTimer);
+      clearTimeout(noticeTimer);
+    };
+  });
+
+  /**
+   * The pool for the mode being played, fetched in parallel with hydration and
+   * awaited by nothing. Today's daily falls out of it when it lands; until
+   * then the menu's Daily button is disabled, because a deal nobody else is
+   * playing would not be the daily.
+   */
+  $effect(() => {
+    const drawCount = settings.drawCount;
+    void pools.load(drawCount).then((pool) => {
+      if (settings.drawCount !== drawCount) return;
+      dailyToday = dailySeed(pool, new Date());
+    });
+  });
+
+  /** Every choice, remembered. A write that fails is not worth a word. */
+  $effect(() => {
+    persist.saveSettings(settings);
+  });
+
   /**
    * A chosen look is three attributes on `<html>` and nothing else — see
    * settings.ts. It goes on the document element rather than on the island so
@@ -484,23 +731,33 @@
       if (clock.running) elapsedMs = clock.elapsed;
     }, TICK_MS);
 
+    /**
+     * A move writes the save; this writes the *clock*, which otherwise only
+     * moves between moves. Hiding the tab and closing it are the two moments a
+     * game is likely to be left, and they are the two worth a write — four a
+     * second for a number nobody is reading would not be.
+     */
     const onVisibilityChange = (): void => {
-      if (document.hidden) clock.pause();
-      else if (!won) clock.resume();
+      if (document.hidden) {
+        clock.pause();
+        save();
+      } else if (!won) clock.resume();
       elapsedMs = clock.elapsed;
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
+    addEventListener("pagehide", save);
 
     return () => {
       clearInterval(tick);
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      removeEventListener("pagehide", save);
     };
   });
 </script>
 
 <div class="game" data-win={winStage}>
   <h1 class="sr-only">Solitaire</h1>
-  <TopBar {elapsedMs} {moves} showClock={settings.timer} />
+  <TopBar {elapsedMs} {moves} showClock={settings.timer} {bestMs} />
 
   <!--
     The empty slots are ordinary CSS grid, so they are server-rendered and in
@@ -583,10 +840,21 @@
 
   <BottomBar
     {canUndo}
+    {canFinish}
     onUndo={undo}
-    onNewDeal={newDeal}
-    onSettings={() => (settingsOpen = true)}
+    onHint={hint}
+    onFinish={finish}
+    onMenu={() => (settingsOpen = true)}
   />
+
+  <!--
+    The only text the game puts over the board, and only ever a fact about the
+    position: what a hint says when there is nothing to point at. It announces
+    itself politely and then leaves on its own.
+  -->
+  {#if notice !== ""}
+    <p class="notice" role="status">{notice}</p>
+  {/if}
 
   <!--
     The trail canvas. Beneath the cards, over everything else, and sized to the
@@ -617,6 +885,7 @@
     <ResultPanel
       {elapsedMs}
       {moves}
+      {record}
       seed={game.seed}
       drawCount={game.drawCount}
       onReplay={replay}
@@ -626,17 +895,32 @@
   {/if}
 
   <!--
-    Every theme, deck and back, available on first load. Mounted only while it
-    is open, because a <dialog> that is in the document but closed is still a
-    dozen controls in the accessibility tree.
+    The deals you can start, the statistics, and every theme, deck and back —
+    all available on first load. Mounted only while it is open, because a
+    <dialog> that is in the document but closed is still a dozen controls in
+    the accessibility tree.
   -->
   {#if settingsOpen}
     <SettingsSheet
       {settings}
-      inProgress={moves > 0 && !won}
+      movesAtRisk={won ? 0 : moves}
+      dailySeed={dailyToday}
+      {dailyDone}
       onChange={(next) => (settings = next)}
+      onNewDeal={newDeal}
+      onDaily={startDaily}
+      onReplay={replay}
+      onStats={() => (statsOpen = true)}
       onRedeal={redeal}
       onClose={() => (settingsOpen = false)}
     />
+  {/if}
+
+  <!--
+    Lifetime counters and the streak, one tap on from the menu. Mounted only
+    while it is open, for the same reason the menu is.
+  -->
+  {#if statsOpen}
+    <StatsSheet {stats} {daily} onClose={() => (statsOpen = false)} />
   {/if}
 </div>

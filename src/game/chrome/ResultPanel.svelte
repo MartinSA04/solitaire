@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { BeatenRecord } from "../Persist.ts";
   import { formatClock } from "../clock.ts";
 
   interface Props {
@@ -6,6 +7,8 @@
     moves: number;
     seed: number;
     drawCount: number;
+    /** Which record this win beat, if it beat one. Nothing, if it didn't. */
+    record: BeatenRecord | null;
     onReplay: () => void;
     onNewDeal: () => void;
     onDismiss: () => void;
@@ -16,6 +19,7 @@
     moves,
     seed,
     drawCount,
+    record,
     onReplay,
     onNewDeal,
     onDismiss,
@@ -25,11 +29,10 @@
    * Stage 4 of docs/06-win-sequence.md. The numbers count up from zero — the
    * only gratuitous flourish in the panel, and what makes them feel earned.
    *
-   * Two things the mock in that doc shows are deliberately absent until
-   * milestone 5, which is where the storage they read from arrives: the record
-   * line ("Best time on this deal") and the share button. A record line that
-   * can only ever say nothing is worse than no record line, and a share button
-   * belongs with the rest of sharing.
+   * The record line appears only when something was beaten, and the first win
+   * on a deal beats nothing: "you set a record on the deal you have played
+   * once" is a participation trophy. There is no line for missing one — that
+   * would be a small punishment for winning.
    */
   const COUNT_MS = 600;
 
@@ -64,6 +67,50 @@
   const dealNumber = $derived(
     String(seed).replace(/\B(?=(\d{3})+(?!\d))/g, " "),
   );
+
+  const RECORD_LINES: Record<BeatenRecord, string> = {
+    fastest: "Fastest game yet",
+    "deal-time": "Best time on this deal",
+    "deal-moves": "Fewest moves on this deal",
+  };
+
+  /**
+   * A deal, not a score. The link opens the same game on anybody's phone,
+   * because the seed-to-deal mapping is frozen forever — there is no boast in
+   * it, just "try this one".
+   *
+   * The native share sheet where there is one, the clipboard where there
+   * isn't, and nothing at all if both refuse: a share that fails is not worth
+   * an error, and the deal number is on screen above the button anyway.
+   */
+  let shared = $state(false);
+  let shareTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function shareUrl(): string {
+    const url = new URL(location.href);
+    url.search = "";
+    url.searchParams.set("deal", String(seed));
+    url.searchParams.set("draw", String(drawCount));
+    return url.href;
+  }
+
+  async function share(): Promise<void> {
+    const url = shareUrl();
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title: "Solitaire", url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      shared = true;
+      clearTimeout(shareTimer);
+      shareTimer = setTimeout(() => (shared = false), 2400);
+    } catch {
+      /* cancelled, or no clipboard. Neither is worth a word. */
+    }
+  }
+
+  $effect(() => () => clearTimeout(shareTimer));
 
   function onKeyDown(event: KeyboardEvent): void {
     if (event.key === "Escape") onDismiss();
@@ -107,6 +154,10 @@
     </div>
   </dl>
 
+  {#if record !== null}
+    <p class="result-record">★ {RECORD_LINES[record]}</p>
+  {/if}
+
   <p class="result-deal">
     Deal #{dealNumber} · Draw {drawCount}
   </p>
@@ -123,6 +174,10 @@
       New deal
     </button>
   </div>
+
+  <button class="result-share" type="button" onclick={share}>
+    {shared ? "Link copied" : "Share this deal"}
+  </button>
 </div>
 
 <style>
@@ -202,6 +257,14 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Only ever present when something was beaten, so it can afford the accent. */
+  .result-record {
+    margin: 0 0 12px;
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 650;
+  }
+
   .result-deal {
     margin: 0 0 16px;
     color: var(--chrome-fg-dim);
@@ -228,6 +291,25 @@
     background: var(--accent);
     color: var(--accent-contrast);
     box-shadow: none;
+  }
+
+  /* Quieter than either action above it: sharing is an afterthought, and the
+     panel should not look like it wants anything from you. */
+  .result-share {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border: 0;
+    background: none;
+    color: var(--chrome-fg-dim);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .result-share:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 8px;
   }
 
   @media (min-width: 48rem) {
