@@ -8,6 +8,7 @@ import {
   suitOf,
   topOf,
 } from "../engine/index.ts";
+import { type PileRef } from "./Layout.ts";
 
 /**
  * The two things the move catalogue needs that the engine has no reason to
@@ -97,63 +98,80 @@ export function drawnCards(before: GameState, after: GameState): Card[] {
 }
 
 /**
- * The cards a hint should point at: the one to move, and the one to move it
- * onto. Both pulse together, which is what makes a hint a *move* rather than
- * a card with an outline round it.
+ * What a hint points at: **the cards that can move, and the pile they can move
+ * into.** Two marks, because either on its own is half a sentence — a card
+ * with a ring round it does not say where it is going, and a lit-up column
+ * does not say what belongs in it.
  *
- * Empty destinations have no card to pulse — an empty column, an empty
- * foundation, a spent stock — so a hint at one of those pulses only its
- * source, and the player reads the rest from the board. Highlighting the slot
- * instead would mean the card layer knowing about the slot grid, which is the
- * one thing docs/07 keeps it out of.
+ * The destination is a pile rather than a card, which is the part that changed:
+ * an empty column, an empty foundation and a spent stock are exactly the
+ * destinations a hint is most useful about, and they have no card on them to
+ * mark. The board lights the slot in those cases and the top card in the
+ * others, and the card layer is still told nothing about the slot grid — it is
+ * given cards, and the thirteen slot elements are the chrome's, which is where
+ * docs/07 already keeps them.
  *
  * Asked of the position *before* the move, because that is where the cards
  * still are.
  */
-export function hintCards(state: GameState, move: Move): Card[] {
-  const cards: Card[] = [];
-  const push = (card: Card | undefined): void => {
-    if (card !== undefined) cards.push(card);
+export interface Hinted {
+  /** The cards that would move, bottom of the run first. */
+  cards: Card[];
+  /** The pile they would move onto. */
+  to: PileRef;
+}
+
+export function hintOf(state: GameState, move: Move): Hinted {
+  const columnTop = (index: number): Card[] => {
+    const card = topOf((state.tableau[index] as Column).cards);
+    return card === undefined ? [] : [card];
   };
-  const columnTop = (index: number): Card | undefined =>
-    topOf((state.tableau[index] as Column).cards);
+  const wasteTop = (): Card[] => {
+    const card = topOf(state.waste);
+    return card === undefined ? [] : [card];
+  };
 
   switch (move.kind) {
-    // The stock, and the card that is next off it: the top of the face-down
-    // pile is the card the player taps.
+    // The card that is next off the stock, and the pile it is turned onto.
     case "draw":
-      push(state.stock[0]);
-      break;
-    // Nothing is face up to point at, so the waste going back is the hint.
+      return {
+        cards: state.stock[0] === undefined ? [] : [state.stock[0]],
+        to: { pile: "waste" },
+      };
+    // The waste going back under the stock: the one card of it you can see.
     case "recycle":
-      push(state.waste[0]);
-      break;
-    case "wasteToFoundation":
-      push(topOf(state.waste));
-      push(topOf(state.foundations[suitOf(topOf(state.waste) ?? 0)] as Card[]));
-      break;
-    case "wasteToTableau":
-      push(topOf(state.waste));
-      push(columnTop(move.to));
-      break;
-    case "tableauToFoundation": {
-      const card = columnTop(move.from);
-      push(card);
-      if (card !== undefined) {
-        push(topOf(state.foundations[suitOf(card)] as Card[]));
-      }
-      break;
+      return { cards: wasteTop(), to: { pile: "stock" } };
+    case "wasteToFoundation": {
+      const card = topOf(state.waste);
+      return {
+        cards: wasteTop(),
+        to: { pile: "foundation", suit: suitOf(card ?? 0) },
+      };
     }
+    case "wasteToTableau":
+      return { cards: wasteTop(), to: { pile: "tableau", column: move.to } };
+    case "tableauToFoundation": {
+      const cards = columnTop(move.from);
+      return {
+        cards,
+        to: { pile: "foundation", suit: suitOf(cards[0] ?? 0) },
+      };
+    }
+    // The whole run, not just the card at the bottom of it: what is being
+    // pointed at is the thing that would move.
     case "tableauToTableau": {
       const column = state.tableau[move.from] as Column;
-      push(column.cards[column.cards.length - move.count]);
-      push(columnTop(move.to));
-      break;
+      return {
+        cards: column.cards.slice(column.cards.length - move.count),
+        to: { pile: "tableau", column: move.to },
+      };
     }
-    case "foundationToTableau":
-      push(topOf(state.foundations[move.suit] as Card[]));
-      push(columnTop(move.to));
-      break;
+    case "foundationToTableau": {
+      const card = topOf(state.foundations[move.suit] as Card[]);
+      return {
+        cards: card === undefined ? [] : [card],
+        to: { pile: "tableau", column: move.to },
+      };
+    }
   }
-  return cards;
 }

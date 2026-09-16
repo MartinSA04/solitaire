@@ -129,7 +129,12 @@ gaps, fans, radii, type scale — is a multiple of it, in a `calc()`. There are 
 breakpoints for the board, only one for where the chrome goes: `48rem` wide, or
 `34rem` short, which is the same arrangement arrived at from the other side.
 
-The board is anchored to the top of whatever space it is given, and stays there.
+The board is anchored to the top of whatever space it is given, with a gap of
+0.14 × card height above the top row — proportional to the card like every
+other measurement, so it is a gap rather than a breakpoint. Without it the
+stock's top edge *is* the chrome's bottom edge, and two surfaces of different
+colours meeting on a line read as the card being clipped by the bar rather than
+lying on a table under it.
 Columns grow downward, so an anchored top row is a top row that never moves
 while you play; the room left underneath on a tall screen is table, which is
 what the [cascade](06-win-sequence.md) falls through at the end.
@@ -144,7 +149,7 @@ of the whole UI and it's justified under [Motion](#motion) below.
 
 | Gesture | Result |
 | ------- | ------ |
-| **Tap a card** | Auto-move: send it to a foundation if legal, otherwise to the best tableau target. No target? A brief shake. |
+| **Tap a card** | Auto-move: send it to a foundation if legal, otherwise to the best tableau target. A card already on a foundation comes back down into a column. No target? A brief shake — of the whole run, not of one card of it. |
 | **Tap the stock** | Draw. Tap the empty stock to recycle. |
 | **Drag a card** | Pick up that card and everything above it that forms a valid run. |
 | **Drag onto a pile** | Drop if legal; otherwise animate back. |
@@ -155,18 +160,34 @@ of the whole UI and it's justified under [Motion](#motion) below.
 46px card, dragging is fiddly and tapping is not. The target-choosing rule, in
 order:
 
-1. A foundation, if legal — *unless* the card is a 3 or higher and its
-   opposite-colour successors are still needed in the tableau. (Sending a 7♥ up
-   while a black 6 is looking for a home is a move players almost never want.)
-   This is one heuristic and it's tunable; getting it wrong is the fastest way to
-   make the game feel stupid.
+1. A foundation, if legal.
 2. A tableau column that turns over a face-down card.
 3. A non-empty tableau column.
 4. An empty column, only if the card is a King and it's currently the top of a
    column (moving a lone King between empty columns is never useful).
+5. Off a foundation into a column, for a card that is already home — the same
+   gesture pointed the other way. A card can always be *dragged* back off a
+   foundation when a run needs it, and on a phone dragging is the fiddly half
+   of the interface; a tap that shook the card instead was the game refusing a
+   move it has always allowed.
 
 Every auto-move is undoable, which is the safety net that lets the heuristic be
 aggressive.
+
+**Rule 1 used to have an "unless".** A legal foundation move was held back while
+the card's opposite-colour successors were still needed in the tableau — the
+standard guard against sending a 7♥ up while a black 6 is looking for a home.
+It is gone. It made the most-used gesture in the game unpredictable: two cards
+that look equally home-able did different things, for a reason nothing on screen
+explains, and `scripts/audit-automove.ts` put a number on how often — **2,671 of
+the 2,715 taps that went somewhere the player had not asked for were this rule
+overriding them.**
+
+Removing it costs a greedy robot about three points of win rate (53.5% → 48.5%
+at draw-1, 16.0% → 14.0% at draw-3, over deals 1–200) and takes the taps that
+disobeyed the player from 2.7% to 0.2%. That is the trade the guard was making
+on everybody's behalf. A robot that never presses Undo pays it; a person who can
+see the black 6 on the table, and who tapped the 7♥ anyway, should not have to.
 
 ### Pointer (desktop)
 
@@ -194,6 +215,13 @@ The details that separate a good card game from a bad one:
 - **Legal targets highlight while dragging**, lightness + border, not hue alone.
 - **Illegal drop animates back** along a 220ms spring to its origin. It does not
   snap instantly (feels like a bug) and it does not stay where you dropped it.
+- **A stack in the air casts one shadow, not one per card.** The lift shadow is
+  12px down with 28px of blur and a fanned run overlaps by about nineteen, so a
+  shadow on every card drops a dark band across the card below it — a fan of
+  separate cards being carried rather than a run picked up as one thing. The
+  card at the foot of the run casts it; the ones buried in the run keep the
+  small shadow they have on the table. Same rule for a keyboard pickup and for
+  the desktop hover lift, which lifts a whole run too.
 - **Pointer Events only** — `pointerdown`/`pointermove`/`pointerup` with
   `setPointerCapture`. No separate touch and mouse paths. `touch-action: none` on
   the board so the browser never steals a drag to scroll.
@@ -262,13 +290,13 @@ highest-value bit of polish in the non-win parts of the game.
 | Card to pile (tap) | `--t-quick` | `--e-out` | |
 | Card to pile (drop) | `--t-settle` | `--e-spring` | Shorter distance, so more time is affordable |
 | Flip face-up | `--t-instant` ×2 | `--e-inout` | `rotateY` 0→90° swapping the face at the midpoint, 90°→180°. A real flip, not a crossfade. |
-| Draw (draw-1) | `--t-quick` | `--e-out` | Includes the flip, concurrently |
-| Draw (draw-3) | `--t-quick` + 60ms stagger | `--e-out` | Three cards, fanned; the fan is what makes draw-3 readable |
-| Recycle waste | `--t-settle` | `--e-inout` | The whole waste sweeps back as a block, with a slight arc |
+| Draw (draw-1) | `--t-settle` | `--e-out` | A card is *turned off the deck*, not slid one slot right: it lifts on the way, and the flip is stretched to the length of the travel so it lands face-up as it arrives rather than 100ms early |
+| Draw (draw-3) | `--t-settle` + 60ms stagger | `--e-out` | Three cards, fanned; the fan is what makes draw-3 readable |
+| Recycle waste | `--t-settle` + 6ms stagger | `--e-inout` | The waste sweeps back under the stock with a slight arc, top card first. Staggered, because in draw-1 every card in the waste is at the same coordinates and two dozen of them leaving together is indistinguishable from one leaving |
 | Illegal drop | 220ms | `--e-spring` | Return to origin |
-| Illegal tap | 300ms | — | 3-cycle shake, ±3px, damping. Never a sound, never a colour change — a shake is enough and a red flash reads as being told off. |
+| Illegal tap | 300ms | — | 3-cycle shake, ±3px, damping, on **every card the gesture was about**. Never a sound, never a colour change — a shake is enough and a red flash reads as being told off. |
 | Undo | `--t-settle` | `--e-inout` | Deliberately *slower* than the move it reverses, so you can see what came back |
-| Hint | 2 pulses, 600ms | `--e-inout` | Source and target both pulse, in phase |
+| Hint | 3 breaths, 1400ms | `--e-inout` | A ring on the card that can move and on the space it can move into — the destination's top card, or the empty slot itself. It breathes three times and then stays until the move is made. **Not a scale pulse**, which is what shipped first: a card in a fanned column grows *into* the cards above and below it, so the one thing being pointed at was the one thing partly hidden while it was pointed at, and a pair of cards bouncing reads as an error rather than as advice. |
 | Auto-complete | 40ms → 18ms stagger | `--e-out` | Accelerates. Flows into the win sequence with no gap. |
 
 ### Z-index
@@ -278,6 +306,12 @@ which means a card flying from column 2 to a foundation passes *over* columns 3�
 Correct, and the alternative (flying under) looks broken.
 
 Z-index changes happen at the *start* of a move, never at the end.
+
+Which means every lift has to be **given back**. A refused drop springs home
+along the 220ms spring and drops out of the drag band when it lands; leaving it
+there — which is what shipped — parks the card above every pile on the table
+until some unrelated render happens to rewrite it, and that render can be
+several moves away.
 
 ### Reduced motion
 
@@ -295,8 +329,19 @@ next move.
 The target device is a four-year-old mid-range Android, ~£200 when new.
 
 - **60fps** during drag, deal, and auto-complete. Non-negotiable.
-- **Only `transform` and `opacity`** animate. A lint rule forbids transitioning
-  anything else on a card.
+- **Only `transform` and `opacity`** animate — which includes the individual
+  transform properties `translate`, `scale` and `rotate`, and those are where
+  the small offsets stacked on top of a card's position live: the hover lift,
+  the shake, the draw's arc. A lint rule forbids transitioning anything else on
+  a card.
+- **A card's position and the offsets on top of it are two transitions, and
+  they must not be written as two `transition` shorthands.** Both are one class
+  on `.card`, so the later rule in the stylesheet wins outright: the hover lift
+  disarmed every move of a card under the cursor, which is every card a mouse
+  ever clicks, and taps looked like teleports on a desktop for as long as that
+  was true. The move's half is a custom property (`--move-time`) that a motion
+  class fills in for exactly as long as it is on the element, and the lift's
+  half is written once on `.card`.
 - `will-change: transform` on cards only **while a move is in flight**, removed
   after. Permanent `will-change` on 52 elements costs real memory on cheap GPUs.
 - No layout reads during animation. Card geometry is computed once per resize into

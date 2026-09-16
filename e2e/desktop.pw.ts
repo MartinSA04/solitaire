@@ -152,6 +152,95 @@ test.describe("what the cursor is over", () => {
     const seven = await stripOf(page, CARD.sevenOfHearts);
     await page.mouse.move(seven.x, seven.y);
     await expect(page.locator(".card.is-hovered")).toHaveCount(2);
+
+    // And the pair casts **one** shadow. The lift shadow is 12px down with
+    // 28px of blur and the run overlaps by about nineteen, so a shadow on
+    // every card drops a dark band across the card below it. Only the foot of
+    // the run wears it; see docs/05-interaction-and-motion.md.
+    await expect(page.locator(".card.is-hovered.is-lift-foot")).toHaveCount(1);
+    await expect(
+      page.locator(`.card[data-card="${CARD.sixOfSpades}"]`),
+    ).toHaveClass(/is-lift-foot/);
+  });
+
+  /**
+   * The lift says "this is what a click would move", and after a move that is
+   * a different set of cards — usually including the one that just left, which
+   * would otherwise sit two pixels proud of its new pile with a shadow under
+   * it until the mouse was jogged. Nothing about a card moving is a pointer
+   * event, so nothing asks; the board asks, after every render.
+   */
+  test("takes the lift again after a move, without the mouse moving", async ({
+    page,
+  }) => {
+    await page.goto(DEAL);
+    await dealt(page);
+
+    const ace = await centreOf(page, CARD.aceOfHearts);
+    await page.mouse.move(ace.x, ace.y);
+    await expect(
+      page.locator(`.card[data-card="${CARD.aceOfHearts}"]`),
+    ).toHaveClass(/is-hovered/);
+
+    // Tap it home. The pointer has not moved, but what is under it has: the
+    // card the ace was sitting on, turned face up by the ace leaving. The lift
+    // follows the board rather than the mouse.
+    await page.mouse.down();
+    await page.mouse.up();
+    await expect(page.locator(".card.is-moving")).toHaveCount(0);
+    await expect(
+      page.locator(`.card[data-card="${CARD.aceOfHearts}"]`),
+    ).not.toHaveClass(/is-hovered/);
+    await expect(page.locator(".card.is-hovered")).toHaveCount(1);
+
+    // Undo puts the ace back under the cursor, and the lift comes back with it.
+    // By key, not by button: clicking Undo would take the pointer off the
+    // board, and a cursor that has left the table is not hovering anything.
+    await page.keyboard.press("z");
+    await expect(page.locator(".card.is-undoing")).toHaveCount(0);
+    await expect(
+      page.locator(`.card[data-card="${CARD.aceOfHearts}"]`),
+    ).toHaveClass(/is-hovered/);
+  });
+
+  /**
+   * The regression that made this whole area worth a test. A card's position
+   * and the hover lift are two transitions on two classes of equal weight, and
+   * written as two `transition` shorthands the later one in the stylesheet
+   * wins outright — so a card under the cursor arrived at its new pile
+   * instantly, which on a desktop is every card anyone ever clicks.
+   */
+  test("still animates a card that is under the cursor when it moves", async ({
+    page,
+  }) => {
+    await page.goto(DEAL);
+    await dealt(page);
+
+    const ace = await centreOf(page, CARD.aceOfHearts);
+    await page.mouse.move(ace.x, ace.y);
+    const before = await boxOf(page, CARD.aceOfHearts);
+
+    await page.mouse.down();
+    await page.mouse.up();
+
+    // Armed, and armed on `transform` — not replaced by the lift's transition
+    // on `translate`.
+    const armed = await page
+      .locator(`.card[data-card="${CARD.aceOfHearts}"]`)
+      .evaluate((el) => {
+        const style = getComputedStyle(el);
+        return `${style.transitionProperty} / ${style.transitionDuration}`;
+      });
+    expect(armed).toContain("transform");
+    expect(armed).not.toMatch(/transform,? [^/]*0s/);
+
+    // And it is genuinely in flight: still short of the foundation one frame
+    // after the move, rather than already on it.
+    const during = await boxOf(page, CARD.aceOfHearts);
+    await expect(page.locator(".card.is-moving")).toHaveCount(0);
+    const after = await boxOf(page, CARD.aceOfHearts);
+    expect(after.y).toBeLessThan(before.y);
+    expect(during.y).toBeGreaterThan(after.y);
   });
 });
 

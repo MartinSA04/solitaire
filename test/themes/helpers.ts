@@ -139,6 +139,16 @@ export const DECKS: Variant[] = [
     attribute: '[data-deck="minimal"]',
   },
   {
+    name: "classic",
+    file: "src/decks/classic.css",
+    attribute: '[data-deck="classic"]',
+  },
+  {
+    name: "vintage",
+    file: "src/decks/vintage.css",
+    attribute: '[data-deck="vintage"]',
+  },
+  {
     name: "high-contrast",
     file: "src/decks/high-contrast.css",
     attribute: '[data-deck="high-contrast"]',

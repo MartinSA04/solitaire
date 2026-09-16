@@ -117,8 +117,12 @@ export type Action =
   /** `Escape`, or putting a pickup back down where it came from. */
   | { kind: "release" }
   | { kind: "play"; move: Move }
-  /** A press that meant something the position doesn't allow. */
-  | { kind: "refuse"; card: Card | null }
+  /**
+   * A press that meant something the position doesn't allow, and the cards it
+   * meant it about — all of them, so a run with nowhere to go shakes as the
+   * one thing it is rather than one card of it.
+   */
+  | { kind: "refuse"; cards: readonly Card[] }
   | { kind: "command"; name: Command };
 
 /**
@@ -246,7 +250,7 @@ function activate(
     if (ref.pile === "stock") return stock(state);
     const taken = grab(state, focusedHit(state, focus));
     return taken === null
-      ? { kind: "refuse", card: null }
+      ? { kind: "refuse", cards: [] }
       : { kind: "pick", held: taken };
   }
 
@@ -256,14 +260,14 @@ function activate(
 
   const move = dropMove(state, held, ref);
   return move === null
-    ? { kind: "refuse", card: held.cards[0] ?? null }
+    ? { kind: "refuse", cards: held.cards }
     : { kind: "play", move };
 }
 
 function stock(state: GameState): Action {
   const move = autoMove(state, STOCK_HIT);
   return move === null || !isLegal(state, move)
-    ? { kind: "refuse", card: null }
+    ? { kind: "refuse", cards: [] }
     : { kind: "play", move };
 }
 
@@ -287,6 +291,8 @@ function sendHome(state: GameState, focus: Focus): Action | null {
     move = { kind: "tableauToFoundation", from: ref.column };
   }
 
-  if (move === null || !isLegal(state, move)) return { kind: "refuse", card };
+  if (move === null || !isLegal(state, move)) {
+    return { kind: "refuse", cards: card === null ? [] : [card] };
+  }
   return { kind: "play", move };
 }

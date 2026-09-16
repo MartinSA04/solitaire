@@ -22,6 +22,7 @@ test.use({ viewport: PHONE, hasTouch: true });
 const CARD = {
   sixOfSpades: 3 * 13 + 5,
   sevenOfDiamonds: 1 * 13 + 6,
+  sevenOfHearts: 2 * 13 + 6,
   aceOfHearts: 2 * 13 + 0,
 };
 
@@ -62,6 +63,19 @@ async function settled(target: Locator) {
 async function tapCard(page: Page, target: Locator) {
   const box = await boxOf(target);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.up();
+}
+
+/**
+ * A tap on the *visible strip* of a card in a fan — a few pixels below its own
+ * top edge, which is all of it the card above leaves showing. A card's centre
+ * in a fanned column belongs to whatever is stacked on it, which is exactly
+ * what hit-testing is supposed to say.
+ */
+async function tapStrip(page: Page, target: Locator) {
+  const box = await boxOf(target);
+  await page.mouse.move(box.x + box.width / 2, box.y + 6);
   await page.mouse.down();
   await page.mouse.up();
 }
@@ -272,30 +286,48 @@ test("the same deal number deals the same game", async ({ page }) => {
 });
 
 /**
- * The hint points at a *move*: the card to play and the card to play it onto,
- * pulsing together. Scale and an outline rather than a colour wash, so it
+ * A hint points at a *move*: **the card that can move, and the space it can
+ * move into.** Either mark on its own is half a sentence — a card with a ring
+ * round it does not say where it is going, and a lit-up column does not say
+ * what belongs in it.
+ *
+ * The destination is a pile rather than a card, which is what lets an empty one
+ * be marked at all: an empty column, an empty foundation and a spent stock are
+ * exactly the destinations a hint is most useful about, and none of them has a
+ * card on it to ring. A ring and a lightened slot, never a colour wash, so it
  * reads the same to somebody who cannot separate the wash from the table —
  * docs/08-accessibility.md.
  */
-test("a hint points at both ends of a move", async ({ page }) => {
+test("a hint points at the card and at the space it can go", async ({
+  page,
+}) => {
   const hint = page.getByRole("button", { name: "Hint" });
-  const hinted = page.locator(".card.is-hinting");
+  const from = page.locator(".card.is-hinting");
+  const onto = page.locator(".card.is-hint-target");
+  const slot = page.locator(".slot.is-hint");
 
   // The obvious first move on this deal: the ace of hearts, to a foundation
-  // that is still empty — so there is one card to point at and no other end.
+  // that is still empty. There is no card on the far end, so the slot is what
+  // gets marked — the case the old two-cards hint could not express at all.
   await hint.click();
-  await expect(hinted).toHaveCount(1);
+  await expect(from).toHaveCount(1);
   await expect(card(page, CARD.aceOfHearts)).toHaveClass(/is-hinting/);
+  await expect(onto).toHaveCount(0);
+  await expect(slot).toHaveCount(1);
+  await expect(slot).toHaveAttribute("aria-label", /^Foundation, hearts\./);
 
-  // Taking the advice takes the hint off.
+  // Taking the advice takes the hint off, both halves of it.
   await tapCard(page, card(page, CARD.aceOfHearts));
-  await expect(hinted).toHaveCount(0);
+  await expect(from).toHaveCount(0);
+  await expect(slot).toHaveCount(0);
 
-  // The next one is a move between columns, which has two ends: the six of
-  // spades onto the seven of hearts. Both pulse, in phase.
+  // The next one is a move between columns, and this time the far end has a
+  // card on it: the six of spades onto the seven of hearts.
   await hint.click();
-  await expect(hinted).toHaveCount(2);
+  await expect(from).toHaveCount(1);
   await expect(card(page, CARD.sixOfSpades)).toHaveClass(/is-hinting/);
+  await expect(card(page, CARD.sevenOfHearts)).toHaveClass(/is-hint-target/);
+  await expect(slot).toHaveCount(0);
 });
 
 /**
@@ -315,12 +347,11 @@ test("a hint under reduced motion is an outline that stays", async ({
   const hinted = card(page, CARD.aceOfHearts);
   await expect(hinted).toHaveClass(/is-hinting/);
 
+  // The ring is a pseudo-element over the card, so that is where both the
+  // outline and the breathing live — see `.card.is-hinting` in board.css.
   const look = await hinted.locator(".card-flip").evaluate((element) => {
-    const style = getComputedStyle(element.parentElement as HTMLElement);
-    return {
-      animation: style.animationName,
-      shadow: getComputedStyle(element).boxShadow,
-    };
+    const ring = getComputedStyle(element, "::after");
+    return { animation: ring.animationName, shadow: ring.boxShadow };
   });
   expect(look.animation).toBe("none");
   expect(look.shadow).not.toBe("none");
@@ -328,6 +359,89 @@ test("a hint under reduced motion is an outline that stays", async ({
   // And it is still there a second later, because nothing is animating it away.
   await page.waitForTimeout(1000);
   await expect(hinted).toHaveClass(/is-hinting/);
+});
+
+/**
+ * A run that has nowhere to go is a run being refused. Shaking the card the
+ * finger happened to be on says something different and less true — it says
+ * *that card* cannot go there, when what could not go there was the five cards
+ * you were holding.
+ */
+test("a whole run shakes when it is the whole run that is refused", async ({
+  page,
+}) => {
+  // Build a two-card run: the six of spades onto the seven of hearts.
+  await dragOnto(
+    page,
+    card(page, CARD.sixOfSpades),
+    card(page, CARD.sevenOfHearts),
+  );
+  await settled(card(page, CARD.sixOfSpades));
+
+  // It needs a black eight and there is not one on the board, and an empty
+  // column is a King's. So the tap is refused — and it is the run that is
+  // refused, so it is the run that shakes. The tap goes on the seven's visible
+  // strip, because its centre belongs to the six sitting on it.
+  await tapStrip(page, card(page, CARD.sevenOfHearts));
+  await expect(page.locator(".card.is-shaking")).toHaveCount(2);
+  await expect(card(page, CARD.sixOfSpades)).toHaveClass(/is-shaking/);
+});
+
+/**
+ * A refused drop springs home, and **drops out of the drag band when it lands**.
+ * Left there — which is what shipped — the card sits above every pile on the
+ * table until some unrelated render happens to rewrite it, and that render can
+ * be several moves away. See the z-index note in docs/05-interaction-and-motion.md.
+ */
+test("a card that springs back stops being the card in front", async ({
+  page,
+}) => {
+  const seven = card(page, CARD.sevenOfHearts);
+  const box = await boxOf(seven);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  // Bare table, well below the board: nothing will take it.
+  await page.mouse.move(box.x + 40, box.y + 320, { steps: 12 });
+  await expect(seven).toHaveClass(/is-dragging/);
+  await page.mouse.up();
+
+  await settled(seven);
+  await expect
+    .poll(() => seven.evaluate((el) => Number(el.style.zIndex)))
+    .toBeLessThan(2000);
+});
+
+/**
+ * The other half of tap-to-auto-move, and the half that used to shake at you.
+ * A card can always be *dragged* back off a foundation when a run needs it; on
+ * a phone dragging is the fiddly half of the interface, and a tap that refused
+ * a move the rules allow was the game disagreeing with itself.
+ */
+test("a card already home comes back down when it is tapped", async ({
+  page,
+}) => {
+  // Deal 3's tableau tops are 9♥ A♦ Q♠ 7♥ 3♦ 2♣ 8♣ — an ace to send home, and
+  // a black two for it to come back down onto.
+  await page.goto("/?deal=3");
+  await dealt(page);
+
+  const aceOfDiamonds = 1 * 13 + 0;
+  const twoOfClubs = 0 * 13 + 1;
+  const ace = card(page, aceOfDiamonds);
+  const two = card(page, twoOfClubs);
+
+  const home = await boxOf(page.locator(".slot-foundation").nth(2));
+  await tapCard(page, ace);
+  const onFoundation = await settled(ace);
+  expect(Math.round(onFoundation.x)).toBe(Math.round(home.x));
+
+  // And back down again: the only column that will take it is the two of clubs'.
+  await tapCard(page, ace);
+  const backDown = await settled(ace);
+  const twoBox = await boxOf(two);
+  expect(Math.round(backDown.x)).toBe(Math.round(twoBox.x));
+  expect(backDown.y).toBeGreaterThan(twoBox.y);
+  await expect(page.locator(".card.is-shaking")).toHaveCount(0);
 });
 
 test("a new deal starts over", async ({ page }) => {

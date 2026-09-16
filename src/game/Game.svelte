@@ -23,15 +23,18 @@
   import { CardLayer, type Motion } from "./CardLayer.ts";
   import { Drag, type DragHost } from "./Drag.ts";
   import {
+    type PileRef,
     FOUNDATION_ORDER,
     PILE_ORDER,
     metricsFor,
     pageOf,
+    pileCards,
+    samePile,
   } from "./Layout.ts";
   import {
     dealOrder,
     drawnCards,
-    hintCards,
+    hintOf,
     homedCard,
     predealt,
   } from "./motion.ts";
@@ -148,6 +151,16 @@
   let record: BeatenRecord | null = $state(null);
   /** A hint with nothing to point at says so, in the only text over the board. */
   let notice = $state("");
+  /**
+   * The empty pile a hint is pointing into, if it is pointing into one.
+   *
+   * A hint marks two things — the cards that can move, and the space they can
+   * move into — and the second of them is a *pile*, which the card layer has
+   * no business knowing about. When the destination has a card on it, that
+   * card wears the mark and this stays `null`; when it does not, the slot does,
+   * and an empty column is exactly the destination a hint is most useful about.
+   */
+  let hintTo: PileRef | null = $state(null);
 
   /**
    * The two live regions, alternating.
@@ -264,6 +277,11 @@
    * not change while a card is in the air.
    */
   const targets = $derived(legalTargets(position, held ?? dragging));
+
+  /** The same shape as {@link targets}: one flag per pile, in PILE_ORDER. */
+  const hints = $derived(
+    PILE_ORDER.map((ref) => hintTo !== null && samePile(ref, hintTo)),
+  );
 
   let stats = $state(persist.stats());
   let daily = $state(persist.daily());
@@ -421,7 +439,7 @@
     const before = game.state;
     if (!game.play(move)) return false;
     clock.start();
-    layer?.clearHint();
+    forgetHint();
 
     // A deal counts as played the moment a move is made on it. Dealing and
     // walking away is not a game, and counting it would make the win rate a
@@ -445,7 +463,10 @@
         render("draw", drawnCards(before, game.state));
         break;
       case "recycle":
-        render("recycle");
+        // Top of the waste first, so it reads as a pile being gathered up. In
+        // draw-1 every card in the waste is at the same coordinates, and two
+        // dozen of them leaving together looks exactly like one leaving.
+        render("recycle", [...before.waste].reverse());
         break;
       default:
         render(motion);
@@ -463,7 +484,7 @@
   function undo(): void {
     const undone = game.undo();
     if (undone === null) return;
-    layer?.clearHint();
+    forgetHint();
     render("undo");
     sync();
     save();
@@ -500,10 +521,22 @@
       say(NO_MOVES);
       return;
     }
-    layer?.hint(hintCards(game.state, move));
-    // Spelled out as well as pulsed: a hint that is only a glow on the board
-    // is a hint half the people it exists for cannot use.
+    const pointed = hintOf(game.state, move);
+    const onto = topOf(pileCards(game.state, pointed.to));
+    layer?.hint(pointed.cards, onto === undefined ? [] : [onto]);
+    // The destination is marked as a *slot* only when there is no card on it
+    // to put a ring round — and that is the destination a hint is most needed
+    // for: an empty column, an empty foundation, a spent stock.
+    hintTo = onto === undefined ? pointed.to : null;
+    // Spelled out as well as drawn: a hint that is only a ring on the board is
+    // a hint half the people it exists for cannot use.
     announce(announceHint(game.state, move));
+  }
+
+  /** Both halves of a hint, forgotten together. */
+  function forgetHint(): void {
+    layer?.clearHint();
+    hintTo = null;
   }
 
   /**
@@ -637,7 +670,9 @@
         break;
 
       case "refuse":
-        if (action.card !== null) layer?.shake(action.card);
+        // The whole run, not the card at the bottom of it: what was refused
+        // was the five cards in hand, and shaking one of them says otherwise.
+        layer?.shake(action.cards);
         announce(NOT_LEGAL);
         break;
 
@@ -804,7 +839,7 @@
     sequence = null;
     clearTimeout(finishTimer);
     finishing = false;
-    layer?.clearHint();
+    forgetHint();
     notice = "";
     record = null;
     // A new deal is a new board: nothing is in hand, and the focus goes back
@@ -830,6 +865,8 @@
 
   let layer: CardLayer | null = null;
   let sequence: WinSequence | null = null;
+  /** The pointer handler, for the one thing the board has to tell it: see `render`. */
+  let dragger: Drag | null = null;
   /**
    * Re-measure the board and put the cards where the new numbers say, set up
    * alongside the card layer it writes to. `"move"` slides them, which is the
@@ -860,6 +897,12 @@
 
   function render(motion: Motion, order?: readonly number[]): void {
     layer?.render(displayed(), motion, order);
+    // The hover lift says "this is what a click would move", and after a
+    // repaint that is a different set of cards — usually including the one
+    // that just left, which would otherwise sit two pixels proud of its new
+    // pile until the mouse was jogged. No pointer event happens when a card
+    // moves, so nothing would ask; the board asks.
+    dragger?.refresh();
   }
 
   /**
@@ -998,8 +1041,8 @@
       state: () => game.state,
       metrics: () => cards.metrics,
       play,
-      illegal: (card) => {
-        if (card !== null) cards.shake(card);
+      illegal: (run) => {
+        cards.shake(run);
       },
       peek: (column) => cards.peek(column, displayed()),
       hover: (over) => cards.hover(won ? [] : over),
@@ -1008,6 +1051,7 @@
       },
     };
     const drag = new Drag(board, cards, host);
+    dragger = drag;
 
     // Geometry is computed once per resize and never during a move. The first
     // one is taken here rather than waited for, so that the undealt board is on
@@ -1056,6 +1100,7 @@
       observer.disconnect();
       remeasure = null;
       drag.destroy();
+      if (dragger === drag) dragger = null;
       cards.destroy();
       sequence?.destroy();
       sequence = null;
@@ -1236,6 +1281,7 @@
         class="slot slot-stock"
         type="button"
         class:is-legal={targets[STOCK_AT]}
+        class:is-hint={hints[STOCK_AT]}
         tabindex={focus.at === STOCK_AT ? 0 : -1}
         aria-label={pileLabel(position, PILE_ORDER[STOCK_AT])}
         bind:this={pileEls[STOCK_AT]}
@@ -1248,6 +1294,7 @@
         class="slot slot-waste"
         type="button"
         class:is-legal={targets[WASTE_AT]}
+        class:is-hint={hints[WASTE_AT]}
         tabindex={focus.at === WASTE_AT ? 0 : -1}
         aria-label={pileLabel(position, PILE_ORDER[WASTE_AT])}
         bind:this={pileEls[WASTE_AT]}
@@ -1263,6 +1310,7 @@
           type="button"
           style="--pulse-delay: {index * PULSE_GAP_MS}ms"
           class:is-legal={targets[FOUNDATION_AT + index]}
+          class:is-hint={hints[FOUNDATION_AT + index]}
           tabindex={focus.at === FOUNDATION_AT + index ? 0 : -1}
           aria-label={pileLabel(position, PILE_ORDER[FOUNDATION_AT + index])}
           bind:this={pileEls[FOUNDATION_AT + index]}
@@ -1286,6 +1334,7 @@
           class="slot slot-column"
           type="button"
           class:is-legal={targets[TABLEAU_AT + column]}
+          class:is-hint={hints[TABLEAU_AT + column]}
           tabindex={focus.at === TABLEAU_AT + column ? 0 : -1}
           aria-label={pileLabel(position, PILE_ORDER[TABLEAU_AT + column])}
           bind:this={pileEls[TABLEAU_AT + column]}

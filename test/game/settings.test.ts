@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   AUTO,
-  BACKS,
   BOOTSTRAP,
   DECKS,
   DEFAULTS,
@@ -15,9 +14,10 @@ import {
 
 /**
  * The settings are data, and what a set of them resolves to is arithmetic
- * rather than a rendering. The part worth pinning is the one piece of
- * behaviour that is not a straight copy: a table brings a deck and a back with
- * it until the player says otherwise.
+ * rather than a rendering. The part worth pinning is the two pieces of
+ * behaviour that are not a straight copy: a table brings a deck with it until
+ * the player says otherwise, and a deck brings its back — always, because a
+ * back is not something anybody chooses.
  */
 
 const with_ = (patch: Partial<Settings>): Settings => ({
@@ -26,7 +26,7 @@ const with_ = (patch: Partial<Settings>): Settings => ({
 });
 
 describe("settings", () => {
-  it("opens on the warm table with its own deck and back", () => {
+  it("opens on the warm table with its own deck, and that deck's back", () => {
     assert.deepEqual(resolve(DEFAULTS), {
       theme: "warm",
       deck: "minimal",
@@ -34,18 +34,31 @@ describe("settings", () => {
     });
   });
 
-  it("hands the minimal table its flat back", () => {
-    // The whole of what "a theme has a default deck" means: picking the
-    // Minimal table should not leave the warm table's woven lattice on it.
-    assert.deepEqual(resolve(with_({ theme: "minimal" })), {
-      theme: "minimal",
-      deck: "minimal",
-      back: "solid",
-    });
+  /**
+   * The rule the settings sheet lost a whole section to: **a back belongs to
+   * the deck.** A real pack comes printed on one, and offering it separately
+   * made it possible to put the flat accessibility back on the French deck's
+   * Victorian courts — two decks in one pack.
+   */
+  it("gives every deck its own back, and gives the player no say in it", () => {
+    const backs = new Map(
+      DECKS.map((deck) => [deck, resolve(with_({ deck })).back]),
+    );
+    assert.deepEqual([...backs.values()].sort(), [
+      "argyle",
+      "dots",
+      "lattice",
+      "pinstripe",
+      "ripple",
+      "solid",
+    ]);
+    // No two decks share one, which is the point: the back is how a deck is
+    // recognised face-down, and twenty-eight of them are face-down at deal.
+    assert.equal(new Set(backs.values()).size, DECKS.length);
   });
 
-  it("keeps a chosen deck and back across a change of table", () => {
-    const chosen = with_({ deck: "four-colour", back: "dots" });
+  it("keeps a chosen deck, and its back, across a change of table", () => {
+    const chosen = with_({ deck: "four-colour" });
     for (const theme of ["warm", "minimal", "dark"] as const) {
       const resolved = resolve({ ...chosen, theme });
       assert.equal(resolved.deck, "four-colour");
@@ -67,7 +80,7 @@ describe("settings", () => {
     assert.deepEqual(root.dataset, {
       theme: "dark",
       deck: "four-colour",
-      back: "lattice",
+      back: "dots",
     });
   });
 });
@@ -96,16 +109,10 @@ describe("the bootstrap in the document head", () => {
   it("writes what apply() would, for every choice a player can make", () => {
     for (const theme of THEMES) {
       for (const deck of [AUTO, ...DECKS] as Settings["deck"][]) {
-        for (const back of [AUTO, ...BACKS] as Settings["back"][]) {
-          const settings = with_({ theme, deck, back });
-          const root = { dataset: {} as Record<string, string> };
-          apply(settings, root as never);
-          assert.deepEqual(
-            run(settings),
-            root.dataset,
-            `${theme} / ${deck} / ${back}`,
-          );
-        }
+        const settings = with_({ theme, deck });
+        const root = { dataset: {} as Record<string, string> };
+        apply(settings, root as never);
+        assert.deepEqual(run(settings), root.dataset, `${theme} / ${deck}`);
       }
     }
   });
@@ -121,7 +128,10 @@ describe("the bootstrap in the document head", () => {
    */
   it("writes a real table for anything else it finds in storage", () => {
     const fallback = { ...resolve(DEFAULTS) };
-    assert.deepEqual(run({ theme: "neon", deck: "wombat", back: 4 }), fallback);
+    assert.deepEqual(run({ theme: "neon", deck: "wombat" }), fallback);
+    // A back left over from the version of this that let you pick one is not a
+    // back: it is a field nothing reads any more.
+    assert.deepEqual(run({ theme: "warm", back: "dots" }), fallback);
     assert.deepEqual(run(null), fallback);
     assert.deepEqual(run("a string"), fallback);
     assert.deepEqual(run({ deck: AUTO }), fallback);

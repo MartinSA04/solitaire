@@ -1,0 +1,49 @@
+/*
+ * The Classic deck — ours, and the one that looks like the deck in the drawer.
+ *
+ * A deck in this codebase owns the ink and the type and nothing else (see
+ * src/decks/minimal.css), which sounds like too little to make a second deck
+ * out of and is not: a serif rank at a traditional weight, beside a crimson
+ * that is a printed card's red rather than a screen's, is most of what makes a
+ * card look like a card. It is the Minimal deck's geometry set in a book face.
+ *
+ * It does *not* override `--card-bg`. That is the difference between this and
+ * the two decks below it in the sheet: Classic is a way of setting the table's
+ * own card, so it is cream on the warm table and white on the Minimal one,
+ * where High-contrast and Vintage each bring their own paper and are the same
+ * deck wherever they are put.
+ *
+ * Its back is the argyle — see `DECK_BACK` in src/game/settings.ts, which is
+ * the only place a deck's back is named.
+ */
+[data-deck="classic"] {
+  /*
+   * A body face, not a UI face. There is no webfont here and there is not
+   * going to be one — a deck is not worth a network request, and every system
+   * on the list has had a serviceable serif since about 1996.
+   */
+  --index-font:
+    Georgia, "Times New Roman", "Liberation Serif", "DejaVu Serif", serif;
+
+  --card-fg: #16130f;
+  --suit-clubs: #16130f;
+  --suit-spades: #16130f;
+  /*
+   * 9:1 on a pure white card, which is the lightest any table offers, so it
+   * clears docs/08's 7:1 on all three with room to spare. A printed card's
+   * pillarbox red is nowhere near it; this is that red taken down until it is.
+   */
+  --suit-hearts: #8c1f14;
+  --suit-diamonds: #8c1f14;
+
+  /*
+   * A serif rank reads smaller than a sans one at the same size — the strokes
+   * are thinner and the counters tighter — so it is set a couple of points
+   * larger than Minimal's to hold the same legibility in the ~28% of a card
+   * that is visible in a fanned column.
+   */
+  --index-size: 0.39;
+  --index-weight: 700;
+  --index-suit-scale: 0.74;
+  --pip-size: 0.54;
+}

@@ -1,0 +1,40 @@
+/*
+ * The Vintage deck — ours: a serif rank in sepia on ivory board.
+ *
+ * The second of the two decks that bring their own paper. High-contrast does
+ * it to be the same deck on every table whatever the table's card looks like;
+ * this one does it because the paper *is* the deck. An aged card is not a
+ * white card with old-looking ink on it, and a warm ground under a warm-black
+ * rank is the whole effect.
+ *
+ * Every ink still clears docs/08's 7:1 against that ivory, which is the only
+ * thing this is not allowed to be romantic about: the ground is lighter than
+ * white by enough to matter — 7.9:1 on it is 9:1 on white — so the reds are
+ * a shade deeper than Classic's rather than a shade browner.
+ *
+ * Its back is the pinstripe — see `DECK_BACK` in src/game/settings.ts.
+ */
+[data-deck="vintage"] {
+  --index-font:
+    Georgia, "Times New Roman", "Liberation Serif", "DejaVu Serif", serif;
+
+  /* Aged board. Warm and plainly not white, and still light enough to keep
+     every ink above 7:1 — the red clears it by a whisker at 8:1. */
+  --card-bg: #efe1c8;
+  --card-fg: #33281c;
+  --suit-clubs: #33281c;
+  --suit-spades: #33281c;
+  --suit-hearts: #7d1a10;
+  --suit-diamonds: #7d1a10;
+
+  /*
+   * Smaller and lighter than Classic's, which is the other half of "old": a
+   * modern deck shouts its rank at you because it is designed to be read in a
+   * fan of thirteen, and this one is not. It is still above the size the
+   * corner index has to be at a 46px card — that floor is not a taste.
+   */
+  --index-size: 0.35;
+  --index-weight: 600;
+  --index-suit-scale: 0.8;
+  --pip-size: 0.5;
+}

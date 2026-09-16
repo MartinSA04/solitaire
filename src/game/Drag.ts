@@ -38,8 +38,12 @@ export interface DragHost {
   metrics(): Metrics | null;
   /** Play a move and repaint. `false` if the engine refused it. */
   play(move: Move, motion: Motion): boolean;
-  /** A gesture that meant something but could not happen. */
-  illegal(card: Card | null): void;
+  /**
+   * A gesture that meant something but could not happen, and the cards it was
+   * about — all of them, because a run that has nowhere to go is a run being
+   * refused, not its bottom card.
+   */
+  illegal(cards: readonly Card[]): void;
   /** Fan a column out under a long press, or let it back down with `null`. */
   peek(column: number | null): void;
   /**
@@ -129,8 +133,26 @@ export class Drag {
     this.#host.hover([]);
   };
 
+  /**
+   * Take the hover lift again from where the pointer already is.
+   *
+   * The lift says "this is what a click would move", and after a move that is
+   * a different set of cards — usually including the one that just left, which
+   * is otherwise still sitting two pixels proud of its new pile with a lift
+   * shadow under it until the mouse is jogged. Nothing about that is a pointer
+   * event, so nothing would ask; the board asks instead, after every render.
+   */
+  refresh(): void {
+    if (!this.#hovers || this.#at === null) return;
+    this.#scheduleFrame();
+  }
+
   #scheduleHover(event: PointerEvent): void {
     this.#at = { x: event.clientX, y: event.clientY };
+    this.#scheduleFrame();
+  }
+
+  #scheduleFrame(): void {
     if (this.#frame !== 0) return;
     this.#frame = requestAnimationFrame(() => {
       this.#frame = 0;
@@ -253,6 +275,11 @@ export class Drag {
     const press = this.#press;
     if (press === null || press.pointerId !== event.pointerId) return;
     this.#press = null;
+    // Where the pointer finished, so the lift can be retaken from here once
+    // the move this gesture asked for has repainted the board.
+    if (this.#hovers && event.pointerType === "mouse") {
+      this.#at = { x: event.clientX, y: event.clientY };
+    }
 
     // A long press is its own gesture: letting go closes the column and does
     // nothing else. Without this, every peek would also play an auto-move.
@@ -296,7 +323,10 @@ export class Drag {
     const hit = press.hit;
     const move = autoMove(this.#host.state(), hit);
     if (move !== null && this.#host.play(move, "move")) return;
-    this.#host.illegal(hit.card);
+    // What the tap was about: the run it would have carried, or — on a
+    // face-down card, which picks nothing up — the card that was pressed.
+    const run = grab(this.#host.state(), hit)?.cards;
+    this.#host.illegal(run ?? (hit.card === null ? [] : [hit.card]));
   }
 
   /**

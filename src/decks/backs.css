@@ -3,29 +3,33 @@
  * back is the most-seen surface in the game (twenty-eight of them on screen at
  * deal time) and the cheapest thing in it to draw.
  *
- * Three ship: Lattice (the default, a fine diagonal weave), Dot grid, and
- * Solid — flat with just its border, for the Minimal table and for anyone who
- * finds a pattern noisy.
+ * **A back is not something the player picks.** It belongs to the deck, the way
+ * it does in a real pack: `DECK_BACK` in src/game/settings.ts names one per
+ * deck and that is the whole of the choosing. What is left here is the drawing.
+ *
+ * It is still selected by its own attribute rather than by `[data-deck]`, and
+ * that is deliberate: a back is recoloured by the *table* — `--back-bg`,
+ * `--back-ink` and `--back-edge` are theme tokens — so keeping it a separate
+ * attribute is what lets one file hold six patterns that no deck file and no
+ * theme file has to know about.
  *
  * docs/04 specified these as one SVG pattern each, recoloured per theme by a
  * CSS variable. They are gradients instead, for the reason that sentence
  * itself contains: an external SVG cannot read a custom property and a data
  * URI cannot either, so "an SVG file" and "recoloured per theme" are mutually
- * exclusive. A gradient reads `--back-bg` and `--back-ink` directly, costs no
- * request at all, and is expressive enough for three geometric patterns. A
- * fourth back that needs real drawing would ship as a file and hard-code its
- * own colours.
+ * exclusive. A gradient reads `--back-ink` directly, costs no request at all,
+ * and is expressive enough for six geometric patterns. A seventh that needs
+ * real drawing would ship as a file and hard-code its own colours.
  *
- * Each back is a token rather than a rule, so the whole of the switch is one
- * attribute on <html>, and `.card-back` in board.css stays unaware that there
- * is more than one.
- *
- * Every measurement here is a percentage of the card, never a pixel. A pattern
+ * Every measurement here is a percentage of the card, never a pixel — except
+ * the line weights, which are hairlines and want to stay hairlines. A pattern
  * pinned to pixels is a coarse weave on a phone and a fine one on a desktop,
  * which makes one back look like two. (Percentages are the only way to say
  * that here: a custom property holding `var(--card-w)` would resolve it
  * against :root, where the board's measurements do not reach.)
  */
+
+/* Minimal's: a fine diagonal weave, and the back most of the product wears. */
 :root,
 [data-back="lattice"] {
   --back-pattern:
@@ -34,12 +38,64 @@
   --back-pattern-size: auto;
 }
 
+/*
+ * Classic's: the same two threads, four times the pitch and twice the weight —
+ * a diamond harlequin rather than a weave. It is the one pattern here that
+ * reads as a pattern at arm's length rather than as a texture, which is what a
+ * traditional back is for.
+ */
+[data-back="argyle"] {
+  --back-pattern:
+    repeating-linear-gradient(
+      45deg,
+      var(--back-ink) 0 2px,
+      transparent 2px 20%
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      var(--back-ink) 0 2px,
+      transparent 2px 20%
+    );
+  --back-pattern-size: auto;
+}
+
+/* Vintage's: vertical hairlines, close together, like a share certificate. */
+[data-back="pinstripe"] {
+  --back-pattern: repeating-linear-gradient(
+    90deg,
+    var(--back-ink) 0 1px,
+    transparent 1px 7%
+  );
+  --back-pattern-size: auto;
+}
+
+/*
+ * French's: concentric rings from the middle of the card. The Bellot deck's
+ * own printed back is a set of nested frames, and this is the nearest thing
+ * a gradient can say — near enough that the two look like the same pack, and
+ * ours rather than a redrawing of theirs.
+ */
+[data-back="ripple"] {
+  --back-pattern: repeating-radial-gradient(
+    circle at 50% 50%,
+    transparent 0 5.5%,
+    var(--back-ink) 5.5% 6.6%
+  );
+  --back-pattern-size: auto;
+}
+
+/* Four-colour's. */
 [data-back="dots"] {
   --back-pattern: radial-gradient(var(--back-ink) 0 22%, transparent 24% 100%);
   /* 16% of the width and the same length down: 2.5 : 3.5 makes that 11.4%. */
   --back-pattern-size: 16% 11.4%;
 }
 
+/*
+ * High-contrast's: flat, with just its border. A pattern is noise to somebody
+ * who is already working to read the board, and this is the deck that exists
+ * for them.
+ */
 [data-back="solid"] {
   --back-pattern: none;
   --back-pattern-size: auto;

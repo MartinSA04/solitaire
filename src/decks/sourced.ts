@@ -91,9 +91,34 @@ export const SOURCED: readonly SourcedDeck[] = [
     id: "french",
     name: "French",
     sprite: "/decks/french/deck.svg",
-    // 169.075 × 244.64 is 1 : 1.447, against the 1 : 1.4 of a poker card. The
-    // three per cent goes into the height rather than cropping the border off.
-    viewBox: "0 0 169.075 244.640",
+    /*
+     * **Not the sprite's own viewBox**, which is what shipped first and is why
+     * the French deck looked broken: every card was drawn small and high
+     * inside its element, with the deck's own black border cutting across the
+     * face on two edges and its bottom-right index falling off the corner.
+     *
+     * Two things are wrong with the declared 169.075 × 244.640. The first is
+     * that 8.12 units of that height are bleed: a card in this file is the
+     * `#base` path, x from 1.25 to 167.825 and y from 1.25 to 236.52, with a
+     * 2.5-wide stroke centred on that outline. The second is that `#base` is a
+     * whole card — white paper, rounded corners, black edge — and so is the
+     * element it is being drawn into. Two cards, one drawn by a stylesheet at
+     * an 8px radius and one by a 19th-century engraving at 4.5px, cannot be
+     * made to coincide; and because our `.card-face` clips to its own rounded
+     * rectangle, which edge of the drawn one survived depended on where the
+     * card happened to land on the pixel grid.
+     *
+     * So this crops to the *inside* of the deck's own border — x 2.5 to
+     * 166.575, y 2.5 to 235.27 — and the deck's paper, corners and edge are
+     * simply not drawn. What is left is the engraving, on the card this
+     * product draws for every other deck. `--art-paper` (below) is what that
+     * card is then filled with, so the sliver of it visible at each corner is
+     * this deck's white rather than the table's.
+     *
+     * 164.075 × 232.77 is 1 : 1.419 against the 1 : 1.4 of a poker card, so
+     * `preserveAspectRatio="none"` stretches it by a bit over one per cent.
+     */
+    viewBox: "2.5 2.5 164.075 232.770",
     paper: "#ffffff",
     symbol: bellotSymbol,
     credit: {
@@ -140,10 +165,24 @@ export const OURS: readonly Credit[] = [
     note: "♠ black, ♥ red, ♦ blue, ♣ green.",
   },
   {
-    name: "Card backs — Lattice, Dot grid, Solid",
+    name: "Classic",
+    authors: ["This project"],
+    licence: "MIT, with the rest of the site",
+    source: "src/decks/classic.css",
+    note: "Minimal's geometry set in a book serif, with a printed card's crimson. It takes the table's own card colour.",
+  },
+  {
+    name: "Vintage",
+    authors: ["This project"],
+    licence: "MIT, with the rest of the site",
+    source: "src/decks/vintage.css",
+    note: "A serif rank in sepia on ivory board. It brings its own paper, so it is the same deck on every table.",
+  },
+  {
+    name: "Card backs — Lattice, Argyle, Pinstripe, Ripple, Dot grid, Solid",
     authors: ["This project"],
     licence: "MIT, with the rest of the site",
     source: "src/decks/backs.css",
-    note: "Gradients, recoloured by whichever table is on.",
+    note: "Gradients, recoloured by whichever table is on. A back belongs to its deck rather than being chosen separately, so there is one per deck.",
   },
 ];

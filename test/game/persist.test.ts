@@ -67,7 +67,6 @@ describe("settings", () => {
     const chosen: Settings = {
       theme: "dark",
       deck: "french",
-      back: "dots",
       sound: false,
       timer: false,
       cardSize: "large",

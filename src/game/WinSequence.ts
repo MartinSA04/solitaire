@@ -212,6 +212,12 @@ export class WinSequence {
   destroy(): void {
     this.#stopLoop();
     this.#clearTimers();
+    // The canvas belongs to this celebration and to nothing after it. Torn
+    // down mid-fade — New Deal pressed during the skip, say — the timer that
+    // would have cleared it goes with the rest, and fifty-two cards' worth of
+    // trails stay lying over whatever board replaces this one.
+    this.#trails.clear();
+    this.#options.canvas.classList.remove("is-fading");
     // Released, not closed: the graph outlives the celebration, and the next
     // game is played through the same one.
     this.#audio.release();
@@ -447,18 +453,27 @@ export class WinSequence {
     this.#after(CLEAR_MS, () => this.#enter("card"));
   }
 
-  /** The trails wash out on the same mechanism that drew them, four times as fast. */
+  /**
+   * The trails wash out on the same mechanism that drew them, four times as
+   * fast — and then the canvas is cleared outright, however the wash-out ended.
+   *
+   * Both of those matter. Stage 3's own timer moves the stage on at exactly
+   * `CLEAR_MS` and this loop stops at exactly `CLEAR_MS`, so the two race, and
+   * the loop used to lose: it returned on the stage change without ever
+   * reaching its `clear()`. Subtracting 22% of the alpha thirty-six times
+   * leaves one or two units of it per pixel, which is invisible against a dark
+   * table and a grey haze across the next deal.
+   */
   #washOut(): void {
     const from = performance.now();
     const fade = (): void => {
-      if (this.#stage !== "clear") return;
-      this.#trails.frame([], CLEAR_FADE_ALPHA, false);
-      if (performance.now() - from < CLEAR_MS) {
-        this.#frame = requestAnimationFrame(fade);
+      if (this.#stage !== "clear" || performance.now() - from >= CLEAR_MS) {
+        this.#trails.clear();
+        this.#frame = null;
         return;
       }
-      this.#trails.clear();
-      this.#frame = null;
+      this.#trails.frame([], CLEAR_FADE_ALPHA, false);
+      this.#frame = requestAnimationFrame(fade);
     };
     this.#frame = requestAnimationFrame(fade);
   }

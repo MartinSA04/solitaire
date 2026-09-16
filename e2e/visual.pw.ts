@@ -41,19 +41,26 @@ const TABLES = [
 ] as const;
 
 /**
- * The decks we draw take their ink from the table, so each one of them against
- * each table is a combination that can actually go wrong, and all nine are
- * here. The sourced deck cannot: its art is the same art on every table, and
- * all that changes behind it is the felt. It is shot on the warm table and on
- * the dark one — a white-paper deck on a near-black table being the pairing
- * worth looking at — rather than on all three.
+ * A deck that takes its ink from the table is a different drawing on each of
+ * them, so every such pairing is a combination that can actually go wrong and
+ * all of them are here. A deck that brings its own paper — High-contrast,
+ * Vintage, and the sourced French art — is the same drawing wherever it is
+ * put, and all that changes behind it is the felt; those are shot on the warm
+ * table and on the dark one, a light card on a near-black table being the
+ * pairing worth looking at, rather than on all three.
  *
  * The trimming is not fastidiousness. Every baseline is a quarter of a
  * megabyte of PNG committed for good, and a suite nobody wants to regenerate
  * is a suite that gets deleted.
+ *
+ * The card back comes with the deck rather than being chosen — see `DECK_BACK`
+ * in src/game/settings.ts — so each of these shots is also the only look at
+ * the back that deck is printed on.
  */
 const DECKS = [
   { id: "minimal", label: "Minimal", tables: ["warm", "minimal", "dark"] },
+  { id: "classic", label: "Classic", tables: ["warm", "minimal", "dark"] },
+  { id: "vintage", label: "Vintage", tables: ["warm", "dark"] },
   {
     id: "high-contrast",
     label: "High contrast",

@@ -1,9 +1,9 @@
 import { type Page, expect, test } from "@playwright/test";
 
 /**
- * The menu sheet: the deals you can start, every table, deck and back
- * available on first load, and a choice that shows on the board before the
- * sheet has even closed.
+ * The menu sheet: the deals you can start, every table and deck available on
+ * first load, and a choice that shows on the board before the sheet has even
+ * closed.
  *
  * What is asserted here is the *wiring* — that a choice becomes the one
  * attribute the stylesheets hang off, and that the sheet behaves like a dialog
@@ -46,7 +46,9 @@ async function openMenu(page: Page) {
   await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
 }
 
-test("a table brings its own deck and back with it", async ({ page }) => {
+test("a table brings its own deck with it, and the deck brings its back", async ({
+  page,
+}) => {
   await openSheet(page);
   await expect
     .poll(() => look(page))
@@ -56,16 +58,33 @@ test("a table brings its own deck and back with it", async ({ page }) => {
       back: "lattice",
     });
 
-  // Minimal's back is the flat one: picking that table should not leave the
-  // warm table's woven lattice on it. See docs/04-art-direction.md.
+  // A table changes the deck's *colours*, not which deck it is, so the back
+  // does not move either. See docs/04-art-direction.md.
   await choose(page, "Table", "Minimal");
   await expect
     .poll(() => look(page))
     .toEqual({
       theme: "minimal",
       deck: "minimal",
-      back: "solid",
+      back: "lattice",
     });
+});
+
+test("there is no way to choose a back, because a deck comes with one", async ({
+  page,
+}) => {
+  await openSheet(page);
+  await expect(page.getByRole("group", { name: "Card back" })).toHaveCount(0);
+
+  // Each deck's own, and no two the same: face-down is how a deck is
+  // recognised, and twenty-eight cards are face-down at deal time.
+  const backs: string[] = [];
+  for (const deck of ["Classic", "Vintage", "High contrast", "Four colour"]) {
+    await choose(page, "Cards", deck);
+    await expect.poll(async () => (await look(page)).back).not.toBe("lattice");
+    backs.push((await look(page)).back as string);
+  }
+  expect(new Set(backs).size).toBe(backs.length);
 });
 
 test("a chosen deck survives a change of table", async ({ page }) => {
@@ -80,7 +99,7 @@ test("a chosen deck survives a change of table", async ({ page }) => {
     .toEqual({
       theme: "dark",
       deck: "four-colour",
-      back: "lattice",
+      back: "dots",
     });
 });
 

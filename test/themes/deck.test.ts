@@ -31,7 +31,8 @@ import {
  * What a deck is allowed to say. A deck owns the ink and the type; everything
  * else about a card — how warm its background is, its edge, its shadow —
  * belongs to the table, which is why `--card-bg` is the one surface token on
- * this list and only the High-contrast deck sets it.
+ * this list, and only the two decks that deliberately bring their own paper
+ * set it.
  */
 const DECK_TOKENS = [
   "--card-bg",
@@ -40,14 +41,16 @@ const DECK_TOKENS = [
   "--suit-diamonds",
   "--suit-hearts",
   "--suit-spades",
+  "--index-font",
   "--index-size",
   "--index-weight",
   "--index-suit-scale",
   "--pip-size",
 ];
 
-/** The type scale every card face is drawn from, whatever its colours. */
+/** The type every card face is drawn in, whatever its colours. */
 const GEOMETRY = [
+  "--index-font",
   "--index-size",
   "--index-suit-scale",
   "--index-weight",

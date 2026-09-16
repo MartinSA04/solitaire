@@ -108,7 +108,7 @@ someone playing fifty games.
 ## M4 — Themes and decks
 
 - The three tables from [04](04-art-direction.md), fully tokenised.
-- Our own decks: Minimal, High-contrast, Four-colour.
+- Our own decks: Minimal, Classic, Vintage, High-contrast, Four-colour.
 - Sourced decks wired in, with `LICENSE` files and the `/credits` page.
 - Card backs.
 - Settings sheet.
@@ -119,9 +119,22 @@ Minimal deck is legible at 46px (the flagged open question — if it isn't, a so
 deck becomes the phone default), and every licence obligation is honoured on a page
 a user can reach in two taps.
 
-Built: the three tables, our three decks and the three backs — all of them sets
-of custom properties rather than assets — the settings sheet that switches
-them, one sourced deck with its licence, `/credits`, and the visual suite.
+Built: the three tables, our five decks and six backs — all of them sets of
+custom properties rather than assets — the settings sheet that switches them,
+one sourced deck with its licence, `/credits`, and the visual suite.
+
+The back stopped being a choice. This doc and [04](04-art-direction.md) both
+called a deck and its back "independently swappable", and shipping it that way
+showed what that costs: a quarter of the settings sheet spent on a decision
+nobody has to make, and the standing possibility of putting the flat
+accessibility back on the French deck's Victorian courts. A back belongs to its
+deck now — six decks, six backs, no two the same.
+
+A second *sourced* deck was looked for afterwards and not found. The candidates
+that are genuinely vector and from a nameable source fail the two ways the ones
+below do: 8.5MB of traced courts, or published one file per card out of a
+deck-builder, which would mean shipping a sprite we assembled rather than a
+file its author published. The variety went into two more token decks instead.
 
 Two of the three halves of the bar are met and mechanised. The contrast table
 is asserted by `test/themes/`, which reads the stylesheets and composites the

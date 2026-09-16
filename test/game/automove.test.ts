@@ -70,18 +70,27 @@ describe("tapping a card that can go home", () => {
     assert.deepEqual(tapWaste(state), { kind: "wasteToFoundation" });
   });
 
-  it("plays it across instead while a black six is still looking for a home", () => {
-    // The move players almost never want, from docs/05-interaction-and-motion.md.
+  /**
+   * The rule this one used to assert the opposite of: a legal foundation move
+   * was held back while a black six was still looking for a home, on the
+   * grounds that sending the 7♥ up is a move players almost never want.
+   *
+   * It goes home. The guard made the most-used gesture in the game
+   * unpredictable — two cards that look equally home-able doing different
+   * things, for a reason nothing on screen explains — and it was overriding
+   * the player on 2.7% of all taps. See the note on rule 1 in automove.ts, and
+   * `scripts/audit-automove.ts` for what the change costs.
+   */
+  it("sends it up even while a black six is still looking for a home", () => {
     const state = makeState({
       foundations: "6♥",
       waste: "7♥",
       tableau: ["8♠"],
     });
-    assert.deepEqual(tapWaste(state), { kind: "wasteToTableau", to: 0 });
+    assert.deepEqual(tapWaste(state), { kind: "wasteToFoundation" });
   });
 
-  it("sends it up anyway when there is nowhere else for it to go", () => {
-    // A tap on the only playable card doing nothing reads as broken.
+  it("sends it up when there is nowhere else for it to go either", () => {
     const state = makeState({ foundations: "6♥", waste: "7♥" });
     assert.deepEqual(tapWaste(state), { kind: "wasteToFoundation" });
   });
@@ -136,8 +145,10 @@ describe("taps that mean nothing", () => {
     assert.equal(tapWaste(state, 0), null);
   });
 
-  it("ignores a foundation — a tap never says bring that back", () => {
-    const state = makeState({ foundations: "A♦", tableau: ["2♠"] });
+  it("ignores a foundation with nowhere to send its card", () => {
+    // Same colour, so the Ace has no column to come down onto, and there is no
+    // hole for it either — a hole is a King's.
+    const state = makeState({ foundations: "A♦", tableau: ["2♥"] });
     assert.equal(
       tap(state, { pile: "foundation", suit: 1 }, 0),
       null,
@@ -145,8 +156,49 @@ describe("taps that mean nothing", () => {
     );
   });
 
+  it("ignores a foundation tapped anywhere but on its top card", () => {
+    const state = makeState({ foundations: "A♦ 2♦", tableau: ["3♠"] });
+    assert.equal(tap(state, { pile: "foundation", suit: 1 }, 0), null);
+    assert.equal(tap(state, { pile: "foundation", suit: 1 }, -1), null);
+  });
+
   it("returns nothing for a card with nowhere to go", () => {
     const state = makeState({ tableau: ["A♣ | 9♠", "9♥"] });
     assert.equal(tapColumn(state, 0, 1), null);
+  });
+});
+
+/**
+ * A card can always be dragged back off a foundation when a run needs it, and
+ * on a phone dragging is the fiddly half of the interface. A tap is the same
+ * "do the obvious thing" gesture pointed the other way — and since the card is
+ * already home, the only obvious thing left is a column.
+ */
+describe("tapping a card that is already home", () => {
+  it("brings it down onto a card it fits", () => {
+    const state = makeState({ foundations: "A♦ 2♦", tableau: ["K♠ | 3♠"] });
+    assert.deepEqual(tap(state, { pile: "foundation", suit: 1 }, 1), {
+      kind: "foundationToTableau",
+      suit: 1,
+      to: 0,
+    });
+  });
+
+  it("brings a King down into an empty column", () => {
+    const state = makeState({
+      foundations: "A♠ 2♠ 3♠ 4♠ 5♠ 6♠ 7♠ 8♠ 9♠ T♠ J♠ Q♠ K♠",
+      tableau: [""],
+    });
+    assert.deepEqual(tap(state, { pile: "foundation", suit: 3 }, 12), {
+      kind: "foundationToTableau",
+      suit: 3,
+      to: 0,
+    });
+  });
+
+  it("leaves a non-King alone rather than filling a hole with it", () => {
+    // Rule 4 is a hole for a King, and it is the same rule from up here.
+    const state = makeState({ foundations: "A♦ 2♦", tableau: [""] });
+    assert.equal(tap(state, { pile: "foundation", suit: 1 }, 1), null);
   });
 });

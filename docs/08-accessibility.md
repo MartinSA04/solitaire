@@ -50,7 +50,14 @@ channel:
 
 - **Legal drop targets** change **lightness and border width**, not hue. A target
   is recognisable in greyscale.
-- **The hint** pulses with **scale and an outline**, not a colour wash.
+- **The hint** is an **outline** on the card that can move and on the space it
+  can move into, not a colour wash. It breathes — the ring's opacity — rather
+  than scaling, which is what shipped first: a card in a fanned column grows
+  *into* the cards above and below it, so the thing being pointed at was partly
+  hidden for as long as it was being pointed at. An empty destination is marked
+  on the slot, with the same lightness-and-border treatment a legal drop target
+  gets, because an empty column is exactly the destination a hint is most
+  needed for and has no card on it to ring.
 
 ### Red/black suit discrimination
 
@@ -78,8 +85,11 @@ The important principle, stated in [05](05-interaction-and-motion.md) and
 [06](06-win-sequence.md): **reduced motion means different feedback, not absent
 feedback.** Specifically:
 
-- Illegal move: a 120ms border flash replaces the shake.
-- Hint: a persistent outline replaces the pulse.
+- Illegal move: a 120ms border flash replaces the shake — on every card the
+  gesture was about, because a run with nowhere to go is a run being refused
+  and shaking one card of it says something less true.
+- Hint: the ring simply appears rather than breathing. It stays until the move
+  is made, which is what it settles into anyway.
 - The win sequence has a fully designed ~2.4s bloom alternative, not a cut to the
   result panel. Winning still feels like winning.
 

@@ -14,7 +14,7 @@ in the layout or the engine knows which theme is active.
 
 ```text
 theme = surface tokens + light model + type + a default deck
-deck  = 52 card faces + a back  (independently swappable)
+deck  = 52 card faces + the back they are printed on
 ```
 
 Any deck works on any table. That's the point: someone can have the dark table with
@@ -107,7 +107,7 @@ screen made after 1998.
 - **Accent**: warm brass `#C89B3C`.
 - **Type**: a humanist serif for the clock and headings; the deck supplies the card
   faces.
-- **Default deck**: Minimal. (Classic was the intention; it is not a deck we
+- **Default deck**: Minimal, and with it the Lattice back. (Classic was the intention; it is not a deck we
   can ship — see the candidate table below.)
 
 ### 2. Minimal Scandinavian
@@ -137,7 +137,10 @@ ground.
   soft shadow — the only shadow in the theme, which makes it read loudly.
 - **Accent**: a muted terracotta `#B5613F` (light) / dusty blue `#7FA1C4` (dark).
 - **Type**: a geometric grotesque throughout, tabular figures for the clock.
-- **Default deck**: Minimal.
+- **Default deck**: Minimal. It brings the Lattice back with it, where this
+  theme once specified the flat one for itself: a back follows its deck now, and
+  at this table's `--back-ink` — white at 14% — the weave is a suggestion of a
+  texture rather than a pattern, which is the restraint the table was after.
 
 ### 3. Dark premium
 
@@ -166,7 +169,7 @@ because there's nothing else bright on screen.
   areas.
 - **Type**: geometric grotesque, slightly wider tracking. The clock glows very
   faintly.
-- **Default deck**: Minimal. High-contrast is a tap away for anyone who wants
+- **Default deck**: Minimal, with the Lattice back. High-contrast is a tap away for anyone who wants
   the indices bigger, and is not a decision to make on their behalf.
 - **Caveat**: dark themes and light card faces mean the *cards* become the brightest
   thing on screen — which is correct — but card backs must be dark enough not to
@@ -198,29 +201,53 @@ Selection criteria, in order:
 | **Minimal** | Ours | — | The one thing we *do* draw — and it turns out we don't draw it at all. No court illustration: rank + suit glyph, large, centred, set in the theme's typeface, which makes it *typography* rather than art. Trivial to produce, the most legible deck at phone size by a distance, and it is the deck the board shipped with in milestone 1. |
 | **High contrast** | Ours | — | Minimal's geometry taken as far as it goes: a pure white card, black ink, oversized indices, maximum weight. An accessibility feature, not a skin — see [08](08-accessibility.md). |
 | **Four-colour** | Variant of Minimal | — | ♠ black, ♥ red, ♦ blue, ♣ green. The standard colour-vision accommodation and also just genuinely easier to scan. |
+| **Classic** | Ours | — | Minimal's geometry set in a system book serif, with a printed card's crimson. It takes the table's own card colour, so it is cream on the Warm table and white on the Minimal one. |
+| **Vintage** | Ours | — | A serif rank in sepia on aged board. Like High contrast it brings its own paper, because the paper *is* the deck — an old card is not a white card with old-looking ink on it. |
+
+A second *sourced* deck was looked for and not found. The two candidates that
+are genuinely vector and from a nameable source fail the same way the ones
+above do: [saulspatz/SVGCards](https://github.com/saulspatz/SVGCards) is public
+domain, jumbo-index and exactly what a solitaire game wants, and its sprite is
+**8.5MB** — Byron Knoll's problem again; and [RevK's
+cards](https://www.me.uk/cards/) are CC0, tiny and handsome, but are published
+one file per card out of a deck-builder CGI, so shipping them would mean
+shipping a sprite we had assembled rather than a file its author published.
+That is the provenance line drawn for Traditional above, and it does not move
+because the licence is friendlier. The variety went into the two token decks
+instead, which cost nothing to download and are not anybody else's to get wrong.
 
 "Minimal" being ours resolves the tension in the [product brief](01-product-brief.md)
 about sourced art limiting our identity: the *default look at phone size* can be
 ours and distinctive, while the rich traditional decks are there for people who want
 them.
 
-#### What our three decks are, mechanically
+#### What the decks we draw are, mechanically
 
 A deck we draw is a **set of tokens**, exactly as a theme is, behind
 `[data-deck]`. It owns two things and nothing else: the **ink** — which colour
-each of the four suits takes — and the **type scale**: `--index-size`,
-`--index-weight`, `--index-suit-scale`, `--pip-size`. Everything else about the
-card is the table's.
+each of the four suits takes — and the **type**: `--index-font`,
+`--index-size`, `--index-weight`, `--index-suit-scale`, `--pip-size`.
+Everything else about the card is the table's.
 
-That makes each of the three a small statement rather than an asset:
+That makes each of them a small statement rather than an asset:
 
 - **Minimal** declares no colour at all. It takes the table's ink, which is why
   it reads as the theme's own typography rather than as a deck laid on top of
   it, and why the Warm table's black is a warm near-black.
+- **Classic** replaces the type with a serif and the reds with a printed card's
+  crimson, and leaves the card surface alone — it is a way of setting the
+  table's own card rather than a card of its own.
 - **Four-colour** replaces the four inks and nothing else.
-- **High contrast** additionally overrides `--card-bg`, the only deck that
-  touches the card's surface — deliberately, because the point of it is to be
-  the same deck on every table.
+- **High contrast** and **Vintage** additionally override `--card-bg`, the two
+  decks that touch the card's surface. High contrast does it to be the same
+  deck on every table; Vintage does it because aged board is the whole idea.
+
+`--index-font` is a deck's, never a table's. The table decides what the chrome
+and the pages are set in; a deck that wanted a serif rank on the same table as
+a sans one would otherwise have nowhere to say so. There is no webfont behind
+it and there is not going to be one — a deck is not worth a network request,
+and every system on the fallback list has had a serviceable serif since about
+1996.
 
 Its red stays red, which is worth saying plainly because "pure black and white"
 was the original phrasing: **Klondike is built on alternating colours**, so a
@@ -298,19 +325,38 @@ Backs are ours, always, because they're the most-seen surface in the game (28 of
 them on screen at deal time) and they're cheap: a tiling geometric pattern, two
 colours from the theme, a border.
 
-Three ship: **Lattice** (default, a fine diagonal weave), **Dot grid**, and
-**Solid** (flat, with just a border — for the Minimal theme and for anyone who
-finds patterns noisy).
+**A back is not a choice.** It belongs to its deck, the way it does in a real
+pack: `DECK_BACK` in `src/game/settings.ts` names one per deck and that naming
+is the whole of the choosing. This doc originally called the two "independently
+swappable", and shipping it that way showed what that costs — a quarter of the
+settings sheet spent on a decision nobody has to make, and, worse, the standing
+possibility of putting the flat accessibility back on the French deck's
+Victorian courts, which is two decks in one pack. Six decks, six backs, no two
+the same: face-down is how a deck is recognised, and twenty-eight cards are
+face-down at deal time.
+
+It is still selected by its own attribute rather than by `[data-deck]`, and
+that is not redundancy. A back is recoloured by the **table** — `--back-bg`,
+`--back-ink` and `--back-edge` are theme tokens — so keeping it a separate
+attribute is what lets one stylesheet hold every pattern without a deck file or
+a theme file knowing about it.
+
+Six ship: **Lattice** (a fine diagonal weave, Minimal's), **Argyle** (the same
+two threads at four times the pitch, Classic's), **Pinstripe** (Vintage's),
+**Ripple** (concentric rings, French's — the Bellot deck's own printed back is
+a set of nested frames and this is the nearest thing a gradient can say),
+**Dot grid** (Four-colour's), and **Solid** (flat, with just a border — High
+contrast's, because a pattern is noise to somebody who is already working to
+read the board).
 
 Each is **a gradient**, not the SVG file this doc first specified, and the
 reason is in the specification itself: it asked for one asset *recoloured per
 theme by a CSS variable*, and neither an external SVG nor a data URI can read a
 custom property. A gradient reads `--back-bg` and `--back-ink` directly and
-costs no request at all. Three geometric patterns are well within what
-gradients express; a fourth back that needed real drawing would ship as a file
-and hard-code its own colours. Every measurement in one is a percentage of the
-card rather than a pixel, so the weave is the same weave on a phone and on a
-desktop.
+costs no request at all. Six geometric patterns are well within what gradients
+express; a seventh that needed real drawing would ship as a file and hard-code
+its own colours. Every measurement in one is a percentage of the card rather
+than a pixel, so the weave is the same weave on a phone and on a desktop.
 
 Like a deck, a back is a **token** — `--back-pattern` — so switching one is an
 attribute on `<html>` and the card element never learns there is more than one.

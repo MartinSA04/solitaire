@@ -66,6 +66,7 @@ body {
   --gap: calc(var(--card-w) * 0.087);
   --gutter: calc(var(--card-w) * 0.174);
   --row-gap: calc(var(--card-h) * 0.25);
+  --origin-y: calc(var(--card-h) * 0.14);
   --card-radius: calc(var(--card-w) * 0.0727);
 
   position: relative;
@@ -83,8 +84,15 @@ body {
   align-items: start;
 }
 
+/*
+ * The gap between the chrome and the first card is `--origin-y`, which is the
+ * same number `pileOrigin` adds to every card in the top row — so the slot and
+ * the card standing on it move together, and CSS still derives nothing it was
+ * not given.
+ */
 .row-top {
   height: var(--card-h);
+  margin-top: var(--origin-y);
   margin-bottom: var(--row-gap);
 }
 
@@ -188,6 +196,27 @@ body {
   opacity: 0.18;
 }
 
+/*
+ * Where a hint says the card should go, when there is nothing there to put a
+ * ring round — an empty column, an empty foundation, a spent stock. It is the
+ * legal-target highlight breathing on the hint's own rhythm, because it is the
+ * same statement about the same pile.
+ */
+.slot.is-hint::before {
+  opacity: 0.2;
+  animation: hint-slot 1400ms var(--e-inout) 3;
+}
+
+@keyframes hint-slot {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.04;
+  }
+}
+
 /* Column 2 of the top row is the space between the waste and the foundations. */
 .slot-spacer {
   visibility: hidden;
@@ -230,11 +259,23 @@ body {
   height: var(--card-h);
   border-radius: var(--card-radius);
   /*
-   * No transition by default. A card animates because a motion class was put
-   * on it for exactly one move, which is also what keeps `will-change` off the
-   * other 51 elements.
+   * Two transitions, and they are deliberately not one.
+   *
+   * `transform` is where the card is on the board, written by CardLayer, and it
+   * is armed only while a move is in flight — which is what keeps
+   * `will-change` off the other fifty-one elements. `translate` is what gets
+   * stacked on top of that position: the desktop hover lift, two pixels of it.
+   *
+   * As two `transition` shorthands on two classes, the later rule in this file
+   * would simply win — and since both are one class on `.card`, the hover lift
+   * disarmed every move of a card under the cursor, which is every card a mouse
+   * ever clicks. So the move's half is a parameter instead: `--move-time` is
+   * zero here, which is no transition at all, and a motion class fills it in
+   * for exactly as long as it is on the element.
    */
-  transition: none;
+  transition:
+    transform var(--move-time, 0s) var(--move-ease, linear) var(--delay, 0ms),
+    translate var(--t-instant) var(--e-out);
 }
 
 /*
@@ -327,6 +368,19 @@ body {
 }
 
 /*
+ * A sourced deck's own paper, under its own art.
+ *
+ * The art is cropped to the inside of the deck's printed border (see the note
+ * on `viewBox` in src/decks/sourced.ts), so the card underneath it is ours —
+ * our radius, our edge, our shadow — and the two or three pixels of it that
+ * show at each rounded corner have to be the deck's white rather than the
+ * table's cream, or every card wears four small chips of the wrong colour.
+ */
+.card-layer.has-art .card-face {
+  background: var(--art-paper, var(--card-bg));
+}
+
+/*
  * The corner index is the one thing we do not hand over with the rest of the
  * face. docs/04 requires the rank to be legible at a 46px card, where a
  * traditional deck's own index is about five pixels tall, and it says what to
@@ -364,6 +418,8 @@ body {
   display: flex;
   align-items: baseline;
   gap: 0.1em;
+  /* The deck's, never the table's — see src/decks/minimal.css. */
+  font-family: var(--index-font);
   font-size: calc(var(--card-w) * var(--index-size));
   font-weight: var(--index-weight);
   line-height: 1;
@@ -394,8 +450,30 @@ body {
  * to nothing at all, which is how every other move stays a one-class change.
  */
 .card.is-moving {
-  transition: transform var(--t-quick) var(--e-out) var(--delay, 0ms);
+  --move-time: var(--t-quick);
+  --move-ease: var(--e-out);
   will-change: transform;
+}
+
+/*
+ * A draw is not a card sliding one slot to the right — it is a card being
+ * turned off the top of the deck — so it takes the settle duration rather than
+ * the workhorse one, lifts slightly on the way (`translate`, which composes
+ * with the transform carrying it across) and turns over in exactly the time it
+ * is travelling rather than in a fixed 180ms that finished before it landed.
+ */
+.card.is-drawing {
+  --move-time: var(--t-settle);
+  --move-ease: var(--e-out);
+  --flip-half: calc(var(--t-settle) / 2);
+  animation: card-draw var(--t-settle) var(--e-out) var(--delay, 0ms);
+  will-change: transform;
+}
+
+@keyframes card-draw {
+  50% {
+    translate: 0 calc(var(--card-h) * -0.1);
+  }
 }
 
 /*
@@ -405,14 +483,15 @@ body {
  * animation that would have to be kept in step with the first.
  */
 .card.is-flipping .card-flip {
-  transition: transform calc(var(--t-instant) * 2) var(--e-inout)
-    var(--delay, 0ms);
+  transition: transform calc(var(--flip-half, var(--t-instant)) * 2)
+    var(--e-inout) var(--delay, 0ms);
   will-change: transform;
 }
 
 .card.is-flipping .card-face,
 .card.is-flipping .card-back {
-  transition: opacity 0s linear calc(var(--delay, 0ms) + var(--t-instant));
+  transition: opacity 0s linear
+    calc(var(--delay, 0ms) + var(--flip-half, var(--t-instant)));
 }
 
 /*
@@ -422,8 +501,10 @@ body {
  * — the same trick the shake below uses.
  */
 .card.is-sweeping {
-  transition: transform var(--t-settle) var(--e-inout);
-  animation: card-sweep var(--t-settle) var(--e-inout);
+  --move-time: var(--t-settle);
+  --move-ease: var(--e-inout);
+  --flip-half: calc(var(--t-settle) / 2);
+  animation: card-sweep var(--t-settle) var(--e-inout) var(--delay, 0ms);
   will-change: transform;
 }
 
@@ -434,7 +515,8 @@ body {
 }
 
 .card.is-settling {
-  transition: transform var(--t-settle) var(--e-spring);
+  --move-time: var(--t-settle);
+  --move-ease: var(--e-spring);
   will-change: transform;
 }
 
@@ -445,13 +527,15 @@ body {
  */
 .card.is-undoing,
 .card.is-peeking {
-  transition: transform var(--t-settle) var(--e-inout);
+  --move-time: var(--t-settle);
+  --move-ease: var(--e-inout);
   will-change: transform;
 }
 
 .card.is-returning {
   /* An illegal drop does not snap (that feels like a bug) and does not stay. */
-  transition: transform 220ms var(--e-spring);
+  --move-time: 220ms;
+  --move-ease: var(--e-spring);
   will-change: transform;
 }
 
@@ -461,34 +545,78 @@ body {
   will-change: transform;
 }
 
-.card.is-dragging .card-flip {
+/*
+ * A stack in the air casts **one** shadow, not one per card.
+ *
+ * The lift shadow is 12px down and 28px of blur, and a fanned run overlaps by
+ * about nineteen: give it to every card and each one drops a dark band across
+ * the card below it, which is the pile looking like a stack of separate cards
+ * being carried in a fan rather than a run picked up as one thing. So the card
+ * at the foot of the run — the one whose bottom edge is the bottom edge of the
+ * whole stack — casts it, and the cards buried in the run keep the small
+ * shadow they have sitting on the table.
+ *
+ * The foot is marked by CardLayer, which is the only thing that knows which
+ * cards were picked up together, and it is the same mark however they were
+ * picked up: a finger, a mouse, or the space bar.
+ */
+.card.is-dragging .card-flip,
+.card.is-held .card-flip,
+.card.is-hovered .card-flip {
+  box-shadow: var(--card-shadow-rest);
+}
+
+.card.is-dragging.is-lift-foot .card-flip,
+.card.is-held.is-lift-foot .card-flip,
+.card.is-hovered.is-lift-foot .card-flip {
   box-shadow: var(--card-shadow-lift);
 }
 
 /*
- * A hint: the card to move and the card to move it onto, pulsing twice in
- * phase over 600ms. Scale and an outline, never a colour wash — docs/08
- * asks for that so the hint reads the same to someone who cannot separate
- * the wash from the table. `scale` is its own property so it composes with
- * the transform that positions the card, the same trick the shake uses.
+ * A hint is two marks: **the card that can move, and the space it can move
+ * into.** One of them on its own is half a sentence — a card with a ring round
+ * it does not say where it is going, and a lit-up column does not say what
+ * belongs in it.
+ *
+ * It used to be two cards scaling up six per cent, twice, in phase. Scale was
+ * the wrong instrument: a card in a fanned column grows *into* the cards above
+ * and below it, so the one thing being pointed at is the one thing partly
+ * hidden while it is pointed at, and the pair of them bouncing reads as an
+ * error rather than as advice.
+ *
+ * So it is a ring, on its own layer over the card, breathing three times and
+ * then staying put until the move is made or another hint replaces it — which
+ * is what a hint you are acting on has to do. Lightness and an outline, never
+ * a colour wash, per docs/08; the destination wears the same ring, dimmer,
+ * and an empty destination is the slot itself (see `.slot.is-hint`).
  */
-.card.is-hinting {
-  animation: card-hint 600ms var(--e-inout) 2;
-}
-
-.card.is-hinting .card-flip {
+.card.is-hinting .card-flip::after,
+.card.is-hint-target .card-flip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
   box-shadow:
-    var(--card-shadow-rest),
-    0 0 0 2px var(--accent);
+    0 0 0 2px var(--accent),
+    0 0 0 4px var(--accent-contrast);
 }
 
-@keyframes card-hint {
+.card.is-hinting .card-flip::after {
+  animation: hint-breathe 1400ms var(--e-inout) 3;
+}
+
+.card.is-hint-target .card-flip::after {
+  opacity: 0.6;
+}
+
+@keyframes hint-breathe {
   0%,
   100% {
-    scale: 1;
+    opacity: 1;
   }
   50% {
-    scale: 1.06;
+    opacity: 0.2;
   }
 }
 
@@ -513,6 +641,13 @@ body {
 
 .card.is-held .card-flip {
   box-shadow:
+    var(--card-shadow-rest),
+    0 0 0 2px var(--accent),
+    0 0 0 4px var(--accent-contrast);
+}
+
+.card.is-held.is-lift-foot .card-flip {
+  box-shadow:
     var(--card-shadow-lift),
     0 0 0 2px var(--accent),
     0 0 0 4px var(--accent-contrast);
@@ -531,11 +666,6 @@ body {
  */
 .card.is-hovered {
   translate: 0 -2px;
-  transition: translate var(--t-instant) var(--e-out);
-}
-
-.card.is-hovered .card-flip {
-  box-shadow: var(--card-shadow-lift);
 }
 
 /* A card in the air is already lifted; a second lift under it is noise. */
@@ -572,9 +702,21 @@ body {
     animation: none;
   }
 
-  /* A persistent outline instead of two pulses, per docs/08. It stays until
-     the move is made or another hint replaces it. */
-  .card.is-hinting {
+  /* A ring that simply appears, per docs/08. It stays until the move is made
+     or another hint replaces it, which is what it does anyway once it has
+     finished breathing. */
+  .card.is-hinting .card-flip::after {
+    animation: none;
+  }
+
+  .slot.is-hint::before {
+    animation: none;
+  }
+
+  /* Both of these are a card being lifted off the deck or swept back under
+     it, and at 1ms there is nothing left to lift. */
+  .card.is-drawing,
+  .card.is-sweeping {
     animation: none;
   }
 

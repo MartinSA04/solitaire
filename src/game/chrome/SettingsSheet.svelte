@@ -15,11 +15,9 @@
   import type { DrawCount } from "../../engine/index.ts";
   import {
     AUTO,
-    BACKS,
     CARD_SIZES,
     DECKS,
     THEMES,
-    type Back,
     type Deck,
     type Settings,
     type Theme,
@@ -89,17 +87,13 @@
 
   const DECK_LABELS: Record<Deck, string> = {
     minimal: "Minimal",
+    classic: "Classic",
+    vintage: "Vintage",
     "high-contrast": "High contrast",
     "four-colour": "Four colour",
     // The one deck that is a download. It is last because it is the one that
     // costs something, and it says so on /credits rather than in a warning.
     french: "French",
-  };
-
-  const BACK_LABELS: Record<Back, string> = {
-    lattice: "Lattice",
-    dots: "Dot grid",
-    solid: "Solid",
   };
 
   const DRAWS = [1, 3] as const;
@@ -237,6 +231,11 @@
     </div>
   </fieldset>
 
+  <!--
+    The deck, and with it the back: a deck comes printed on one the way a real
+    pack does, so there is no second control for it. See `DECK_BACK` in
+    settings.ts for why that is one decision rather than two.
+  -->
   <fieldset class="group">
     <legend class="group-label">Cards</legend>
     <div class="choices">
@@ -260,34 +259,6 @@
             onchange={() => choose({ deck: value })}
           />
           <span class="choice-label">{DECK_LABELS[value]}</span>
-        </label>
-      {/each}
-    </div>
-  </fieldset>
-
-  <fieldset class="group">
-    <legend class="group-label">Card back</legend>
-    <div class="choices">
-      <label class="choice">
-        <input
-          type="radio"
-          name="back"
-          value={AUTO}
-          checked={settings.back === AUTO}
-          onchange={() => choose({ back: AUTO })}
-        />
-        <span class="choice-label">Match the table</span>
-      </label>
-      {#each BACKS as value (value)}
-        <label class="choice">
-          <input
-            type="radio"
-            name="back"
-            {value}
-            checked={settings.back === value}
-            onchange={() => choose({ back: value })}
-          />
-          <span class="choice-label">{BACK_LABELS[value]}</span>
         </label>
       {/each}
     </div>

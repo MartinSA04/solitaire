@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 
 import {
   type Card,
+  CLUBS,
   DECK_SIZE,
+  HEARTS,
   TABLEAU_CARDS,
   TABLEAU_COLUMNS,
   applyMove,
@@ -13,7 +15,7 @@ import {
 import {
   dealOrder,
   drawnCards,
-  hintCards,
+  hintOf,
   homedCard,
   predealt,
 } from "../../src/game/motion.ts";
@@ -155,80 +157,110 @@ describe("drawnCards", () => {
   });
 });
 
-describe("hintCards", () => {
-  const shown = (
-    state: Parameters<typeof hintCards>[0],
-    move: Parameters<typeof hintCards>[1],
-  ) => showCards(hintCards(state, move));
+describe("hintOf", () => {
+  const CLUBS_PILE = { pile: "foundation", suit: CLUBS } as const;
+  const HEARTS_PILE = { pile: "foundation", suit: HEARTS } as const;
 
-  it("is the card to move and the card to move it onto", () => {
+  it("is the cards that move and the pile they move onto", () => {
     const state = makeState({ tableau: ["7♥", "K♠ | 6♠"] });
-    assert.equal(
-      shown(state, { kind: "tableauToTableau", from: 1, to: 0, count: 1 }),
-      "6♠ 7♥",
-    );
-  });
-
-  it("takes the bottom of a run, which is the card that moves", () => {
-    const state = makeState({ tableau: ["9♠", "K♦ | 8♥ 7♣ 6♦"] });
-    assert.equal(
-      shown(state, { kind: "tableauToTableau", from: 1, to: 0, count: 3 }),
-      "8♥ 9♠",
-    );
-  });
-
-  it("points at the foundation's top card, where there is one", () => {
-    const state = makeState({ foundations: "A♥", tableau: ["K♠ | 2♥"] });
-    assert.equal(
-      shown(state, { kind: "tableauToFoundation", from: 0 }),
-      "2♥ A♥",
-    );
+    const hint = hintOf(state, {
+      kind: "tableauToTableau",
+      from: 1,
+      to: 0,
+      count: 1,
+    });
+    assert.equal(showCards(hint.cards), "6♠");
+    assert.deepEqual(hint.to, { pile: "tableau", column: 0 });
   });
 
   /**
-   * An empty destination has no card to pulse — an empty column, an empty
-   * foundation — so the hint is one-ended and the player reads the rest off
-   * the board. Highlighting the slot would mean the card layer knowing about
-   * the slot grid, which is the one thing it is kept out of.
+   * The whole run, not the card at the bottom of it. What is being pointed at
+   * is the thing that would move, and three cards travelling together are one
+   * thing.
    */
-  it("points at one end when the other end is an empty pile", () => {
-    assert.equal(
-      shown(makeState({ tableau: ["K♠ | A♥"] }), {
-        kind: "tableauToFoundation",
-        from: 0,
-      }),
-      "A♥",
-    );
-    assert.equal(
-      shown(makeState({ tableau: ["", "Q♦ | K♣"] }), {
-        kind: "tableauToTableau",
-        from: 1,
-        to: 0,
-        count: 1,
-      }),
-      "K♣",
-    );
-    assert.equal(
-      shown(makeState({ waste: "A♠" }), { kind: "wasteToFoundation" }),
-      "A♠",
-    );
+  it("takes the whole run when a run is what moves", () => {
+    const state = makeState({ tableau: ["9♠", "K♦ | 8♥ 7♣ 6♦"] });
+    const hint = hintOf(state, {
+      kind: "tableauToTableau",
+      from: 1,
+      to: 0,
+      count: 3,
+    });
+    assert.equal(showCards(hint.cards), "8♥ 7♣ 6♦");
+    assert.deepEqual(hint.to, { pile: "tableau", column: 0 });
   });
 
-  it("points at the stock for a draw, and at the waste for a recycle", () => {
+  it("names the suit's foundation, whether or not anything is on it", () => {
+    const onto = makeState({ foundations: "A♥", tableau: ["K♠ | 2♥"] });
+    const full = hintOf(onto, { kind: "tableauToFoundation", from: 0 });
+    assert.equal(showCards(full.cards), "2♥");
+    assert.deepEqual(full.to, HEARTS_PILE);
+
+    // The case the old two-cards-and-nothing-else hint could not express: an
+    // empty destination is a pile, and a pile can be lit up.
+    const empty = makeState({ tableau: ["K♠ | A♥"] });
+    const bare = hintOf(empty, { kind: "tableauToFoundation", from: 0 });
+    assert.equal(showCards(bare.cards), "A♥");
+    assert.deepEqual(bare.to, HEARTS_PILE);
+  });
+
+  it("names an empty column as the destination", () => {
+    const state = makeState({ tableau: ["", "Q♦ | K♣"] });
+    const hint = hintOf(state, {
+      kind: "tableauToTableau",
+      from: 1,
+      to: 0,
+      count: 1,
+    });
+    assert.equal(showCards(hint.cards), "K♣");
+    assert.deepEqual(hint.to, { pile: "tableau", column: 0 });
+  });
+
+  it("points a draw at the waste and a recycle at the stock", () => {
     const state = makeState({ stock: "4♣ 5♣", waste: "9♦ 3♥" });
-    assert.equal(shown(state, { kind: "draw" }), "4♣");
-    assert.equal(
-      shown(makeState({ waste: "9♦ 3♥" }), { kind: "recycle" }),
-      "9♦",
-    );
+    const draw = hintOf(state, { kind: "draw" });
+    assert.equal(showCards(draw.cards), "4♣");
+    assert.deepEqual(draw.to, { pile: "waste" });
+
+    // The one card of the waste you can actually see goes back under the
+    // stock, and the stock is where the hint is pointing.
+    const recycle = hintOf(makeState({ waste: "9♦ 3♥" }), { kind: "recycle" });
+    assert.equal(showCards(recycle.cards), "3♥");
+    assert.deepEqual(recycle.to, { pile: "stock" });
   });
 
-  it("is empty when there is nothing there at all", () => {
-    assert.deepEqual(hintCards(makeState({}), { kind: "draw" }), []);
-    assert.deepEqual(hintCards(makeState({}), { kind: "recycle" }), []);
-    assert.deepEqual(
-      hintCards(makeState({}), { kind: "wasteToTableau", to: 2 }),
-      [],
-    );
+  it("brings a card back off a foundation, into a named column", () => {
+    const state = makeState({ foundations: "A♣ 2♣", tableau: ["K♠ | 3♥"] });
+    const hint = hintOf(state, {
+      kind: "foundationToTableau",
+      suit: CLUBS,
+      to: 0,
+    });
+    assert.equal(showCards(hint.cards), "2♣");
+    assert.deepEqual(hint.to, { pile: "tableau", column: 0 });
+  });
+
+  it("still names a pile when there is nothing anywhere to point at", () => {
+    // A hint is only ever asked for a move the engine found, so these cannot
+    // happen in the game — but a destination that is always a pile is the
+    // whole point of the shape, and it has to hold on an empty board too.
+    assert.deepEqual(hintOf(makeState({}), { kind: "draw" }), {
+      cards: [],
+      to: { pile: "waste" },
+    });
+    assert.deepEqual(hintOf(makeState({}), { kind: "recycle" }), {
+      cards: [],
+      to: { pile: "stock" },
+    });
+    assert.deepEqual(hintOf(makeState({}), { kind: "wasteToTableau", to: 2 }), {
+      cards: [],
+      to: { pile: "tableau", column: 2 },
+    });
+    // Suit zero, because there is no card to take a suit from — and clubs is
+    // as good a nothing as any, since the cards list is empty either way.
+    assert.deepEqual(hintOf(makeState({}), { kind: "wasteToFoundation" }), {
+      cards: [],
+      to: CLUBS_PILE,
+    });
   });
 });

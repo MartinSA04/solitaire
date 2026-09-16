@@ -52,12 +52,17 @@ const MOTION: Record<Exclude<Motion, "instant">, Style> = {
   deal: { className: "is-moving", stagger: 22 },
   // Draw-3 fans out one card after another; in draw-1 there is only ever one
   // card in the order, so the stagger costs nothing.
-  draw: { className: "is-moving", stagger: 60 },
+  draw: { className: "is-drawing", stagger: 60 },
   drop: { className: "is-settling", stagger: 0 },
   // Deliberately slower than the move it reverses, so you can see what came back.
   undo: { className: "is-undoing", stagger: 0 },
-  // The whole waste, back under the stock as one block with a slight arc.
-  recycle: { className: "is-sweeping", stagger: 0 },
+  // The whole waste, back under the stock with a slight arc — and staggered,
+  // because in draw-1 every card in the waste is at the same coordinates, so
+  // twenty-four of them leaving together is indistinguishable from one card
+  // leaving. Six milliseconds apart is a pile being gathered up rather than a
+  // block teleporting; at twenty-four cards that is 144ms of tail, which is
+  // still shorter than the sweep itself.
+  recycle: { className: "is-sweeping", stagger: 6 },
   // A column opening under a long press, and closing again when it ends.
   peek: { className: "is-peeking", stagger: 0 },
 };
@@ -68,6 +73,7 @@ const MOTION: Record<Exclude<Motion, "instant">, Style> = {
  */
 const MOTION_CLASSES = [
   "is-moving",
+  "is-drawing",
   "is-settling",
   "is-undoing",
   "is-sweeping",
@@ -100,6 +106,8 @@ export class CardLayer {
   #hinted: Card[] = [];
   #selected: Card[] = [];
   #hovered: Card[] = [];
+  /** The card at the foot of whatever is currently lifted; see {@link lift}. */
+  #foot: Card | null = null;
 
   /**
    * `reducedMotion` zeroes the staggers. The durations take care of
@@ -294,6 +302,31 @@ export class CardLayer {
       element.style.removeProperty("--delay");
       element.style.zIndex = String(Z_DRAG + i);
     });
+    this.lift(cards);
+  }
+
+  /**
+   * Which card is at the foot of the stack that is currently off the table.
+   *
+   * A run in the air is one object and casts one shadow. Only this layer knows
+   * which cards were picked up together, so only this layer can say which of
+   * them is the bottom edge of the thing being carried — see the note on
+   * `.is-lift-foot` in board.css. It is the same mark whether a finger, a
+   * mouse or the space bar is doing the carrying, and whether the "carrying"
+   * is a drag, a keyboard pickup or a two-pixel hover lift.
+   */
+  lift(cards: readonly Card[]): void {
+    const foot = cards[cards.length - 1] ?? null;
+    if (foot === this.#foot) return;
+    if (this.#foot !== null) {
+      (this.#elements[this.#foot] as HTMLElement).classList.remove(
+        "is-lift-foot",
+      );
+    }
+    this.#foot = foot;
+    if (foot !== null) {
+      (this.#elements[foot] as HTMLElement).classList.add("is-lift-foot");
+    }
   }
 
   /**
@@ -320,11 +353,21 @@ export class CardLayer {
       const element = this.#elements[card] as HTMLElement;
       const at = this.#placements[card] as Placement;
       element.classList.add("is-returning");
+      // Still above the board on the way back — it is a card in the air until
+      // it lands — but no longer at the drag band, which nothing else can
+      // reach. A card left at 4000 because a drop was refused sits over every
+      // pile on the table until some unrelated render happens to rewrite it,
+      // and that render may be several moves away.
+      element.style.zIndex = String(Z_FLIGHT + at.z);
       element.style.transform = translate(at.x, at.y);
     }
     setTimeout(() => {
       for (const card of cards) {
-        (this.#elements[card] as HTMLElement).classList.remove("is-returning");
+        const element = this.#elements[card] as HTMLElement;
+        element.classList.remove("is-returning");
+        if (this.#held.includes(card)) continue;
+        const resting = this.#placements[card];
+        if (resting !== undefined) element.style.zIndex = String(resting.z);
       }
     }, RETURN_MS);
   }
@@ -334,6 +377,7 @@ export class CardLayer {
       (this.#elements[card] as HTMLElement).classList.remove("is-dragging");
     }
     this.#held = [];
+    this.lift([]);
   }
 
   /**
@@ -350,13 +394,21 @@ export class CardLayer {
    * because render() writes one on every card and an inline style wins: a
    * card pulsing *under* the card fanned on top of it is not a highlight.
    */
-  hint(cards: readonly Card[]): void {
+  hint(from: readonly Card[], to: readonly Card[] = []): void {
     this.clearHint();
+    this.#markHint(from, "is-hinting");
+    this.#markHint(to, "is-hint-target");
+  }
+
+  #markHint(cards: readonly Card[], className: string): void {
     for (const card of cards) {
       const element = this.#elements[card] as HTMLElement;
       void element.offsetWidth;
-      element.classList.add("is-hinting");
-      element.style.zIndex = String(Z_FLIGHT + card);
+      element.classList.add(className);
+      const resting = this.#placements[card];
+      element.style.zIndex = String(
+        Z_FLIGHT + (resting === undefined ? card : resting.z),
+      );
       this.#hinted.push(card);
     }
   }
@@ -369,7 +421,7 @@ export class CardLayer {
   clearHint(): void {
     for (const card of this.#hinted) {
       const element = this.#elements[card] as HTMLElement;
-      element.classList.remove("is-hinting");
+      element.classList.remove("is-hinting", "is-hint-target");
       const resting = this.#placements[card];
       if (resting !== undefined) element.style.zIndex = String(resting.z);
     }
@@ -397,6 +449,7 @@ export class CardLayer {
       if (held) element.classList.add("is-held");
       this.#selected.push(card);
     }
+    if (held) this.lift(cards);
   }
 
   clearSelection(): void {
@@ -429,22 +482,32 @@ export class CardLayer {
     for (const card of this.#hovered) {
       (this.#elements[card] as HTMLElement).classList.add("is-hovered");
     }
+    // A hovered run is lifted as one thing too, so it casts one shadow — but
+    // not while something is genuinely in hand, which owns the mark.
+    if (this.#held.length === 0) this.lift(this.#hovered);
   }
 
   /**
-   * A tap with nowhere to go. A shake is enough; a red flash reads as being
+   * A gesture with nowhere to go. A shake is enough; a red flash reads as being
    * told off.
+   *
+   * It takes the cards the gesture was *about*, which for a run being carried
+   * across is all of them: shaking only the card the pointer happened to be
+   * over tells you that card cannot go there, when what could not go there was
+   * the five cards you were holding.
    */
-  shake(card: Card): void {
-    const element = this.#elements[card] as HTMLElement;
-    element.classList.remove("is-shaking");
-    void element.offsetWidth;
-    element.classList.add("is-shaking");
-    element.addEventListener(
-      "animationend",
-      () => element.classList.remove("is-shaking"),
-      { once: true },
-    );
+  shake(cards: readonly Card[]): void {
+    for (const card of cards) {
+      const element = this.#elements[card] as HTMLElement;
+      element.classList.remove("is-shaking");
+      void element.offsetWidth;
+      element.classList.add("is-shaking");
+      element.addEventListener(
+        "animationend",
+        () => element.classList.remove("is-shaking"),
+        { once: true },
+      );
+    }
   }
 
   // ------------------------------------------------- the win sequence
@@ -468,6 +531,7 @@ export class CardLayer {
     this.hover([]);
     this.#surrendered = true;
     this.#held = [];
+    this.lift([]);
     for (let card = 0; card < DECK_SIZE; card++) {
       const element = this.#elements[card] as HTMLElement;
       element.classList.remove(
@@ -538,7 +602,9 @@ export class CardLayer {
     clearTimeout(this.#flight);
     this.#flight = setTimeout(() => {
       for (let card = 0; card < DECK_SIZE; card++) {
-        if (this.#held.includes(card)) continue;
+        // A hint outlives the move that happened next to it, and it is drawn
+        // by being lifted clear of the fan it sits in.
+        if (this.#held.includes(card) || this.#hinted.includes(card)) continue;
         const element = this.#elements[card] as HTMLElement;
         element.classList.remove(...MOTION_CLASSES);
         element.style.removeProperty("--delay");

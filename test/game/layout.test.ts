@@ -176,11 +176,11 @@ describe("pile positions", () => {
   it("puts the stock and waste in the first two columns", () => {
     assert.deepEqual(pileOrigin(m, { pile: "stock" }), {
       x: columnX(0),
-      y: 0,
+      y: m.originY,
     });
     assert.deepEqual(pileOrigin(m, { pile: "waste" }), {
       x: columnX(1),
-      y: 0,
+      y: m.originY,
     });
   });
 
@@ -190,9 +190,25 @@ describe("pile positions", () => {
     FOUNDATION_ORDER.forEach((suit, slot) => {
       assert.deepEqual(pileOrigin(m, { pile: "foundation", suit }), {
         x: columnX(3 + slot),
-        y: 0,
+        y: m.originY,
       });
     });
+  });
+
+  /**
+   * The top row does not start at the board's top edge. Without this the
+   * stock's top edge is the chrome's bottom edge — two surfaces of different
+   * colours meeting on a line, which reads as the card being clipped by the
+   * bar rather than lying on a table under it.
+   */
+  it("leaves a gap between the chrome and the first card", () => {
+    for (const area of [PHONE, PHONE_LARGE, TABLET, DESKTOP]) {
+      const metrics = metricsFor(area);
+      assert.ok(metrics.originY > 0);
+      // Proportional to the card like every other measurement here, so it is
+      // a gap rather than a breakpoint.
+      assert.ok(Math.abs(metrics.originY - metrics.cardH * 0.14) < 1e-9);
+    }
   });
 
   it("leaves column 2 empty, between the waste and the foundations", () => {

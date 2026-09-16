@@ -52,6 +52,18 @@ export const MAX_CARD_W = 110;
 /** Between the stock/foundation row and the tableau, as a fraction of card height. */
 const ROW_GAP_RATIO = 0.25;
 
+/**
+ * Between the chrome and the top row, as a fraction of card height.
+ *
+ * The board is anchored to the top of the space it is given, and without this
+ * the stock's top edge is the bar's bottom edge — two surfaces of different
+ * colours meeting on a line, which reads as the card being clipped by the bar
+ * rather than lying on a table under it. It is part of the board's geometry
+ * like every other measurement here, so the slot grid and the card transforms
+ * take it from the same number.
+ */
+const TOP_PAD_RATIO = 0.14;
+
 /** 8px at a 110px card, scaled down proportionally so a phone card isn't a lozenge. */
 const RADIUS_RATIO = 8 / MAX_CARD_W;
 
@@ -166,6 +178,8 @@ export interface Metrics extends Area {
   boardW: number;
   /** Left edge of column 0. Equals the gutter until the card width caps out and the board centres. */
   originX: number;
+  /** Top edge of the top row: the gap between the chrome and the first card. */
+  originY: number;
   /** Top of the tableau row. */
   tableauY: number;
   /** How much height a column has before it must compress. */
@@ -199,7 +213,8 @@ export function metricsFor(
   const byHeight =
     area.height /
     (ASPECT *
-      (topRowBudget * (1 + ROW_GAP_RATIO) +
+      (TOP_PAD_RATIO +
+        topRowBudget * (1 + ROW_GAP_RATIO) +
         1 +
         (WORST_COLUMN - 1) * MIN_FAN_RATIO));
 
@@ -223,7 +238,8 @@ export function metricsFor(
   // The top row wraps exactly when the tableau pages, and for the same reason.
   const topRows = fits ? 1 : 2;
 
-  const tableauY = topRows * (cardH + rowGap);
+  const originY = cardH * TOP_PAD_RATIO;
+  const tableauY = originY + topRows * (cardH + rowGap);
 
   return {
     width: area.width,
@@ -247,6 +263,7 @@ export function metricsFor(
     // Centring and gutters are the same thing until the card width caps out,
     // at which point the leftover width becomes table rather than card.
     originX: (area.width - boardW) / 2,
+    originY,
     tableauY,
     tableauH: area.height - tableauY,
   };
@@ -303,12 +320,13 @@ export function pageShift(m: Metrics): number {
  * needs to be noticed.
  */
 export function pileOrigin(m: Metrics, ref: PileRef): Point {
-  const second = m.topRows > 1 ? m.cardH + m.rowGap : 0;
+  const first = m.originY;
+  const second = first + (m.topRows > 1 ? m.cardH + m.rowGap : 0);
   switch (ref.pile) {
     case "stock":
-      return { x: columnX(m, STOCK_COLUMN), y: 0 };
+      return { x: columnX(m, STOCK_COLUMN), y: first };
     case "waste":
-      return { x: columnX(m, WASTE_COLUMN), y: 0 };
+      return { x: columnX(m, WASTE_COLUMN), y: first };
     case "foundation": {
       const slot = foundationSlot(ref.suit);
       const column = m.topRows > 1 ? slot : FIRST_FOUNDATION_COLUMN + slot;
@@ -661,5 +679,7 @@ export function cssVariables(m: Metrics): Record<string, string> {
     "--page-shift": `${-pageShift(m)}px`,
     "--board-w": `${TABLEAU_COLUMNS * m.cardW + (TABLEAU_COLUMNS - 1) * m.gap}px`,
     "--origin-x": `${m.originX}px`,
+    // The gap above the top row, so the slots start where the cards do.
+    "--origin-y": `${m.originY}px`,
   };
 }

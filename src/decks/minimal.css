@@ -23,6 +23,16 @@
    * that strip at a 46px card — which is the worst case, a 360px phone in
    * portrait with seven columns.
    */
+  /*
+   * The type the card face is set in. A deck's, not a table's: the table
+   * decides what the chrome and the page are set in, and a deck that wanted a
+   * serif rank on the same table as a sans one would have nowhere to say so.
+   * Minimal's is the page's own stack, written out rather than inherited,
+   * because this file is the one that has to be complete.
+   */
+  --index-font:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
   --index-size: 0.36; /* × the card's width */
   --index-weight: 650;
   --index-suit-scale: 0.8; /* × the rank beside it */

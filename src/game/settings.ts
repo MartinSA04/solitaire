@@ -25,17 +25,33 @@ import type { CardSize } from "./Layout.ts";
  */
 export const THEMES = ["warm", "minimal", "dark"] as const;
 /**
- * Three we draw as tokens, and one we don't draw at all: "french" is a sprite
+ * Five we draw as tokens, and one we don't draw at all: "french" is a sprite
  * of somebody else's art, fetched when it is chosen. See src/decks/sourced.ts
  * for what that costs and why it is not a default.
  */
 export const DECKS = [
   "minimal",
+  "classic",
+  "vintage",
   "high-contrast",
   "four-colour",
   "french",
 ] as const;
-export const BACKS = ["lattice", "dots", "solid"] as const;
+
+/**
+ * The backs — which are not a choice. See {@link DECK_BACK}.
+ *
+ * The list stays because `data-back` is still one of the three attributes a
+ * look is made of, and something has to say which values are ours.
+ */
+export const BACKS = [
+  "lattice",
+  "argyle",
+  "pinstripe",
+  "ripple",
+  "dots",
+  "solid",
+] as const;
 
 /**
  * Not a look — the three attributes are the whole of a look, and this is
@@ -55,7 +71,6 @@ export type Auto = typeof AUTO;
 export interface Settings {
   theme: Theme;
   deck: Deck | Auto;
-  back: Back | Auto;
   /** Subtle, and on — the argument for it is in docs/07-architecture.md. */
   sound: boolean;
   /** The clock can be hidden entirely; time is still recorded. docs/02. */
@@ -79,7 +94,6 @@ export interface Settings {
 export const DEFAULTS: Settings = Object.freeze({
   theme: "warm",
   deck: AUTO,
-  back: AUTO,
   sound: true,
   timer: true,
   cardSize: "comfortable",
@@ -89,17 +103,41 @@ export const DEFAULTS: Settings = Object.freeze({
 
 /**
  * "theme = surface tokens + light model + type + a default deck", from
- * docs/04-art-direction.md. A table is a taste, and the deck and back that go
- * with it are part of that taste: picking the Minimal table should hand you
- * its flat back rather than leaving the warm one's woven lattice on it.
+ * docs/04-art-direction.md. A table is a taste, and the deck that goes with it
+ * is part of that taste.
  *
  * Choosing a deck explicitly replaces this for good — the point of the
  * sourcing policy is that anyone can have any deck on any table.
  */
-const TABLE: Record<Theme, { deck: Deck; back: Back }> = {
-  warm: { deck: "minimal", back: "lattice" },
-  minimal: { deck: "minimal", back: "solid" },
-  dark: { deck: "minimal", back: "lattice" },
+const TABLE: Record<Theme, Deck> = {
+  warm: "minimal",
+  minimal: "minimal",
+  dark: "minimal",
+};
+
+/**
+ * The back a deck is printed on.
+ *
+ * **A back belongs to the deck, not to the player.** A real deck comes with
+ * one; you do not buy a pack of cards and then pick what is on the other side
+ * of them. Offering it separately made a fourth of the settings sheet out of a
+ * decision nobody has to make, and made it possible to put the flat
+ * accessibility back on the French deck's Victorian courts, which is two decks
+ * in one pack.
+ *
+ * So the deck names its back and this is the whole of that naming. It is still
+ * `data-back` on `<html>` — the three attributes are unchanged, and
+ * `src/decks/backs.css` still knows nothing about which deck is on — because a
+ * back is recoloured by the *table*, and keeping it its own attribute is what
+ * lets one table's ink reach it without the deck files knowing about themes.
+ */
+const DECK_BACK: Record<Deck, Back> = {
+  minimal: "lattice",
+  classic: "argyle",
+  vintage: "pinstripe",
+  "high-contrast": "solid",
+  "four-colour": "dots",
+  french: "ripple",
 };
 
 export interface Resolved {
@@ -110,12 +148,8 @@ export interface Resolved {
 
 /** What the three attributes should actually say. */
 export function resolve(settings: Settings): Resolved {
-  const table = TABLE[settings.theme];
-  return {
-    theme: settings.theme,
-    deck: settings.deck === AUTO ? table.deck : settings.deck,
-    back: settings.back === AUTO ? table.back : settings.back,
-  };
+  const deck = settings.deck === AUTO ? TABLE[settings.theme] : settings.deck;
+  return { theme: settings.theme, deck, back: DECK_BACK[deck] };
 }
 
 /**
@@ -156,13 +190,13 @@ export const SETTINGS_KEY = "sol:v1:settings";
  */
 export const BOOTSTRAP = `(function(){
 var table=${JSON.stringify(TABLE)};
-var decks=${JSON.stringify(DECKS)};
-var backs=${JSON.stringify(BACKS)};
+var backs=${JSON.stringify(DECK_BACK)};
 var s={};
 try{s=JSON.parse(localStorage.getItem(${JSON.stringify(SETTINGS_KEY)})||"{}")||{};}catch(e){}
 var theme=table[s.theme]?s.theme:${JSON.stringify(DEFAULTS.theme)};
+var deck=backs[s.deck]?s.deck:table[theme];
 var d=document.documentElement;
 d.dataset.theme=theme;
-d.dataset.deck=decks.indexOf(s.deck)<0?table[theme].deck:s.deck;
-d.dataset.back=backs.indexOf(s.back)<0?table[theme].back:s.back;
+d.dataset.deck=deck;
+d.dataset.back=backs[deck];
 })();`;

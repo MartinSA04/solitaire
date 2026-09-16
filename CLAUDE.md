@@ -36,12 +36,27 @@ in the same commit.
 - **`src/game/Layout.ts` is the only source of board geometry**, and it is
   pure: an area in, numbers out. It writes its measurements onto `.board` as
   custom properties and the CSS consumes them, so the slot grid and the card
-  transforms cannot drift apart. CSS works nothing out for itself except a
-  pre-hydration estimate. `test/game/layout.test.ts` pins the numbers.
-- **Only `transform` and `opacity` animate on a card**, and `will-change` goes
-  on only for as long as something is moving — the length of a move, or of the
-  win sequence's stages 1 to 3. Permanent `will-change` on 52 elements costs
-  real memory on a cheap GPU.
+  transforms cannot drift apart — including `--origin-y`, the gap between the
+  chrome and the top row, which is a measurement like any other and not a
+  margin CSS chose for itself. CSS works nothing out except a pre-hydration
+  estimate. `test/game/layout.test.ts` pins the numbers.
+- **Only `transform` and `opacity` animate on a card** — plus the individual
+  transform properties (`translate`, `scale`), which is where the offsets
+  stacked on top of a card's position live: the hover lift, the shake, the
+  draw's arc. `will-change` goes on only for as long as something is moving —
+  the length of a move, or of the win sequence's stages 1 to 3. Permanent
+  `will-change` on 52 elements costs real memory on a cheap GPU.
+- **A card's position and the offsets on top of it are two transitions, and
+  never two `transition` shorthands.** Both are one class on `.card`, so the
+  later rule in `board.css` wins outright and the loser is silently disarmed.
+  The move's half is `--move-time`/`--move-ease`, which a motion class fills in
+  for as long as it is on the element; the lift's half is written once on
+  `.card`. Written as two shorthands, the hover lift disarmed every move of a
+  card under the cursor — which is every card a mouse ever clicks.
+- **Every lift is given back.** A refused drop drops out of the drag band when
+  it lands, a hint's lift comes off with the hint, and a flight's comes off at
+  `#scheduleLanding`. A card left in a band nothing else can reach sits over
+  every pile on the table until some unrelated render happens to rewrite it.
 - **The winnable pools are generated, committed, and append-only.**
   `scripts/generate-winnable.ts` scans deal numbers upward from 0 at a **frozen
   node budget** and keeps the ones its solver wins, so `src/data/winnable-{1,3}.bin`
@@ -61,14 +76,20 @@ in the same commit.
 - **A look is three attributes on `<html>`** — `data-theme`, `data-deck`,
   `data-back` — and `src/game/settings.ts` is the only thing that writes them,
   including before the first paint: `BOOTSTRAP` is an inline script generated
-  from the same table `resolve()` uses, and `test/game/settings.test.ts` runs it
-  against every combination and asserts the two agree.
+  from the same tables `resolve()` uses, and `test/game/settings.test.ts` runs
+  it against every combination and asserts the two agree.
   A theme or deck is a set of custom properties and nothing else; the stylesheets
   in `src/themes/` and `src/decks/` hang off those attributes and know nothing
   about each other. **Deck files are imported after theme files**, and that
   order is what decides a conflict between them, because the two selectors have
   equal specificity. `test/themes/` asserts the token contract from `docs/04`
   and the contrast table from `docs/08` by reading the stylesheets.
+- **Only two of those three are chosen.** A back belongs to its deck, the way it
+  does in a real pack: `DECK_BACK` names one per deck, six decks have six
+  different backs, and there is no control for it anywhere. It stays its own
+  attribute because a back is recoloured by the *table* — `--back-bg`,
+  `--back-ink`, `--back-edge` are theme tokens — so one stylesheet can hold
+  every pattern without a deck file or a theme file knowing about it.
 - **A sourced deck is fetched, then injected into the document.** Cross-file
   `<use href="deck.svg#id">` is unsupported in Safari. `src/game/DeckArt.ts`
   fetches the sprite once and `CardLayer.setArt()` points the 52 `<use>`
@@ -131,6 +152,12 @@ in the same commit.
   a no-op, so a resize mid-cascade cannot put the cards back on their
   foundations. `?win` runs the whole thing without winning and `?winseed=N`
   makes it deterministic; see `docs/06-win-sequence.md`.
+- **The trail canvas ends empty, on every path out of the sequence.** The
+  wash-out clears it however it ends and `destroy()` clears it again, because
+  subtracting 22% of the alpha thirty-six times leaves one or two units of it
+  per pixel — invisible against a dark table and a grey haze over the next
+  deal — and because tearing the sequence down mid-fade takes the timer that
+  would have cleared it.
 
 ## Commands
 

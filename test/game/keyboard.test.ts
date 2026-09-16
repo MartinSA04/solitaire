@@ -280,7 +280,7 @@ describe("picking up and putting down", () => {
   it("refuses an empty pile, and a drop the rules do not allow", () => {
     const player = new Player(24);
     player.goto(WASTE);
-    assert.deepEqual(player.press(" "), { kind: "refuse", card: null });
+    assert.deepEqual(player.press(" "), { kind: "refuse", cards: [] });
 
     player.press("s");
     player.goto(WASTE);
@@ -289,6 +289,28 @@ describe("picking up and putting down", () => {
     player.goto(STOCK);
     assert.equal(player.press(" ")?.kind, "refuse");
     assert.notEqual(player.held, null, "a refused drop stays in hand");
+  });
+
+  /**
+   * A refusal names every card it refused, because the board shakes them: a
+   * run that has nowhere to go is a run being told no, and shaking the bottom
+   * card of it says something different and less true.
+   */
+  it("names the whole run it refused, not the card at the bottom", () => {
+    const player = new Player(24);
+    player.goto(WASTE);
+    player.press("s");
+    player.press(" ");
+    const held = player.held;
+    assert.notEqual(held, null);
+
+    player.goto(STOCK);
+    const refusal = player.press(" ");
+    assert.equal(refusal?.kind, "refuse");
+    assert.deepEqual(
+      refusal.kind === "refuse" ? [...refusal.cards] : null,
+      held?.cards,
+    );
   });
 
   it("keeps the hand still while the focus walks to the target", () => {
