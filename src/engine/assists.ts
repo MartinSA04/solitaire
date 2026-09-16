@@ -13,13 +13,7 @@ import {
   turnsOverCard,
 } from "./enumerate.ts";
 import { type Move, applyMove, isLegal } from "./moves.ts";
-import {
-  type Column,
-  type GameState,
-  faceUpCount,
-  isWon,
-  topOf,
-} from "./state.ts";
+import { type Column, type GameState, faceUpCount, topOf } from "./state.ts";
 
 /**
  * Hints and auto-complete: policy over the rules, not part of them. Klondike's
@@ -148,164 +142,38 @@ function isSafeToSendHome(state: GameState, card: Card): boolean {
   );
 }
 
-/** A generous ceiling; a real finish from a legitimate position is a few hundred moves at most. */
-const AUTO_COMPLETE_LIMIT = 1000;
-
 /**
  * The ordered run of moves that finishes the game, lowest rank first so the
- * cascade climbs the foundations rather than jumping about.
+ * cascade climbs the four foundations together rather than finishing one suit
+ * and then starting the next.
  *
- * Offered once no face-down tableau cards remain, which is the point at which
- * the deal is already won and the player is only owed the ceremony. It is the
- * opening beat of the win sequence, not a skip of it — see
+ * Offered once {@link canAutoComplete} holds — every card face up in the
+ * tableau, nothing left in the stock. That condition is what makes this as
+ * simple as it looks: each column is a descending run, so the lowest card
+ * still needed is always on top of one of them, and sending cards home in rank
+ * order can never get stuck. Foundation moves to a fixpoint, and the fixpoint
+ * is a win.
+ *
+ * It is the opening beat of the win sequence, not a skip of it — see
  * docs/06-win-sequence.md.
  *
- * It is the way a person finishes a laid-open board: every card that comes up
- * either goes home or goes onto a run, and the stock is turned when neither is
- * possible. Both of those are safe once nothing is face down — the tableau is
- * all descending runs, so a card laid on one is never in the way of a card
- * that needs to go home before it.
- *
- * What it is guaranteed to finish, measured over a large corpus of endgames in
- * test/engine/assists.test.ts:
- *
- * - **Any position with an empty stock.** Every column is a descending run, so
- *   the lowest card still needed is always the top of one of them. That one is
- *   a proof, not a measurement.
- * - **Any draw-1 position.** Every stock card comes round to the top of the
- *   waste, so the same argument extends through the stock.
- * - **Nearly every draw-3 position.** Here a needed card can sit under one
- *   with nowhere to go, in a rotation that never exposes it. The searches
- *   below clear most of those; a board with a lot still in the stock can
- *   defeat them.
- *
- * So the caller checks. The sequence is bounded and always legal, and a
- * position this can't finish returns the progress it made rather than hanging
- * or lying — `isWon` on the result of replaying it is the honest test of
- * whether Finish can be offered.
+ * Called on a position that doesn't qualify it still returns only legal moves,
+ * but it will stop as soon as nothing more can go home. It turns no cards and
+ * rearranges nothing: digging a needed card out of a draw-3 waste is playing
+ * the game, and that is the player's to do.
  */
 export function autoCompleteSequence(state: GameState): Move[] {
   const sequence: Move[] = [];
   let current = state;
-  let sinceProgress = 0;
 
-  while (!isWon(current) && sequence.length < AUTO_COMPLETE_LIMIT) {
-    const move = lowestCardHome(current) ?? digOut(current);
-    if (move !== null) {
-      current = applyMove(current, move);
-      sequence.push(move);
-      sinceProgress = 0;
-      continue;
-    }
-
-    // A whole pass has come round with nothing playable, so something is
-    // pinned — a card in the waste under one with nowhere to go, or a card in
-    // the tableau under a run. Look a few moves ahead for a way to shift it,
-    // and keep looking at each turn of the stock, since which card is pinned
-    // changes as the waste rotates.
-    const pass = current.stock.length + current.waste.length + 1;
-    if (sinceProgress > pass) {
-      const escape = unblock(current) ?? rescue(current);
-      if (escape !== null) {
-        for (const move of escape) {
-          current = applyMove(current, move);
-          sequence.push(move);
-        }
-        sinceProgress = 0;
-        continue;
-      }
-      // A second pass with nothing to play and nothing to shift. Done.
-      if (sinceProgress > 2 * pass) break;
-    }
-
-    const turn: Move =
-      current.stock.length > 0 ? { kind: "draw" } : { kind: "recycle" };
-    if (!isLegal(current, turn)) break;
-    current = applyMove(current, turn);
-    sequence.push(turn);
-    sinceProgress++;
+  let move = lowestCardHome(current);
+  while (move !== null) {
+    current = applyMove(current, move);
+    sequence.push(move);
+    move = lowestCardHome(current);
   }
 
   return sequence;
-}
-
-/**
- * One move to make a landing spot, and the move that then unloads the waste
- * onto it. Shifting a run usually does it; failing that a card comes back off
- * a foundation, which is the one situation where that otherwise pointless move
- * is the only way home.
- *
- * The pair is applied together on purpose. Let the main loop back in between
- * and it would just send the fetched card straight home again, forever.
- */
-function unblock(state: GameState): Move[] | null {
-  for (const clear of legalMoves(state)) {
-    if (clear.kind === "draw" || clear.kind === "recycle") continue;
-    if (isHoleShuffle(state, clear)) continue;
-    const unload = digOut(applyMove(state, clear));
-    if (unload !== null) return [clear, unload];
-  }
-  return null;
-}
-
-/** Three moves is enough for "shift that run, fetch that card back, now play it". */
-const RESCUE_DEPTH = 3;
-
-function cardsHome(state: GameState): number {
-  return state.foundations.reduce((total, pile) => total + pile.length, 0);
-}
-
-/**
- * Nothing in the waste can be shifted either, so something in the *tableau* is
- * pinned. Search a few moves deep for a way to get one more card home, leaving
- * the stock alone since turning it is what just failed. Shortest line first,
- * because the least disruption to the runs is almost always the right one.
- *
- * Insisting on a strictly better foundation count is what keeps this honest: a
- * line often has to fetch a card back off a foundation to make a landing spot,
- * and without that condition the search would happily "solve" the position by
- * putting that card back where it came from. Neither search is what bounds the
- * loop, though — `AUTO_COMPLETE_LIMIT` is.
- */
-function rescue(state: GameState): Move[] | null {
-  const target = cardsHome(state);
-  for (let depth = 2; depth <= RESCUE_DEPTH; depth++) {
-    const found = search(state, target, depth);
-    if (found !== null) return found;
-  }
-  return null;
-}
-
-function search(
-  state: GameState,
-  target: number,
-  depth: number,
-): Move[] | null {
-  if (cardsHome(state) > target) return [];
-  if (depth === 0) return null;
-  for (const move of legalMoves(state)) {
-    if (move.kind === "draw" || move.kind === "recycle") continue;
-    if (isHoleShuffle(state, move)) continue;
-    const rest = search(applyMove(state, move), target, depth - 1);
-    if (rest !== null) return [move, ...rest];
-  }
-  return null;
-}
-
-/**
- * Move the waste's top card out of the way, which in draw-3 is how you reach
- * the one underneath it. Onto a real column by preference, so the empty ones
- * stay free for the Kings that are the only thing that can use them.
- */
-function digOut(state: GameState): Move | null {
-  const moves = legalMoves(state).filter(
-    (move) => move.kind === "wasteToTableau",
-  );
-  return (
-    moves.find((move) => (state.tableau[move.to] as Column).cards.length > 0) ??
-    moves[0] ??
-    null
-  );
 }
 
 function lowestCardHome(state: GameState): Move | null {

@@ -161,40 +161,51 @@ function replay(state: GameState, sequence: Move[]): GameState {
   return sequence.reduce(applyMove, state);
 }
 
-const SHAPES: Array<[handOut: number, toStock: number]> = [
-  [20, 0],
-  [30, 0],
-  [40, 0],
-  [30, 3],
-  [40, 8],
-  [45, 12],
-];
+const HANDED_OUT = [20, 30, 40, 45, 52];
 
 describe("finishing the game", () => {
-  it("is offered exactly when no face-down cards remain", () => {
+  it("is offered only when every card is face up in the tableau", () => {
     assert.equal(canAutoComplete(deal(42, 1)), false, "a fresh deal");
-    assert.equal(
-      canAutoComplete(endgame(1, 1, 30, 0)),
-      true,
-      "everything face up",
-    );
+    assert.equal(canAutoComplete(endgame(1, 1, 30, 0)), true);
     assert.equal(
       canAutoComplete(makeState({ foundations: "K♣ K♦ K♥ K♠" })),
       false,
       "an already-won game has nothing to finish",
     );
-    assert.deepEqual(
-      autoCompleteSequence(makeState({ foundations: "K♣ K♦ K♥ K♠" })),
-      [],
+  });
+
+  /**
+   * The condition the whole thing rests on. Cards still in the stock mean
+   * cards you cannot reach yet, and in draw-3 possibly ever — so Finish waits
+   * until the stock is spent rather than offering a run that stops halfway.
+   */
+  it("is not offered while anything is left in the stock or waste", () => {
+    for (const drawCount of [1, 3] as const) {
+      for (let seed = 1; seed <= 25; seed++) {
+        const held = endgame(seed, drawCount, 40, 8);
+        assert.ok(held.stock.length > 0);
+        assert.deepEqual(invariantViolations(held), []);
+        assert.equal(
+          canAutoComplete(held),
+          false,
+          `draw-${drawCount} seed ${seed}, ${held.stock.length} in the stock`,
+        );
+      }
+    }
+    assert.equal(
+      canAutoComplete(makeState({ waste: "A♠", tableau: ["K♥"] })),
+      false,
+      "a card in the waste is a card not yet in the tableau",
     );
   });
 
-  it("sends every card home from any position with an empty stock", () => {
+  it("sends every card home, from every position it is offered on", () => {
     for (const drawCount of [1, 3] as const) {
-      for (const [handOut] of SHAPES) {
+      for (const handOut of HANDED_OUT) {
         for (let seed = 1; seed <= 25; seed++) {
           const start = endgame(seed, drawCount, handOut, 0);
           assert.deepEqual(invariantViolations(start), []);
+          assert.ok(canAutoComplete(start), `draw-${drawCount} seed ${seed}`);
           const finished = replay(start, autoCompleteSequence(start));
           assert.ok(
             isWon(finished),
@@ -205,43 +216,24 @@ describe("finishing the game", () => {
     }
   });
 
-  it("sends every card home in draw-1, whatever is left in the stock", () => {
-    for (const [handOut, toStock] of SHAPES) {
-      for (let seed = 1; seed <= 25; seed++) {
-        const start = endgame(seed, 1, handOut, toStock);
-        assert.deepEqual(invariantViolations(start), []);
-        const finished = replay(start, autoCompleteSequence(start));
-        assert.ok(
-          isWon(finished),
-          `seed ${seed}, ${handOut} out and ${toStock} in the stock, did not finish`,
-        );
+  // No turning the stock, no shuffling runs about to dig something out. That
+  // is playing the game, and it stays the player's to do.
+  it("plays nothing but cards going home", () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      const start = endgame(seed, 1, 45, 0);
+      for (const move of autoCompleteSequence(start)) {
+        assert.equal(move.kind, "tableauToFoundation", encodeMove(move));
       }
     }
   });
 
-  /**
-   * Draw-3 can pin a needed card under one with nowhere to go, in a rotation
-   * that never exposes it. The engine's promise is not that it always wins —
-   * it is that what it returns is always legal, always leaves the board
-   * coherent, and never pretends. The caller checks `isWon` before offering
-   * the button.
-   */
-  it("always returns a legal run, even where draw-3 defeats it", () => {
-    let finished = 0;
-    let total = 0;
-    for (const [handOut, toStock] of SHAPES) {
-      for (let seed = 1; seed <= 25; seed++) {
-        const start = endgame(seed, 3, handOut, toStock);
-        const end = replay(start, autoCompleteSequence(start));
-        assert.deepEqual(invariantViolations(end), [], `seed ${seed}`);
-        total++;
-        if (isWon(end)) finished++;
-      }
-    }
-    assert.ok(
-      finished > total * 0.8,
-      `only ${finished} of ${total} draw-3 endgames finished`,
-    );
+  it("stops rather than flails on a board that isn't ready", () => {
+    const start = deal(42, 1);
+    const sequence = autoCompleteSequence(start);
+    const end = replay(start, sequence);
+    assert.deepEqual(invariantViolations(end), []);
+    assert.ok(sequence.length < 52, `${sequence.length} moves on a fresh deal`);
+    assert.equal(autoCompleteSequence(end).length, 0, "it ran to a fixpoint");
   });
 
   // Lowest rank first, so the cascade climbs the four piles together instead

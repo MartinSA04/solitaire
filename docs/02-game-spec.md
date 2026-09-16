@@ -147,9 +147,20 @@ Hints do not consume anything and are not limited.
 
 ### Auto-complete
 
-When **no face-down tableau cards remain**, the game is guaranteed winnable —
-everything is visible and the stock can be cycled freely — so a single
-**Finish** button appears and sends every remaining card home.
+When **every card is face up in the tableau** — none face down, and nothing
+left in the stock or waste — the game is already won, so a single **Finish**
+button appears and sends every remaining card home.
+
+That condition is a proof, not a rule of thumb. With nothing face down, every
+column is a descending run, so the lowest-ranked card still needed is always on
+top of one of them; sending cards home in rank order cannot get stuck. The
+finish is therefore nothing but foundation moves, and it always completes.
+
+The empty stock is load-bearing. "No face-down cards" on its own is *not*
+enough: in draw-3 a card you need can sit in the waste under one that has
+nowhere to go, in a rotation that never exposes it, and no amount of cycling
+reaches it. Digging it out is playing the game, and that stays the player's to
+do — a Finish button that sometimes stops halfway is worse than one that waits.
 
 It is offered, never forced. Pressing it plays a fast cascading run of moves
 (~40ms apart, accelerating) that flows straight into the

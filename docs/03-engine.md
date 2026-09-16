@@ -142,7 +142,9 @@ function legalMoves(state: GameState): Move[];
 One function, used by three consumers with different needs:
 
 - **Hints** rank its output with the heuristic in [02](02-game-spec.md).
-- **Auto-complete** filters it to foundation moves and runs them to fixpoint.
+- **Auto-complete** filters it to foundation moves and runs them to fixpoint,
+  which is exhaustive because it is only ever offered on a board where that is
+  enough — see [02](02-game-spec.md).
 - **The solver** searches over it.
 
 It returns moves in a deterministic order so the solver is reproducible. It
@@ -236,7 +238,7 @@ interface Game {
   readonly state: GameState;
   readonly canUndo: boolean;
   readonly isWon: boolean;
-  readonly canAutoComplete: boolean;   // no face-down tableau cards
+  readonly canAutoComplete: boolean;   // every card face up in the tableau
   play(move: Move): boolean;           // false if illegal; never throws
   undo(): boolean;
   hint(): Move | null;

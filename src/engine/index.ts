@@ -104,7 +104,7 @@ export interface Game {
   readonly drawCount: DrawCount;
   readonly canUndo: boolean;
   readonly isWon: boolean;
-  /** No face-down tableau cards left, so Finish can be offered. */
+  /** Every card face up in the tableau and the stock spent, so Finish can be offered. */
   readonly canAutoComplete: boolean;
   /**
    * Moves the player has made. Unlike `state.moves` this never goes down:

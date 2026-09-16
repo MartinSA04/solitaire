@@ -60,12 +60,26 @@ export function isWon(state: GameState): boolean {
 }
 
 /**
- * No face-down tableau cards left, which means every card is either visible or
- * freely cycled through the stock — so the deal is already won and the player
- * is only owed the ceremony. This is what puts the Finish button on screen.
+ * Every card face up in the tableau: none face down, and nothing left in the
+ * stock or the waste. This is what puts the Finish button on screen.
+ *
+ * At that point the deal is already won and the player is only owed the
+ * ceremony, and it is a proof rather than a strong hunch. Every column is a
+ * descending run, so the lowest-ranked card still needed is always the top of
+ * one of them — sending cards home in rank order cannot get stuck.
+ *
+ * The empty stock is doing real work in that argument. "No face-down cards"
+ * alone is not enough: in draw-3 a card you need can sit in the waste under
+ * one that has nowhere to go, in a rotation that never exposes it, and a
+ * Finish button that sometimes stops halfway is worse than none.
  */
 export function canAutoComplete(state: GameState): boolean {
-  return !isWon(state) && state.tableau.every((column) => column.down === 0);
+  return (
+    !isWon(state) &&
+    state.stock.length === 0 &&
+    state.waste.length === 0 &&
+    state.tableau.every((column) => column.down === 0)
+  );
 }
 
 /**
