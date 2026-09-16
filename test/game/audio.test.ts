@@ -6,6 +6,8 @@ import {
   bounceCutoff,
   bounceLevel,
   bounceNote,
+  homeNote,
+  moveCutoff,
   scaleNote,
 } from "../../src/game/Audio.ts";
 import { mix, parseColour } from "../../src/game/Trails.ts";
@@ -119,5 +121,79 @@ describe("trail colours", () => {
     assert.equal(mix("#000000", "#ffffff", 0.5, 0.1), "rgb(128 128 128 / 0.1)");
     assert.equal(mix("#a8232a", "#fbf8f1", 0, 0.1), "rgb(168 35 42 / 0.1)");
     assert.equal(mix("#a8232a", "#fbf8f1", 1, 0.1), "rgb(251 248 241 / 0.1)");
+  });
+});
+
+/** Seven steps, so the cycle never locks to a player's rhythm. */
+const MOVE_CYCLE = 7;
+
+describe("the card-movement burst", () => {
+  it("never sounds the same twice running", () => {
+    // Repeated moves are what make a card game sound like a machine gun.
+    for (let n = 0; n < 40; n++) {
+      assert.notEqual(
+        moveCutoff(n),
+        moveCutoff(n + 1),
+        `moves ${n} and ${n + 1}`,
+      );
+    }
+  });
+
+  it("stays inside its band", () => {
+    for (let n = 0; n < 40; n++) {
+      const hz = moveCutoff(n);
+      assert.ok(
+        hz >= 2400 * 0.86 - 1e-9 && hz <= 2400 * 1.14 + 1e-9,
+        `${hz}Hz`,
+      );
+    }
+  });
+
+  it("is not a rising scale", () => {
+    // Out of order on purpose: a cycle that climbed would only trade the
+    // machine gun for a tune nobody asked for.
+    const rising = Array.from(
+      { length: 6 },
+      (_, n) => moveCutoff(n + 1) > moveCutoff(n),
+    );
+    assert.ok(new Set(rising).size > 1, "the cycle only ever goes one way");
+  });
+
+  it("is the same burst for the same move, however it is asked", () => {
+    assert.equal(moveCutoff(3), moveCutoff(3));
+    assert.equal(moveCutoff(0), moveCutoff(MOVE_CYCLE));
+  });
+});
+
+describe("the foundation ping", () => {
+  it("climbs with the rank, an Ace to a King", () => {
+    for (let rank = 0; rank < 12; rank++) {
+      assert.ok(
+        homeNote(rank + 1) >= homeNote(rank),
+        `${rank + 1} is not above ${rank}`,
+      );
+    }
+    assert.ok(homeNote(12) > homeNote(0));
+  });
+
+  it("spans exactly one octave, Ace to King", () => {
+    assert.ok(Math.abs(homeNote(12) / homeNote(0) - 2) < 1e-6);
+  });
+
+  it("is on the same scale as the cascade", () => {
+    // The two sounds meet at the win, so neither may be off the other's scale.
+    for (let rank = 0; rank < 13; rank++) {
+      const semitones = semitonesAbove(homeNote(rank));
+      const degree = Math.round(semitones) % 12;
+      assert.ok(
+        PENTATONIC.includes(degree),
+        `rank ${rank} lands ${degree} semitones above C`,
+      );
+    }
+  });
+
+  it("cannot be pushed off the scale by a nonsense rank", () => {
+    assert.equal(homeNote(-5), homeNote(0));
+    assert.equal(homeNote(99), homeNote(12));
   });
 });

@@ -1,8 +1,11 @@
 import {
   type Card,
+  type Column,
   type GameState,
+  type Move,
   SUIT_COUNT,
   TABLEAU_COLUMNS,
+  topOf,
 } from "../engine/index.ts";
 
 /**
@@ -63,6 +66,23 @@ export function predealt(state: GameState): GameState {
       down: 0,
     })),
   };
+}
+
+/**
+ * The card a move is about to send to a foundation, if it is sending one —
+ * asked of the position *before* the move, because that is where the card
+ * still is. It decides which of the two sounds a move makes: going home is
+ * the one arrival in the game that is worth its own note.
+ */
+export function homedCard(state: GameState, move: Move): Card | null {
+  switch (move.kind) {
+    case "wasteToFoundation":
+      return topOf(state.waste) ?? null;
+    case "tableauToFoundation":
+      return topOf((state.tableau[move.from] as Column).cards) ?? null;
+    default:
+      return null;
+  }
 }
 
 /**

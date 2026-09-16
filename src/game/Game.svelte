@@ -17,10 +17,11 @@
     suitOf,
     topOf,
   } from "../engine/index.ts";
+  import { Sound } from "./Audio.ts";
   import { CardLayer, type Motion } from "./CardLayer.ts";
   import { Drag, type DragHost } from "./Drag.ts";
   import { FOUNDATION_ORDER, metricsFor } from "./Layout.ts";
-  import { dealOrder, drawnCards, predealt } from "./motion.ts";
+  import { dealOrder, drawnCards, homedCard, predealt } from "./motion.ts";
   import { PULSE_GAP_MS, WinSequence, type WinStage } from "./WinSequence.ts";
   import { Stopwatch } from "./clock.ts";
   import BottomBar from "./chrome/BottomBar.svelte";
@@ -81,6 +82,18 @@
   let game: Game = openingGame();
   let clock = new Stopwatch(() => performance.now());
 
+  /**
+   * One audio graph for the whole product, outliving any one deal — the win
+   * sequence plays through this one too. It builds nothing until the first
+   * move asks it to, so a visit that never plays makes no context and no
+   * noise.
+   *
+   * It is audible from the first move, per docs/07: the sound setting and the
+   * storage it lives in are milestone 4's settings sheet, and until that
+   * exists the documented default is the only behaviour there is.
+   */
+  const sound = new Sound();
+
   function randomSeed(): number {
     return Math.floor(Math.random() * (MAX_SEED + 1));
   }
@@ -121,6 +134,15 @@
     const before = game.state;
     if (!game.play(move)) return false;
     clock.start();
+
+    // This runs inside the pointer or click handler that asked for the move,
+    // which is the user gesture the autoplay policy wants. A card going home
+    // gets the ping instead of the slide — it is the one arrival worth a note,
+    // and two sounds at once would only be mud.
+    sound.start();
+    const home = homedCard(before, move);
+    if (home !== null) sound.home(rankOf(home));
+    else sound.move();
 
     // Two moves have a motion of their own, and neither of them is something
     // the gesture that asked for it can know: the cards a draw turns over fan
@@ -271,9 +293,7 @@
       board,
       seed: flags.seed,
       reducedMotion: reducedMotion(),
-      // The sound setting is milestone 5's, along with the storage it lives
-      // in. Until then the win sequence is audible, per docs/07.
-      muted: false,
+      sound,
       foundationTops: () =>
         FOUNDATION_ORDER.map(
           (suit) => topOf(displayed().foundations[suit] ?? []) ?? null,
@@ -375,6 +395,11 @@
       sequence = null;
       if (layer === cards) layer = null;
     };
+  });
+
+  /** The audio graph outlives every deal, but not the island. */
+  $effect(() => {
+    return () => sound.close();
   });
 
   /** The displayed clock. Pauses with the tab, per docs/02-game-spec.md. */

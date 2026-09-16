@@ -10,7 +10,12 @@ import {
   deal,
   shuffledDeck,
 } from "../../src/engine/index.ts";
-import { dealOrder, drawnCards, predealt } from "../../src/game/motion.ts";
+import {
+  dealOrder,
+  drawnCards,
+  homedCard,
+  predealt,
+} from "../../src/game/motion.ts";
 import { makeState, parseCards } from "../engine/helpers.ts";
 
 /**
@@ -79,6 +84,48 @@ describe("predealt", () => {
     assert.equal(before.seed, state.seed);
     assert.equal(before.drawCount, state.drawCount);
     assert.equal(before.moves, state.moves);
+  });
+});
+
+describe("homedCard", () => {
+  it("is the card a tableau move is about to send home", () => {
+    const state = makeState({ tableau: ["K♠ | A♥"] });
+    assert.equal(
+      homedCard(state, { kind: "tableauToFoundation", from: 0 }),
+      parseCards("A♥")[0],
+    );
+  });
+
+  it("is the top of the waste, not the bottom of it", () => {
+    const state = makeState({ waste: "9♣ A♦" });
+    assert.equal(
+      homedCard(state, { kind: "wasteToFoundation" }),
+      parseCards("A♦")[0],
+    );
+  });
+
+  it("is nothing for a move that goes anywhere else", () => {
+    const state = deal(SEED, 1);
+    assert.equal(homedCard(state, { kind: "draw" }), null);
+    assert.equal(homedCard(state, { kind: "recycle" }), null);
+    assert.equal(
+      homedCard(state, { kind: "tableauToTableau", from: 0, to: 1, count: 1 }),
+      null,
+    );
+    // Coming back *off* a foundation is an ordinary move, and sounds like one.
+    assert.equal(
+      homedCard(state, { kind: "foundationToTableau", suit: 0, to: 1 }),
+      null,
+    );
+  });
+
+  it("is nothing when there is no card to send", () => {
+    const empty = makeState({});
+    assert.equal(homedCard(empty, { kind: "wasteToFoundation" }), null);
+    assert.equal(
+      homedCard(empty, { kind: "tableauToFoundation", from: 3 }),
+      null,
+    );
   });
 });
 

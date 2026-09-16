@@ -1,18 +1,25 @@
+import { RANK_COUNT } from "../engine/index.ts";
+
 /**
- * The win sequence's sound: one four-note arpeggio, and one note per bounce.
+ * Every sound the product makes: a card sliding, a card going home, and the
+ * win sequence's arpeggio and pentatonic bounces.
  *
- * Synthesised, no sample files — the whole sound design is oscillators and
- * envelopes. Zero bytes to download, zero licensing questions, and mapping
- * pitch and brightness to impact speed is free. See docs/07-architecture.md.
+ * Synthesised, no sample files — the whole sound design is oscillators,
+ * filtered noise bursts and envelopes. Zero bytes to download, zero licensing
+ * questions, and mapping pitch and brightness to speed is free. See
+ * docs/07-architecture.md.
+ *
+ * One class, because there is one `AudioContext`, one master gain and
+ * therefore one mute. A second context is a second audio thread on a phone
+ * for no gain, and a mute that only silenced half the product would be a bug
+ * waiting to be filed.
  *
  * The notes are chosen by the pure functions at the top of this file and made
  * audible by the class at the bottom. That split is not decoration: WebAudio
  * cannot be run under `node --test`, and the part worth testing — that the
  * scale ascends, that nothing can land off it, that a dying card is quieter
- * than a hard bounce — is all arithmetic.
- *
- * This is the win sequence only. The card-movement and foundation sounds from
- * docs/07 are milestone 3, and share nothing with this but the idea.
+ * than a hard bounce, that two moves running never make the same noise — is
+ * all arithmetic.
  */
 
 /**
@@ -81,6 +88,40 @@ export function bounceCutoff(impact: number): number {
  */
 export const ARPEGGIO_DEGREES = [0, 2, 3, 5];
 
+/** Card movement: a band of noise around here, 25ms of it. */
+const MOVE_HZ = 2400;
+
+/** How far either side of that a single move may land. */
+const MOVE_SPREAD = 0.14;
+
+/**
+ * Seven steps through the band, deliberately out of order. Repeated moves are
+ * what make a card game sound like a machine gun, and a *rising* sequence
+ * would only trade that for a scale nobody asked for. Seven is coprime with
+ * every rhythm a player produces, so the cycle never locks to one.
+ */
+const MOVE_STEPS = [0, 0.7, -0.4, 1, -1, 0.35, -0.75];
+
+/** The centre of the `n`th card-movement burst. Never twice the same in a row. */
+export function moveCutoff(n: number): number {
+  const step = MOVE_STEPS[
+    Math.abs(Math.trunc(n)) % MOVE_STEPS.length
+  ] as number;
+  return MOVE_HZ * (1 + step * MOVE_SPREAD);
+}
+
+/**
+ * A card going home, as a note: the thirteen ranks spread over exactly one
+ * octave of the same pentatonic the cascade is in, so a foundation being
+ * built is an ascending line and the two sounds can never clash. An Ace is C5
+ * and a King is C6.
+ */
+export function homeNote(rank: number): number {
+  const clamped = Math.min(RANK_COUNT - 1, Math.max(0, Math.round(rank)));
+  const degree = Math.round((clamped / (RANK_COUNT - 1)) * PENTATONIC.length);
+  return scaleNote(degree + PENTATONIC.length);
+}
+
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
@@ -102,6 +143,15 @@ const BOUNCE_LEVEL = 0.22;
 const ARPEGGIO_LEVEL = 0.16;
 const THUMP_LEVEL = 0.18;
 
+/** Subtle, per docs/07. A card that announced itself would be unbearable by move fifty. */
+const MOVE_LEVEL = 0.12;
+const MOVE_DECAY_S = 0.025;
+const HOME_LEVEL = 0.1;
+const HOME_DECAY_S = 0.5;
+
+/** A quarter second of white noise, made once and re-read for every burst. */
+const NOISE_S = 0.25;
+
 /** Voices are held in start order, so the cap steals from the front. */
 interface Voice {
   gain: GainNode;
@@ -109,18 +159,25 @@ interface Voice {
 }
 
 /**
- * The WebAudio graph. Created lazily on the gesture that starts the sequence —
+ * The WebAudio graph. Created lazily on the first gesture that makes a sound —
  * browsers block a context created any other way, and building one on page
- * load is a battery cost for a visit that never makes a sound.
+ * load is a battery cost for a visit that never makes one.
+ *
+ * That laziness is also why the deal is silent: it runs on page load, before
+ * any gesture, so there is no context for it to play through. Which is the
+ * right answer anyway — twenty-eight bursts in six hundred milliseconds is a
+ * riffle, not a sound design.
  *
  * Every method is safe to call when there is no context, no WebAudio, or no
  * permission to make noise. Silence is a fine outcome; an exception thrown out
  * of a celebration is not.
  */
-export class WinAudio {
+export class Sound {
   #ctx: AudioContext | null = null;
   #master: GainNode | null = null;
+  #noise: AudioBuffer | null = null;
   #voices: Voice[] = [];
+  #moves = 0;
   #muted: boolean;
   #failed = false;
 
@@ -129,13 +186,47 @@ export class WinAudio {
   }
 
   /**
-   * Open the context. Called from the move that won the game, which is the
-   * user gesture the autoplay policy wants; without one the context stays
+   * Open the context. Called from the gesture that played a move, which is
+   * the user gesture the autoplay policy wants; without one the context stays
    * suspended and every note below is a no-op.
    */
   start(): void {
     const ctx = this.#context();
     if (ctx !== null && ctx.state === "suspended") void ctx.resume();
+  }
+
+  /**
+   * One card moving: a short burst of filtered noise, which is what a card on
+   * a table is. The band moves a little every time so that a fast run of moves
+   * does not machine-gun.
+   */
+  move(): void {
+    const ctx = this.#context();
+    if (ctx === null) return;
+    const n = this.#moves++;
+    this.#burst({
+      cutoff: moveCutoff(n),
+      level: MOVE_LEVEL,
+      decay: MOVE_DECAY_S,
+      at: ctx.currentTime,
+      // A different grain of the same noise each time, so it is the sound of a
+      // card rather than the sound of a sample.
+      offset: (n % 8) * 0.03,
+    });
+  }
+
+  /** A card reaching its foundation: a soft sine ping, higher the higher the card. */
+  home(rank: number): void {
+    const ctx = this.#context();
+    if (ctx === null) return;
+    this.#tone({
+      frequency: homeNote(rank),
+      level: HOME_LEVEL,
+      cutoff: 4000,
+      decay: HOME_DECAY_S,
+      at: ctx.currentTime,
+      type: "sine",
+    });
   }
 
   set muted(muted: boolean) {
@@ -216,6 +307,7 @@ export class WinAudio {
     const ctx = this.#ctx;
     this.#ctx = null;
     this.#master = null;
+    this.#noise = null;
     this.#voices = [];
     if (ctx !== null) void ctx.close().catch(() => {});
   }
@@ -241,6 +333,64 @@ export class WinAudio {
       this.#failed = true;
       return null;
     }
+  }
+
+  /**
+   * One burst of noise through a bandpass through an envelope — the other half
+   * of the instrument, and the half that makes an impact rather than a note.
+   */
+  #burst(spec: {
+    cutoff: number;
+    level: number;
+    decay: number;
+    at: number;
+    offset: number;
+  }): void {
+    const ctx = this.#ctx;
+    const master = this.#master;
+    if (ctx === null || master === null) return;
+    this.#reap(spec.at);
+
+    const source = ctx.createBufferSource();
+    source.buffer = this.#noiseBuffer(ctx);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = spec.cutoff;
+    filter.Q.value = 1.2;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(Math.max(0.0002, spec.level), spec.at);
+    gain.gain.exponentialRampToValueAtTime(0.0001, spec.at + spec.decay);
+
+    source.connect(filter).connect(gain).connect(master);
+    source.start(spec.at, spec.offset, spec.decay + 0.02);
+
+    const voice: Voice = {
+      gain,
+      stop: (at) => {
+        try {
+          source.stop(at);
+        } catch {
+          // Already stopped. Nothing to do and nothing to report.
+        }
+      },
+    };
+    source.addEventListener("ended", () => {
+      this.#voices = this.#voices.filter((v) => v !== voice);
+    });
+    this.#voices.push(voice);
+  }
+
+  /** White noise, made once per context and shared by every burst. */
+  #noiseBuffer(ctx: AudioContext): AudioBuffer {
+    if (this.#noise !== null) return this.#noise;
+    const frames = Math.ceil(ctx.sampleRate * NOISE_S);
+    const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
+    const channel = buffer.getChannelData(0);
+    for (let i = 0; i < frames; i++) channel[i] = Math.random() * 2 - 1;
+    this.#noise = buffer;
+    return buffer;
   }
 
   /** One oscillator through one filter through one envelope. That is the whole instrument. */

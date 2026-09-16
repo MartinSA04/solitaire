@@ -1,5 +1,5 @@
 import { type Card, DECK_SIZE, suitOf } from "../engine/index.ts";
-import { WinAudio } from "./Audio.ts";
+import { type Sound } from "./Audio.ts";
 import { type CardLayer } from "./CardLayer.ts";
 import { pileOrigin } from "./Layout.ts";
 import {
@@ -128,7 +128,8 @@ export interface WinOptions {
    */
   seed: number | null;
   reducedMotion: boolean;
-  muted: boolean;
+  /** The product's one audio graph. Owned by the caller, not by the sequence. */
+  sound: Sound;
   /** The visible card on each foundation, ♠ ♥ ♦ ♣, for Stage 1's pulses. */
   foundationTops: () => readonly (Card | null)[];
   onStage: (stage: WinStage) => void;
@@ -136,7 +137,7 @@ export interface WinOptions {
 
 export class WinSequence {
   readonly #options: WinOptions;
-  readonly #audio: WinAudio;
+  readonly #audio: Sound;
   readonly #trails: Trails;
 
   #stage: WinStage = "none";
@@ -163,7 +164,7 @@ export class WinSequence {
 
   constructor(options: WinOptions) {
     this.#options = options;
-    this.#audio = new WinAudio(options.muted);
+    this.#audio = options.sound;
     this.#trails = new Trails(options.canvas);
   }
 
@@ -211,7 +212,9 @@ export class WinSequence {
   destroy(): void {
     this.#stopLoop();
     this.#clearTimers();
-    this.#audio.close();
+    // Released, not closed: the graph outlives the celebration, and the next
+    // game is played through the same one.
+    this.#audio.release();
   }
 
   // ------------------------------------------------------------- stage 1
