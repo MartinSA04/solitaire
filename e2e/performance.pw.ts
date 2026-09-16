@@ -1,3 +1,5 @@
+import { gzipSync } from "node:zlib";
+import { readFileSync } from "node:fs";
 import { type Page, expect, test } from "@playwright/test";
 
 /**
@@ -140,4 +142,153 @@ test("the screen clears however slow the machine is", async ({ page }) => {
         nodes.filter((node) => getComputedStyle(node).opacity !== "0").length,
     );
   expect(visible).toBe(0);
+});
+
+/* ------------------------------------------------------- the first paint */
+
+/**
+ * The brief's other number, and milestone 6's bar: **under two seconds from a
+ * cold URL to the first card moved, on throttled 4G**.
+ *
+ * "First card moved" is the moment the player could move one, which is the
+ * first frame of the deal: by then the island has hydrated, `Layout.ts` has
+ * measured the board and the engine has a dealt position, so a tap plays. The
+ * cards are still flying, and that does not stop anybody playing — the game is
+ * live the instant it starts dealing.
+ *
+ * `performance.now()` inside the page is measured from the navigation itself,
+ * so what comes back is the whole of it: connection, HTML, CSS, the island,
+ * hydration and the deal.
+ */
+
+/**
+ * Conservative 4G — Chrome's own "Slow 4G" profile. Not the best case a phone
+ * gets on a good day, which is the point; the budget is for the bus.
+ */
+const FOUR_G = {
+  offline: false,
+  downloadThroughput: (1.6 * 1024 * 1024) / 8,
+  uploadThroughput: (750 * 1024) / 8,
+  latency: 150,
+};
+
+/** The whole point of the number. docs/01 and docs/07. */
+const FIRST_MOVE_BUDGET_MS = 2000;
+
+async function timeToFirstMove(
+  page: Page,
+  { cpu = 1 }: { cpu?: number } = {},
+): Promise<number> {
+  await page.addInitScript(() => {
+    const seen = (): void => {
+      if (document.querySelector(".card.is-moving") !== null) {
+        Object.defineProperty(window, "__firstMove", {
+          value: performance.now(),
+        });
+        return;
+      }
+      requestAnimationFrame(seen);
+    };
+    requestAnimationFrame(seen);
+  });
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Network.enable");
+  await cdp.send("Network.emulateNetworkConditions", FOUR_G);
+  if (cpu > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpu });
+
+  await page.goto("/", { waitUntil: "commit" });
+  await expect(page.locator(".card.is-moving").first()).toBeAttached({
+    timeout: 30_000,
+  });
+  return page.evaluate(
+    () => (window as unknown as { __firstMove: number }).__firstMove,
+  );
+}
+
+test("a cold load is playable inside two seconds on 4G", async ({ page }) => {
+  test.setTimeout(60_000);
+  const ms = await timeToFirstMove(page);
+  expect(ms, `first card moved at ${Math.round(ms)}ms`).toBeLessThan(
+    FIRST_MOVE_BUDGET_MS,
+  );
+});
+
+test("and on 4G with a cheap phone's processor behind it", async ({ page }) => {
+  test.setTimeout(60_000);
+  // The network is the stated half of the budget; this is the other half of
+  // the same phone. Four times slower than the machine CI runs on is roughly a
+  // four-year-old mid-range Android — the same profile the cascade is measured
+  // against above.
+  const ms = await timeToFirstMove(page, { cpu: 4 });
+  expect(ms, `first card moved at ${Math.round(ms)}ms`).toBeLessThan(
+    FIRST_MOVE_BUDGET_MS,
+  );
+});
+
+/* ------------------------------------------------------------ the bundle */
+
+/**
+ * What the game page actually costs to fetch.
+ *
+ * This is a proxy for the two-second budget above rather than the budget
+ * itself — the measurements are what say whether the goal is met, and they do,
+ * twice over. What a size limit is for is **bounding growth**: nothing here
+ * should ever creep up by a megabyte without somebody deciding to spend it.
+ *
+ * It reads `dist/` off the disk and gzips it rather than measuring the
+ * response, because `astro preview` serves uncompressed and GitHub Pages does
+ * not — so the transferred bytes in this suite would be the wrong number and
+ * the shipped ones are what matter. It lives in the Playwright suite because
+ * this is the only one that runs against a real build.
+ */
+
+/** Gzipped, at the level a static host serves. */
+function gzipped(path: string): number {
+  return gzipSync(readFileSync(new URL(`../dist/${path}`, import.meta.url)), {
+    level: 9,
+  }).byteLength;
+}
+
+/** Every asset the game page pulls, by the paths its own HTML names. */
+function assetsOf(page: string, extension: string): string[] {
+  const html = readFileSync(
+    new URL(`../dist/${page}`, import.meta.url),
+    "utf8",
+  );
+  const found = html.matchAll(
+    new RegExp(`/(_astro/[\\w.-]+\\${extension})`, "g"),
+  );
+  return [...new Set([...found].map((match) => match[1] as string))];
+}
+
+const JS_BUDGET = 60 * 1024;
+const CSS_BUDGET = 15 * 1024;
+
+test("the game page stays inside its download budget", () => {
+  const js = assetsOf("index.html", ".js");
+  const css = assetsOf("index.html", ".css");
+
+  // If this ever finds nothing it has stopped measuring anything, which is a
+  // worse failure than being over budget.
+  expect(js.length, "no JS found in dist/index.html").toBeGreaterThan(0);
+  expect(css.length, "no CSS found in dist/index.html").toBeGreaterThan(0);
+
+  const jsBytes = js.reduce((total, path) => total + gzipped(path), 0);
+  const cssBytes = css.reduce((total, path) => total + gzipped(path), 0);
+
+  expect(jsBytes, `${(jsBytes / 1024).toFixed(1)}KB of JS`).toBeLessThan(
+    JS_BUDGET,
+  );
+  expect(cssBytes, `${(cssBytes / 1024).toFixed(1)}KB of CSS`).toBeLessThan(
+    CSS_BUDGET,
+  );
+});
+
+test("and the pages that are not the game ship no island at all", () => {
+  // /credits and /how-to-play are documents. A script tag on either of them is
+  // a regression, not a feature.
+  for (const page of ["credits/index.html", "how-to-play/index.html"]) {
+    expect(assetsOf(page, ".js"), page).toEqual([]);
+  }
 });
