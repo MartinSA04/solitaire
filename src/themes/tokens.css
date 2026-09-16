@@ -38,6 +38,12 @@
 
   /* What the win sequence explodes in. See docs/06-win-sequence.md. */
   --win-bloom: #ffd479;
+  /*
+   * How the cascade's trails composite. A dark table sets this to `lighter`,
+   * which is where the "firework" reading comes from; on a light or mid table
+   * additive trails blow out to white, so those leave it alone.
+   */
+  --win-trail-blend: source-over;
 
   /*
    * Deck surface. Not part of doc 04's *theme* contract — that describes the

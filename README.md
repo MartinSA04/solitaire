@@ -3,11 +3,14 @@
 A solitaire website. Live at
 [solitaire.martinsundal.no](https://solitaire.martinsundal.no/).
 
-> **Status: playable.** [Milestones 0 and 1](docs/09-roadmap.md) are built —
-> [`src/engine/`](src/engine/) is the complete Klondike rules as a pure
-> TypeScript library, and [`src/game/`](src/game/) is a board you can deal,
-> drag, tap and win on a phone. It is not pretty yet: one theme, one deck, no
-> win sequence, nothing saved between visits.
+> **Status: playable, and it celebrates.** [Milestones 0 to 2](docs/09-roadmap.md)
+> are built — [`src/engine/`](src/engine/) is the complete Klondike rules as a
+> pure TypeScript library, [`src/game/`](src/game/) is a board you can deal,
+> drag, tap and win on a phone, and winning runs the full
+> [cascade](docs/06-win-sequence.md): fifty-two cards thrown off the
+> foundations under real physics, with canvas trails and a note per bounce.
+> Add `?win` to the URL to watch it without winning first. It is not pretty
+> yet: one theme, one deck, nothing saved between visits.
 
 ## Design
 

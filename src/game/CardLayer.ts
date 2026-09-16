@@ -52,6 +52,7 @@ export class CardLayer {
   #held: readonly Card[] = [];
   #flight: ReturnType<typeof setTimeout> | undefined;
   #rect: DOMRect | null = null;
+  #surrendered = false;
 
   constructor(layer: HTMLElement) {
     this.#layer = layer;
@@ -111,7 +112,9 @@ export class CardLayer {
    */
   render(state: GameState, motion: Motion = "move"): void {
     const m = this.#metrics;
-    if (m === null) return;
+    // Once the win sequence owns the cards, a resize must not put them back on
+    // their foundations mid-flight.
+    if (m === null || this.#surrendered) return;
 
     const next = placeAll(m, state);
     const instant = motion === "instant";
@@ -224,6 +227,73 @@ export class CardLayer {
       () => element.classList.remove("is-shaking"),
       { once: true },
     );
+  }
+
+  // ------------------------------------------------- the win sequence
+  //
+  // docs/06 is built on the 52 elements already being here: nothing is created
+  // at win time, and the physics loop writes transforms to elements the
+  // compositor has been holding all game. These four methods are the whole of
+  // the handover — see WinSequence.ts for what drives them.
+
+  /**
+   * Stage 1 takes the cards. Every CSS transition comes off (a transition
+   * fighting a per-frame transform write is the classic way this goes wrong),
+   * `will-change` goes on all 52 at once — there is an 860ms window here to
+   * absorb the layer promotion, which is exactly why it happens at Stage 1 and
+   * not at Stage 2 — and everything is lifted above the trail canvas.
+   */
+  surrender(): void {
+    clearTimeout(this.#flight);
+    this.#surrendered = true;
+    this.#held = [];
+    for (let card = 0; card < DECK_SIZE; card++) {
+      const element = this.#elements[card] as HTMLElement;
+      element.classList.remove(
+        "is-moving",
+        "is-settling",
+        "is-undoing",
+        "is-returning",
+        "is-dragging",
+      );
+      element.classList.add("is-cascading");
+      element.style.zIndex = String(Z_FLIGHT + card);
+    }
+  }
+
+  /**
+   * One foundation acknowledging itself, `delay` ms into Stage 1. `scale` is
+   * its own property rather than part of `transform`, so this composes with
+   * the translate that positions the card instead of fighting it — the same
+   * trick the illegal-move shake uses.
+   */
+  pulse(card: Card, delayMs: number): void {
+    const element = this.#elements[card] as HTMLElement;
+    element.style.animationDelay = `${delayMs}ms`;
+    element.classList.add("is-pulsing");
+  }
+
+  /** One card, one physics frame. The hot path: 52 of these, 60 times a second. */
+  fly(card: Card, x: number, y: number, angle: number): void {
+    (this.#elements[card] as HTMLElement).style.transform =
+      `${translate(x, y)} rotate(${angle}deg)`;
+  }
+
+  /** Culled, or dissolved by the reduced-motion path. Either way: gone. */
+  hide(card: Card, fade = false): void {
+    const element = this.#elements[card] as HTMLElement;
+    if (fade) element.classList.add("is-dissolving");
+    else element.style.opacity = "0";
+  }
+
+  /**
+   * Stage 3. `will-change` comes back off: leaving it on 52 elements costs
+   * real memory on cheap GPUs, and by now nothing is moving.
+   */
+  settle(): void {
+    for (let card = 0; card < DECK_SIZE; card++) {
+      (this.#elements[card] as HTMLElement).classList.remove("is-cascading");
+    }
   }
 
   /**

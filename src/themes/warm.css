@@ -38,6 +38,8 @@
   --sheet-bg: #1b3428;
 
   --win-bloom: #f0c469;
+  /* Deep felt, but not dark enough for additive trails to stay in gamut. */
+  --win-trail-blend: source-over;
 
   --card-bg: #fbf8f1;
   --card-fg: #1c1a16;

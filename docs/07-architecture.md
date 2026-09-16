@@ -79,7 +79,9 @@ src/
     CardLayer.ts       the 52 elements, geometry, transforms  ← not reactive
     Drag.ts            pointer capture, hit-testing, drop resolution
     Layout.ts          viewport → --card-w and every derived measure
-    WinSequence.ts     stages, physics loop, canvas trails  ← see 06
+    WinSequence.ts     the five stages, the physics loop  ← see 06
+    cascade.ts         the cascade as arithmetic — pure, no DOM
+    Trails.ts          the canvas comet tails
     Audio.ts           WebAudio graph, sample-free synthesis
     Persist.ts         localStorage schema + migration
     chrome/
@@ -94,7 +96,8 @@ src/
     index.astro        the game
     how-to-play.astro  static, no island
     credits.astro      static — licence attributions, see 04
-  styles/base.css
+  styles/
+    base.css  board.css  motion.css  win.css
 
 public/
   decks/<name>/deck.svg + LICENSE     sourced card art, unmodified
@@ -228,9 +231,11 @@ Unchanged from the scaffolding — `astro build` to `dist/`, deployed by
 | Performance | Playwright traces | Frame times for deal, drag and the full win sequence on a throttled profile |
 | Site invariants | `node --test` | The existing three-file canonical-host check |
 
-The **win sequence needs a deterministic mode for testing**: a query flag seeds the
-physics PRNG and fixes the timestep, so the visual and performance tests compare
-like with like. Without it, nothing about Stage 2 is testable.
+The **win sequence needs a deterministic mode for testing**: `?winseed=N` seeds
+the physics PRNG and fixes the timestep, so the visual and performance tests
+compare like with like, and `?win` runs the whole thing without a game having
+been won. Without them, nothing about Stage 2 is testable. Both are documented
+in [06](06-win-sequence.md); neither touches the deal.
 
 ## What isn't decided yet
 

@@ -42,7 +42,14 @@ test.
 --chrome-fg-dim      /* the clock and move counter at rest */
 --sheet-bg           /* settings/stats panels */
 --win-bloom          /* the colour the win sequence explodes in */
+--win-trail-blend    /* source-over, or lighter on a table dark enough for it */
 ```
+
+`--win-trail-blend` is how the [cascade](06-win-sequence.md)'s trails
+composite. A dark table sets it to `lighter`, which is where the "firework"
+reading comes from; on a light or mid table additive trails blow out to white,
+so those leave it at `source-over`. It is a theme's decision, which is why it
+is a token rather than a flag in the canvas code.
 
 Two hard constraints on any theme, checked in review:
 

@@ -1,17 +1,26 @@
 <script lang="ts">
   import {
     type Game,
+    type GameState,
     type Move,
+    type Rank,
+    type Suit,
     DECK_SIZE,
     MAX_SEED,
+    RANK_COUNT,
+    SUIT_COUNT,
+    TABLEAU_COLUMNS,
+    cardOf,
     fromSeedUrl,
     newGame,
     rankOf,
     suitOf,
+    topOf,
   } from "../engine/index.ts";
   import { CardLayer, type Motion } from "./CardLayer.ts";
   import { Drag, type DragHost } from "./Drag.ts";
   import { FOUNDATION_ORDER, metricsFor } from "./Layout.ts";
+  import { PULSE_GAP_MS, WinSequence, type WinStage } from "./WinSequence.ts";
   import { Stopwatch } from "./clock.ts";
   import BottomBar from "./chrome/BottomBar.svelte";
   import ResultPanel from "./chrome/ResultPanel.svelte";
@@ -56,12 +65,15 @@
 
   let boardEl: HTMLDivElement | undefined = $state();
   let layerEl: HTMLDivElement | undefined = $state();
+  let canvasEl: HTMLCanvasElement | undefined = $state();
 
   let gameId = $state(0);
   let moves = $state(0);
   let canUndo = $state(false);
   let won = $state(false);
   let elapsedMs = $state(0);
+  let winStage: WinStage = $state("none");
+  let dismissed = $state(false);
 
   // Not reactive: the engine's Game is mutated in place, and every read of it
   // is driven by an explicit sync() rather than by Svelte watching it.
@@ -96,8 +108,10 @@
     canUndo = game.canUndo;
     if (game.isWon && !won) {
       won = true;
+      // The clock stops at Stage 0, before anything has moved — see docs/06.
       clock.pause();
       elapsedMs = clock.elapsed;
+      celebrate();
     }
   }
 
@@ -117,6 +131,21 @@
 
   function newDeal(): void {
     game = newGame(randomSeed());
+    reset();
+  }
+
+  /** The same deal again — race yourself. */
+  function replay(): void {
+    game.restart();
+    reset();
+  }
+
+  function reset(): void {
+    sequence?.destroy();
+    sequence = null;
+    staged = null;
+    winStage = "none";
+    dismissed = false;
     clock.reset();
     elapsedMs = 0;
     won = false;
@@ -127,9 +156,118 @@
   }
 
   let layer: CardLayer | null = null;
+  let sequence: WinSequence | null = null;
+  /** The debug trigger fires once a page load, not once a deal. */
+  let debugged = false;
+
+  /**
+   * What the card layer is showing. The same thing as the game, except under
+   * the debug trigger — see {@link wonBoard}.
+   */
+  let staged: GameState | null = null;
+
+  function displayed(): GameState {
+    return staged ?? game.state;
+  }
 
   function render(motion: Motion): void {
-    layer?.render(game.state, motion);
+    layer?.render(displayed(), motion);
+  }
+
+  /**
+   * Two query flags, and between them everything docs/07 asks for to make the
+   * win sequence testable at all:
+   *
+   * - `?win` runs the whole thing on load without one having been won, which
+   *   is how it gets looked at without playing a game first.
+   * - `?winseed=N` seeds the physics and fixes the timestep, so two runs of
+   *   the same seed produce the same cascade and the visual and performance
+   *   suites compare like with like.
+   *
+   * Neither touches the deal. There is no `location` while Astro renders this
+   * on the server.
+   */
+  function winFlags(): { debug: boolean; seed: number | null } {
+    if (typeof location === "undefined") return { debug: false, seed: null };
+    const params = new URLSearchParams(location.search);
+    const seed = params.get("winseed");
+    return {
+      debug: params.has("win"),
+      seed: seed !== null && /^\d{1,10}$/.test(seed) ? Number(seed) : null,
+    };
+  }
+
+  const flags = winFlags();
+
+  /** Stages 1 to 3: the part that is skippable, and the part that needs a veil. */
+  const celebrating = $derived(winStage !== "none" && winStage !== "card");
+
+  /**
+   * Stage 0 begins here. If there is no board to run it on — no geometry yet,
+   * or the island never mounted — the panel is shown directly rather than
+   * inventing a celebration, because winning must always be acknowledged.
+   */
+  function celebrate(): void {
+    const cards = layer;
+    const canvas = canvasEl;
+    const board = boardEl;
+    if (cards === null || canvas === undefined || board === undefined) {
+      winStage = "card";
+      return;
+    }
+
+    sequence?.destroy();
+    sequence = new WinSequence({
+      layer: cards,
+      canvas,
+      board,
+      seed: flags.seed,
+      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      // The sound setting is milestone 5's, along with the storage it lives
+      // in. Until then the win sequence is audible, per docs/07.
+      muted: false,
+      foundationTops: () =>
+        FOUNDATION_ORDER.map(
+          (suit) => topOf(displayed().foundations[suit] ?? []) ?? null,
+        ),
+      onStage: (stage) => {
+        winStage = stage;
+      },
+    });
+    sequence.start();
+  }
+
+  /** A tap anywhere during stages 1–3. A celebration you can't escape is a punishment. */
+  function skip(): void {
+    sequence?.skip();
+  }
+
+  /**
+   * Every card home — the position the sequence was designed against.
+   *
+   * `?win` runs on whatever deal happens to be on screen, and fifty-two
+   * face-down cards falling off a board that was never won is not the thing
+   * being looked at. This stages the won board on the card layer only; the
+   * game underneath is the real one and is untouched, which is why the engine
+   * is not involved in producing it.
+   */
+  function wonBoard(): GameState {
+    return {
+      stock: [],
+      waste: [],
+      foundations: Array.from({ length: SUIT_COUNT }, (_, suit) =>
+        Array.from({ length: RANK_COUNT }, (_, rank) =>
+          cardOf(suit as Suit, rank as Rank),
+        ),
+      ),
+      tableau: Array.from({ length: TABLEAU_COLUMNS }, () => ({
+        cards: [],
+        down: 0,
+      })),
+      drawCount: game.drawCount,
+      seed: game.seed,
+      moves: game.state.moves,
+    };
   }
 
   /**
@@ -160,15 +298,27 @@
         metricsFor({ width: board.clientWidth, height: board.clientHeight }),
         board,
       );
-      cards.render(game.state, "instant");
+      cards.render(displayed(), "instant");
     };
     const observer = new ResizeObserver(relayout);
     observer.observe(board);
+
+    if (flags.debug && !debugged) {
+      debugged = true;
+      // One frame, so the ResizeObserver above has handed over the geometry.
+      requestAnimationFrame(() => {
+        staged = wonBoard();
+        render("instant");
+        celebrate();
+      });
+    }
 
     return () => {
       observer.disconnect();
       drag.destroy();
       cards.destroy();
+      sequence?.destroy();
+      sequence = null;
       if (layer === cards) layer = null;
     };
   });
@@ -193,7 +343,7 @@
   });
 </script>
 
-<div class="game">
+<div class="game" data-win={winStage}>
   <h1 class="sr-only">Solitaire</h1>
   <TopBar {elapsedMs} {moves} />
 
@@ -207,14 +357,24 @@
     decorative throughout, which is honest; half a label is worse than none.
   -->
   <div class="board" bind:this={boardEl}>
+    <!-- Stage 1's light sweep and Stage 3's radial wipe. Both are pure CSS,
+         driven by `data-win` above; see src/styles/win.css. -->
+    <div class="win-sweep" aria-hidden="true"></div>
+    <div class="win-wipe" aria-hidden="true"></div>
+
     <div class="row row-top" aria-hidden="true">
       <div class="slot slot-stock">
         <span class="slot-mark">↻</span>
       </div>
       <div class="slot slot-waste"></div>
       <div class="slot-spacer"></div>
-      {#each FOUNDATION_ORDER as suit (suit)}
-        <div class="slot slot-foundation">
+      <!-- The foundations pulse ♠ ♥ ♦ ♣ in turn at Stage 1, and the stagger
+           is the same interval WinSequence gives the cards on top of them. -->
+      {#each FOUNDATION_ORDER as suit, index (suit)}
+        <div
+          class="slot slot-foundation"
+          style="--pulse-delay: {index * PULSE_GAP_MS}ms"
+        >
           <span class="slot-mark">{SUITS[suit]}</span>
         </div>
       {/each}
@@ -251,10 +411,39 @@
   <BottomBar {canUndo} onUndo={undo} onNewDeal={newDeal} />
 
   <!--
+    The trail canvas. Beneath the cards, over everything else, and sized to the
+    whole screen rather than to the board — the cascade's floor is the bottom
+    of the *screen*, since the chrome has faded out by the time anything is
+    falling. It exists from first paint so that nothing is created at win time.
+  -->
+  <canvas class="trail-layer" bind:this={canvasEl} aria-hidden="true"></canvas>
+
+  <!--
+    One tap, at any moment, jumps to the end card. The veil is what makes
+    "anywhere" true: the board captures every pointer that lands on it, so a
+    tap on the table would otherwise be swallowed by the drag handler. The
+    labelled control is the Skip button; the veil is decorative.
+  -->
+  {#if celebrating}
+    <div class="win-veil" aria-hidden="true" onpointerdown={skip}></div>
+  {/if}
+  {#if winStage === "cascade"}
+    <button class="control win-skip" type="button" onclick={skip}>Skip</button>
+  {/if}
+
+  <!--
     Outside the board on purpose: the board captures every pointer that lands
     on it, so a button inside it would never get its click.
   -->
-  {#if won}
-    <ResultPanel {elapsedMs} {moves} onNewDeal={newDeal} />
+  {#if winStage === "card" && !dismissed}
+    <ResultPanel
+      {elapsedMs}
+      {moves}
+      seed={game.seed}
+      drawCount={game.drawCount}
+      onReplay={replay}
+      onNewDeal={newDeal}
+      onDismiss={() => (dismissed = true)}
+    />
   {/if}
 </div>

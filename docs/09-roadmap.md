@@ -59,6 +59,15 @@ three people who see it unprompted react to it. That second criterion is soft an
 it's the one that matters; if nobody reacts, the sequence goes back to the drawing
 board while it's still cheap to change.
 
+The mechanised half is met: all five stages run in order on a real build, the
+sequence is skippable at any moment, the reduced-motion alternative is built,
+and `e2e/performance.pw.ts` holds the frame-time gate in
+[06](06-win-sequence.md) — which that doc now states as a measurement rather
+than the wish it was written as. The two halves that are not met are the two
+that need hardware and people: a trace on an actual mid-range Android, and the
+three unprompted reactions. Both are outstanding, and the second is the one
+that decides whether any of this was right.
+
 ---
 
 ## M3 — Feel

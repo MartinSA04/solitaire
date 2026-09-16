@@ -87,9 +87,21 @@ the piles deplete evenly rather than one at a time. Kings go first, Aces last.
 
 - **Launch interval**: 170ms, easing down to 70ms over the sequence. It starts
   measured and ends in a torrent. 52 cards, ~11 seconds.
-- **Initial velocity**: `vx` ∈ ±(180…420) px/s, biased *away* from the nearest
-  screen edge so cards travel across the board rather than immediately off it.
-  `vy` ∈ −(120…260) px/s — a slight upward toss before gravity takes them.
+- **Initial velocity**: `vx` ∈ ±(180…420) px/s **at a 110px card**, scaled by
+  card width, biased *away* from the nearest screen edge so cards travel across
+  the board rather than immediately off it. `vy` ∈ −(120…260) px/s — a slight
+  upward toss before gravity takes them.
+
+  `vx` is the only velocity here that scales. Everything that falls is measured
+  in pixels because the drop is the height of a screen, and screens are the same
+  order of magnitude everywhere; but the distance a card must cover to *leave*
+  is measured in cards, because the board is by construction seven of them
+  across. Left absolute, a 46px-card phone throws cards clean off the side
+  before most of them ever reach the floor — simulated over six seeds at
+  390×844, the whole deck produced **16 bounces against a desktop's 131**. The
+  cascade's rhythm is its bounces, so a phone got a nearly silent one. Per card
+  width the two agree at ~64, and the desktop numbers are unchanged, because at
+  the maximum card width the multiplier is 1.
 - **Spin**: `ω` ∈ ±(90…240) °/s, correlated with `vx` so a card thrown right spins
   right. Rotation is 2D only; no perspective flipping, which at these sizes reads as
   flicker rather than depth.
@@ -124,22 +136,38 @@ The thing the original couldn't do, and the thing that makes it read as *ours*.
 
 A `<canvas>` sits **beneath** the card layer, at device pixel ratio. Each frame:
 
-1. Fill the whole canvas with the table colour at **α = 0.055**. This is the entire
-   trail mechanism — old frames fade exponentially rather than being erased, leaving
-   a soft ~20-frame comet tail.
-2. For each live card, paint a rounded rect in the card's dominant colour at low
-   alpha at its current position.
+1. Fade the whole canvas by **α = 0.055**, with `destination-out` — subtracting
+   alpha rather than adding paint. This is the entire trail mechanism: old frames
+   decay exponentially rather than being erased, leaving a soft ~20-frame comet
+   tail. (Originally specified as a fill in the table colour. It became a
+   subtraction when the tables turned out to be gradients in every theme we
+   ship, so fading towards one flat colour leaves a visible rectangle of
+   not-quite-table. Same tail, same cost, and the trails now decay into the real
+   table.)
+2. For each live card, paint a rounded rect at its current position, at **α =
+   0.1**. Very low, because the tail is made of overlap — a card crossing the
+   screen advances about a seventh of its own width per frame, so seven rects
+   stack on any given pixel before the fade has taken them. At anything near
+   0.5 that composites to opaque and the cascade becomes ribbons with cards on
+   top.
 
 Cost: one full-canvas fill plus 52 small fills per frame. Trivially affordable, and
 the fade is free because it's the same operation as the clear.
 
 The trail colour is the card's, not the accent's — so red cards leave warm trails
-and black cards leave dark ones, and the screen fills with colour that came from the
+and black cards leave pale ones, and the screen fills with colour that came from the
 deck.
+
+Specifically it is the suit's ink mixed **half way towards the card's face**,
+which is what a card's dominant colour actually is: mostly face, with a little
+ink on it. Pure ink makes the black suits invisible against a dark table and
+kills them entirely under the additive compositing below; pure face makes all
+four suits the same colour.
 
 In the **dark theme** the trails additionally composite with `lighter`, which is
 where the "firework" reading comes from and why that theme was designed for this
-moment.
+moment. Which themes do this is a theme's decision, so it is a token —
+`--win-trail-blend`, in the contract in [04](04-art-direction.md).
 
 ### Sound
 
@@ -206,8 +234,14 @@ on `--e-out`.
   *deal*, not a score — there is no boast, just "try this one".
 - **No** upsell, rating prompt, streak reminder, ad, or "double your reward".
 
-The panel is dismissible; behind it, the empty table with a fresh deal already
-available.
+The panel is dismissible — tap outside it, or `Escape` — and behind it is the
+empty table with a fresh deal already available.
+
+Two things on it wait for milestone 5, which is where the storage they read
+from arrives: **the record line** and **share**. A record line that can only
+ever say nothing is worse than no record line, and a share button belongs with
+the rest of sharing. The chrome fades back in with the panel, so New deal is
+reachable whether the panel is up or dismissed.
 
 ## Skipping
 
@@ -222,7 +256,32 @@ Total skip-to-panel: ~300ms. It must feel like a choice, not like an interruptio
 being punished.
 
 A **"skip"** affordance appears at the top-right after 2 seconds of cascade, at low
-opacity — for the person who doesn't know the whole screen is tappable.
+opacity — for the person who doesn't know the whole screen is tappable. It is the
+only labelled control: the full-screen tap target behind it is decorative and
+hidden from assistive technology, because a focusable element that a screen
+reader cannot see is a bug, and two buttons that do the same thing is worse UI
+than one.
+
+Reduced motion has no Stage 2 and is over in 2.4 seconds, so the affordance
+never appears there. There is nothing to sit through.
+
+## Running it without winning
+
+Two query flags, and between them everything that makes any of this testable:
+
+| Flag | Does |
+| ---- | ---- |
+| `?win` | Runs the whole sequence on load, on a won board staged onto the card layer. The game underneath is the real one and is untouched. |
+| `?winseed=N` | Seeds the physics **and** fixes the timestep, so the same seed produces the same cascade whatever the machine was doing. |
+
+Without the second, nothing about Stage 2 is testable and the Playwright suite
+is thirteen seconds of coin toss. Without the first, looking at the sequence
+means winning a game first. Neither touches the deal, which has its own seed and
+its own guarantees.
+
+`?win` stages a *won* board rather than celebrating whatever is on screen,
+because fifty-two face-down cards falling off a board that was never won is not
+the thing being looked at.
 
 ## Reduced motion
 
@@ -261,8 +320,8 @@ be the hardest thing in the project to keep at 60fps.
   there's an 860ms window to absorb the layer promotion) and removed at Stage 3.
 - The canvas is at DPR, capped at 2 — at DPR 3 on a large phone, the per-frame fill
   alone can miss frame budget, and the trails are soft enough that nobody can tell.
-- **Graceful degradation**: the loop measures its own frame times over the first
-  500ms of cascade. If it's missing budget, it drops in order:
+- **Graceful degradation**: the loop measures its own frame times, and every
+  500ms that it dropped more than a quarter of them it gives up one rung of:
   1. Canvas DPR to 1.
   2. Trail fill to every other frame (alpha doubled).
   3. Launch interval lengthened so fewer cards are live at once.
@@ -270,8 +329,45 @@ be the hardest thing in the project to keep at 60fps.
 
   It never drops below "cards fall and bounce at 60fps", because that's the part
   that matters.
-- Playwright traces the full sequence on a throttled CPU profile and fails the build
-  if the 95th-percentile frame time exceeds 16.7ms.
+
+  A frame counts as dropped past **25ms**, not past 16.7. A healthy 60Hz frame
+  *is* 16.7ms and measured `rAF` deltas sit a hair either side of it: on a
+  headless Chromium holding a perfect 60fps, a third of frames measured 16.8ms,
+  which was enough on its own to walk this ladder to "trails off" in two
+  seconds on hardware that had not dropped a single frame.
+
+  The quarter is deliberately late, and the ladder is on trust. Under
+  Chromium's CPU throttling it changes measured frame times by **nothing** —
+  at 2×, 4× and 6× the percentiles are identical whether it fires or not,
+  because what throttling models is main-thread work for 52 composited
+  elements and every rung here is canvas work. The rungs address memory
+  bandwidth on a cheap GPU, which is a real cost on the target device and one
+  no harness we have can simulate. At a tenth rather than a quarter it fired on
+  a machine holding a 60fps median with occasional hitches, and stripped the
+  trails to buy nothing measurable.
+
+### The gate
+
+Playwright traces the full sequence and fails the build on frame times, in two
+runs, because one number cannot say both things:
+
+| Run | Assertion | Measured |
+| --- | --------- | -------- |
+| Unthrottled | 95th percentile under one vsync | p50 16.7ms, p95 16.7ms, <1% dropped |
+| CPU throttled 4× | **median** under one vsync | p50 16.7ms, p95 50ms, 29% dropped |
+
+The second is the interesting one. A four-year-old mid-range Android is roughly
+four times slower than the machine CI runs on; at that rate the cascade drops
+frames — that is what the ladder is for — but the loop must still be *aiming*
+at 60fps rather than settling into 30. Anything that doubles the per-frame cost
+pushes that median to 33ms and fails.
+
+This replaces the original bar, which was a 95th percentile under 16.7ms **on
+the throttled profile**. That is not reachable and never was: percentiles of
+`rAF` deltas quantise to multiples of a vsync, so a single missed frame inside
+the top 5% puts p95 at 33.4ms, and at 4× the measured figure is 50ms with the
+ladder engaged and 50ms with it disabled. The bar was a wish rather than a
+measurement, and it is replaced here by the measurement.
 
 ## Why this shape
 

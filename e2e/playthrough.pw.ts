@@ -144,13 +144,24 @@ test("a whole game, dealt to won, by pointer alone", async ({ page }) => {
 
   // Every gesture landed: the counter is the move list's own length.
   await expect(page.locator(".top-bar")).toContainText(`${moves.length} moves`);
-  await expect(page.getByRole("dialog", { name: "You won" })).toBeVisible();
   // Fifty-two cards face up — the whole deck is home.
   await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(52);
 
-  // The panel sits outside the board, so its button gets its own clicks rather
-  // than losing them to the board's pointer capture.
-  await page.getByRole("dialog").getByRole("button").click();
-  await expect(page.getByRole("dialog")).toBeHidden();
+  // Winning starts the celebration rather than the panel: the veil only exists
+  // during Stages 1 to 3. The sequence itself is exercised by `win.pw.ts`,
+  // which can run it deterministically; what matters here is that a real win
+  // reaches it at all.
+  const veil = page.locator(".win-veil");
+  await expect(veil).toBeVisible();
+  await veil.tap();
+
+  // The panel sits outside the board, so its buttons get their own clicks
+  // rather than losing them to the board's pointer capture.
+  const panel = page.getByRole("dialog", { name: "You won" });
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText(`Deal #${SEED}`);
+
+  await panel.getByRole("button", { name: "New deal" }).click();
+  await expect(panel).toBeHidden();
   await expect(page.locator(".top-bar")).toContainText("0 moves");
 });

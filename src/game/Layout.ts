@@ -41,8 +41,13 @@ const GUTTER_RATIO = 2 * GAP_RATIO;
 /** Poker, 2.5 : 3.5, locked. Height is never set independently. */
 const ASPECT = 3.5 / 2.5;
 
-/** Past this a solitaire table stops being a table and starts being a poster. */
-const MAX_CARD_W = 110;
+/**
+ * Past this a solitaire table stops being a table and starts being a poster.
+ *
+ * Exported because it is also the size the win sequence's physics constants
+ * were written at — see the scaling note in `cascade.ts`.
+ */
+export const MAX_CARD_W = 110;
 
 /** Between the stock/foundation row and the tableau, as a fraction of card height. */
 const ROW_GAP_RATIO = 0.25;
@@ -211,6 +216,14 @@ const Z_FOUNDATION = Z_WASTE + Z_BAND;
  * move, not that it never changes.
  */
 export const Z_FLIGHT = 2000;
+
+/**
+ * The win sequence's trail canvas, which sits *beneath* the cards and above
+ * everything else — including the chrome, which is fading out by the time it
+ * has anything to draw. Stage 2 lifts all 52 cards to {@link Z_FLIGHT} and
+ * above, so the layering holds however the board was arranged when it was won.
+ */
+export const Z_TRAILS = 1500;
 
 /** Above everything, including a card in flight. */
 export const Z_DRAG = 4000;

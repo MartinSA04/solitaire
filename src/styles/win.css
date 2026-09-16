@@ -1,0 +1,317 @@
+/*
+ * The win sequence's visuals, everything except the physics. docs/06 is the
+ * specification; `src/game/WinSequence.ts` runs the clock and puts one stage
+ * name on `.game`, and every rule below is keyed off that name.
+ *
+ * Doing it this way keeps the JS to a stage machine: the pulses, the sweep,
+ * the chrome fade, the bloom and the wipe are all declarative, they all
+ * animate `transform` or `opacity` only, and the reduced-motion alternative is
+ * a different set of rules rather than a second code path.
+ */
+
+/* --------------------------------------------------- stages 1 to 3: chrome */
+
+/*
+ * The screen empties of everything that isn't table and cards. Layout is
+ * untouched — collapsing the bars would resize the board, and the board is
+ * what the physics is falling through.
+ */
+.game[data-win="ascend"] .bar,
+.game[data-win="cascade"] .bar,
+.game[data-win="clear"] .bar {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 400ms var(--e-out);
+}
+
+.game[data-win="card"] .bar {
+  transition: opacity var(--t-slow) var(--e-out);
+}
+
+/* The empty slots go with the chrome: at the end of Stage 1 the screen is four
+   piles of cards on a table, and nothing else. */
+.game[data-win="cascade"] .slot,
+.game[data-win="clear"] .slot,
+.game[data-win="card"] .slot {
+  opacity: 0;
+  transition: opacity 400ms var(--e-out);
+}
+
+/* ----------------------------------------------------- stage 1: ascension */
+
+/*
+ * Each foundation pulses in turn, ♠ ♥ ♦ ♣ at 90ms intervals. The stagger comes
+ * in as `--pulse-delay` from the template, which is already iterating the four
+ * suits in order; `WinSequence.ts` sets the matching delay on the card sitting
+ * on top of each.
+ */
+.game[data-win="ascend"] .slot-foundation::after,
+.game[data-win="cascade"] .slot-foundation::after {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    var(--win-bloom) 0%,
+    transparent 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  animation: win-bloom 460ms var(--e-out) var(--pulse-delay, 0ms) both;
+}
+
+.slot-foundation {
+  /* So the bloom above can be placed against it. */
+  position: relative;
+}
+
+@keyframes win-bloom {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/*
+ * The card on top of each foundation pulses, and then stays lifted — it should
+ * look like it is about to go, which it is. `scale` is its own property, so
+ * this composes with the `transform` that positions the card rather than
+ * fighting it; the same trick the illegal-move shake uses.
+ *
+ * The deepened shadow is a plain declaration and not part of the animation.
+ * Only `transform` and `opacity` ever animate on a card — a box-shadow that
+ * *switches* when a class goes on costs one paint; one that interpolates for
+ * 260ms costs a paint a frame, and that rule is in CLAUDE.md for a reason.
+ */
+.card.is-pulsing {
+  animation: win-pulse 260ms var(--e-out) both;
+  box-shadow: var(--card-shadow-lift), var(--card-shadow-lift);
+}
+
+@keyframes win-pulse {
+  0% {
+    scale: 1;
+  }
+  50% {
+    scale: 1.06;
+  }
+  100% {
+    scale: 1.02;
+  }
+}
+
+/*
+ * A wide, soft band crossing the table left to right. In the dark theme this
+ * is the moment the table stops being black.
+ */
+.win-sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* Three screens wide, so the band itself is soft rather than a stripe. */
+  left: -100%;
+  width: 300%;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    var(--win-bloom) 45%,
+    var(--win-bloom) 55%,
+    transparent 100%
+  );
+}
+
+.game[data-win="ascend"] .win-sweep {
+  animation: win-sweep 700ms var(--e-inout) both;
+}
+
+@keyframes win-sweep {
+  0% {
+    opacity: 0;
+    transform: translate3d(-30%, 0, 0);
+  }
+  30%,
+  70% {
+    opacity: 0.12;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(30%, 0, 0);
+  }
+}
+
+/* --------------------------------------------------------- stage 2: cards */
+
+/*
+ * The physics loop writes `transform` to these up to 120 times a second. A CSS
+ * transition fighting a per-frame transform write is the classic way this goes
+ * wrong, so there is none; `will-change` goes on for Stage 1's 860ms window
+ * and comes off again at Stage 3.
+ */
+.card.is-cascading {
+  transition: none;
+  will-change: transform;
+}
+
+.trail-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* z-index is set from Z_TRAILS in Layout.ts — one source of stacking order. */
+}
+
+.trail-layer.is-fading {
+  opacity: 0;
+  transition: opacity 180ms linear;
+}
+
+/* --------------------------------------------------------- stage 3: clear */
+
+/*
+ * A radial wipe of the bloom expanding from the centre of the tableau. The
+ * canvas washes itself out on its own mechanism; this is the light that goes
+ * with it.
+ */
+.win-wipe {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 60%,
+    var(--win-bloom) 0%,
+    transparent 70%
+  );
+}
+
+.game[data-win="clear"] .win-wipe {
+  animation: win-wipe 600ms var(--e-out) both;
+}
+
+@keyframes win-wipe {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  40% {
+    opacity: 0.12;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+/* ---------------------------------------------------------------- skipping */
+
+/*
+ * A tap anywhere jumps to the end card. The veil is what makes "anywhere"
+ * true: the board captures every pointer that lands on it, so without
+ * something over the top a tap on the table would be swallowed by the drag
+ * handler instead. It is decorative and hidden from assistive technology —
+ * the Skip button below is the control, and one control beats two.
+ */
+.win-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 4500;
+}
+
+/*
+ * Low opacity, and only after two seconds of cascade — for the person who
+ * doesn't know the whole screen is tappable. It is rendered only during Stage
+ * 2, so the delay below starts when the cards do; the reduced-motion sequence
+ * has no Stage 2 and is over in 2.4s, so it never appears there, which is
+ * right: there is nothing to sit through.
+ */
+.win-skip {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 4600;
+  color: var(--chrome-fg);
+  opacity: 0;
+  animation: win-skip-in var(--t-settle) var(--e-out) 2s both;
+}
+
+@keyframes win-skip-in {
+  to {
+    opacity: 0.55;
+  }
+}
+
+/* -------------------------------------------------------- reduced motion */
+
+/*
+ * A designed alternative, not an absence. Winning is the payoff; removing it
+ * punishes the player for a system setting. The beat is unchanged, the pulses
+ * become a sequential bloom with no scaling and no movement, the sweep becomes
+ * a static full-table glow, and the cascade becomes the four piles fading out
+ * while the bloom expands behind them to fill the table.
+ *
+ * Audio is untouched: reduced motion is not reduced sound.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .card.is-pulsing {
+    /* No scaling and no movement: the slot's bloom carries Stage 1 alone. */
+    animation: none;
+    box-shadow: var(--card-shadow-rest);
+  }
+
+  .game[data-win="ascend"] .win-sweep {
+    animation: win-glow 400ms var(--e-inout) both;
+    transform: none;
+  }
+
+  @keyframes win-glow {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 0.1;
+    }
+  }
+
+  .game[data-win="cascade"] .win-wipe {
+    animation: win-fill 900ms var(--e-out) both;
+  }
+
+  @keyframes win-fill {
+    0% {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+    45% {
+      opacity: 0.16;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.5);
+    }
+  }
+}
+
+/*
+ * The piles fading out, which is the reduced-motion Stage 2. Opacity only, and
+ * a real duration even where reduced motion has flattened every other one —
+ * this *is* the sequence, so flattening it would leave nothing at all.
+ */
+/*
+ * Last in the file on purpose: a dissolving card is also a cascading one, and
+ * `.is-cascading`'s `transition: none` has identical specificity. Source order
+ * is what decides between them.
+ */
+.card.is-dissolving {
+  opacity: 0;
+  transition: opacity 900ms var(--e-inout);
+}
