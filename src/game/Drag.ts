@@ -3,9 +3,9 @@ import { type CardLayer, type Motion } from "./CardLayer.ts";
 import {
   type Hit,
   type Metrics,
-  type Placement,
   dropTarget,
   hitTest,
+  pileCards,
 } from "./Layout.ts";
 import { autoMove } from "./automove.ts";
 import { type Grab, dropMove, grab } from "./pickup.ts";
@@ -22,6 +22,13 @@ import { type Grab, dropMove, grab } from "./pickup.ts";
 /** Movement below this is a tap. Nothing visual happens first, so a tap never flickers. */
 const DRAG_THRESHOLD = 6;
 
+/**
+ * A press held this long, without going anywhere, is a peek rather than a tap.
+ * Long enough that no ordinary tap reaches it, short enough that holding still
+ * feels like a deliberate act rather than a wait.
+ */
+const PEEK_MS = 350;
+
 /** Degrees of tilt at 1px/ms of horizontal travel, clamped to the same. */
 const TILT_PER_VELOCITY = 1.5;
 const MAX_TILT = 1.5;
@@ -33,6 +40,8 @@ export interface DragHost {
   play(move: Move, motion: Motion): boolean;
   /** A gesture that meant something but could not happen. */
   illegal(card: Card | null): void;
+  /** Fan a column out under a long press, or let it back down with `null`. */
+  peek(column: number | null): void;
 }
 
 interface Press {
@@ -46,6 +55,9 @@ interface Press {
   lastX: number;
   lastT: number;
   tilt: number;
+  /** Pending long press, and whether it has already fanned a column out. */
+  hold: ReturnType<typeof setTimeout> | undefined;
+  peeked: boolean;
 }
 
 export class Drag {
@@ -69,6 +81,7 @@ export class Drag {
     this.#target.removeEventListener("pointermove", this.#onMove);
     this.#target.removeEventListener("pointerup", this.#onUp);
     this.#target.removeEventListener("pointercancel", this.#onCancel);
+    this.#release(this.#press);
     this.#press = null;
   }
 
@@ -85,7 +98,7 @@ export class Drag {
     // be lost to the element boundary halfway through.
     this.#target.setPointerCapture(event.pointerId);
     event.preventDefault();
-    this.#press = {
+    const press: Press = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
@@ -95,7 +108,22 @@ export class Drag {
       lastX: event.clientX,
       lastT: event.timeStamp,
       tilt: 0,
+      hold: undefined,
+      peeked: false,
     };
+    this.#press = press;
+
+    // Only a column can be peeked, and only one with something buried in it.
+    const ref = hit.ref;
+    if (
+      ref.pile === "tableau" &&
+      pileCards(this.#host.state(), ref).length > 1
+    ) {
+      press.hold = setTimeout(() => {
+        press.peeked = true;
+        this.#host.peek(ref.column);
+      }, PEEK_MS);
+    }
   };
 
   #onMove = (event: PointerEvent): void => {
@@ -105,9 +133,18 @@ export class Drag {
     const dx = event.clientX - press.startX;
     const dy = event.clientY - press.startY;
 
+    // Once a column has opened, the gesture is a peek until it is let go:
+    // moving does not turn it into a drag. The cards have slid *under* a
+    // finger that never moved, so the 6px that commits a drag would commit it
+    // on whichever card happens to be there — never the one that was meant.
+    // A peek is for reading; it does not reach.
+    if (press.peeked) return;
+
     if (!press.committed) {
       if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
       press.committed = true;
+      // A press that goes somewhere is a drag, so it is no longer a long one.
+      this.#release(press);
       // The stock and face-down cards have no drag; the gesture is now neither
       // a tap nor a drag, and releasing does nothing.
       press.held = grab(this.#host.state(), press.hit);
@@ -130,6 +167,12 @@ export class Drag {
     if (press === null || press.pointerId !== event.pointerId) return;
     this.#press = null;
 
+    // A long press is its own gesture: letting go closes the column and does
+    // nothing else. Without this, every peek would also play an auto-move.
+    const peeked = press.peeked;
+    this.#release(press);
+    if (peeked) return;
+
     if (press.held !== null) {
       this.#drop(
         press,
@@ -145,8 +188,20 @@ export class Drag {
     const press = this.#press;
     if (press === null || press.pointerId !== event.pointerId) return;
     this.#press = null;
+    this.#release(press);
     if (press.held !== null) this.#layer.returnHome();
   };
+
+  /** Cancel a pending long press, and close the column if one opened. */
+  #release(press: Press | null): void {
+    if (press === null) return;
+    clearTimeout(press.hold);
+    press.hold = undefined;
+    if (press.peeked) {
+      press.peeked = false;
+      this.#host.peek(null);
+    }
+  }
 
   #tap(press: Press): void {
     const hit = press.hit;
@@ -169,12 +224,7 @@ export class Drag {
       return;
     }
 
-    const onto = dropTarget(
-      m,
-      this.#host.state(),
-      (base as Placement).x + dx,
-      (base as Placement).y + dy,
-    );
+    const onto = dropTarget(m, this.#host.state(), base.x + dx, base.y + dy);
     const move =
       onto === null ? null : dropMove(this.#host.state(), held, onto);
 

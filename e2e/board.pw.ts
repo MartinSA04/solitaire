@@ -76,10 +76,20 @@ async function dragOnto(page: Page, from: Locator, to: Locator) {
   await page.mouse.up();
 }
 
+/**
+ * Wait out the deal. The cards fly from the stock a row at a time, so the
+ * seven column tops turn over at the *start* of it — a measurement taken then
+ * is of a card still in the air. A card wears a motion class for exactly as
+ * long as it is moving, so no card wearing one is the board at rest.
+ */
+async function dealt(page: Page) {
+  await expect(faceUpCards(page)).toHaveCount(7);
+  await expect(page.locator(".card.is-moving")).toHaveCount(0);
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto(DEAL);
-  // The deal is done once the seven column tops have turned over.
-  await expect(faceUpCards(page)).toHaveCount(7);
+  await dealt(page);
 });
 
 test("it deals twenty-eight cards to the tableau and twenty-four to the stock", async ({
@@ -204,6 +214,35 @@ test("undo puts the board back, and is disabled at the deal", async ({
   await expect(page.locator(".top-bar")).toContainText("1 move");
 });
 
+test("a long press opens a column, and letting go closes it", async ({
+  page,
+}) => {
+  // The Ace of hearts is the top of the rightmost column, six face-down cards
+  // deep. A *tap* on it sends it home — the test above — so this is also the
+  // check that a long press is a gesture of its own and not a slow tap.
+  const ace = card(page, CARD.aceOfHearts);
+  const before = await boxOf(ace);
+
+  await page.mouse.move(
+    before.x + before.width / 2,
+    before.y + before.height / 2,
+  );
+  await page.mouse.down();
+  // Past the 350ms threshold, plus the length of the fan opening.
+  await page.waitForTimeout(700);
+
+  const open = await boxOf(ace);
+  // Six face-down cards at the face-up fan instead of the face-down one: the
+  // buried run opens out far enough to count.
+  expect(open.y - before.y).toBeGreaterThan(open.height * 0.5);
+  expect(Math.round(open.x)).toBe(Math.round(before.x));
+
+  await page.mouse.up();
+  const shut = await settled(ace);
+  expect(Math.round(shut.y)).toBe(Math.round(before.y));
+  await expect(page.locator(".top-bar")).toContainText("0 moves");
+});
+
 test("the clock starts at the first move, not at the deal", async ({
   page,
 }) => {
@@ -224,7 +263,7 @@ test("the same deal number deals the same game", async ({ page }) => {
     .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-card")));
 
   await page.goto(DEAL);
-  await expect(faceUpCards(page)).toHaveCount(7);
+  await dealt(page);
   const second = await page
     .locator(".card:not(.is-face-down)")
     .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-card")));
@@ -240,6 +279,6 @@ test("a new deal starts over", async ({ page }) => {
 
   await expect(page.locator(".top-bar")).toContainText("0 moves");
   await expect(page.locator(".card")).toHaveCount(52);
-  await expect(faceUpCards(page)).toHaveCount(7);
+  await dealt(page);
   await expect(page.getByRole("button", { name: /undo/i })).toBeDisabled();
 });

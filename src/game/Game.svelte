@@ -337,6 +337,7 @@
       illegal: (card) => {
         if (card !== null) cards.shake(card);
       },
+      peek: (column) => cards.peek(column, displayed()),
     };
     const drag = new Drag(board, cards, host);
 

@@ -291,7 +291,13 @@ body {
   will-change: transform;
 }
 
-.card.is-undoing {
+/*
+ * An undo and a peek are the same kind of motion — a change of state rather
+ * than a card going somewhere — so they are the same length and the same
+ * curve. Only what they mean differs.
+ */
+.card.is-undoing,
+.card.is-peeking {
   transition: transform var(--t-settle) var(--e-inout);
   will-change: transform;
 }

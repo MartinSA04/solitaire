@@ -170,8 +170,10 @@ told they won — and focus moves to the result panel when it appears.
     the primary accommodation and the main reason it's the default interaction.
   - **Hit areas extend beyond the visual card** by 4px on each side, overlapping
     invisibly; the topmost card wins ties.
-  - **Long-press peek** fans a column out fully, making buried cards reachable at
-    full size.
+  - **Long-press peek** fans a column out fully, so a buried card can be *read*
+    at full size before anything is done with it. It does not make one easier to
+    hit: the cards slide under a stationary finger, so the gesture ends where it
+    began and the column closes. Reaching is what the two points above are for.
   - **Drop targeting uses the dragged card's corner, not the fingertip** — see
     [05](05-interaction-and-motion.md) — which removes the fat-finger problem from
     dropping entirely.

@@ -252,8 +252,16 @@ export interface Placement extends Point {
  * Every card is placed on every render: the card layer holds 52 persistent
  * elements and a move is a changed transform, never a reparenting. See
  * docs/05-interaction-and-motion.md.
+ *
+ * `peek` is the column being long-pressed, which is fanned right out for as
+ * long as the press lasts. It is a *position*, not a state: the game underneath
+ * has not changed, and letting go puts the column back.
  */
-export function placeAll(m: Metrics, state: GameState): Placement[] {
+export function placeAll(
+  m: Metrics,
+  state: GameState,
+  peek: number | null = null,
+): Placement[] {
   const placements: Placement[] = new Array(DECK_SIZE);
 
   const stock = pileOrigin(m, { pile: "stock" });
@@ -283,7 +291,7 @@ export function placeAll(m: Metrics, state: GameState): Placement[] {
 
   state.tableau.forEach((column, index) => {
     const origin = pileOrigin(m, { pile: "tableau", column: index });
-    const offsets = columnOffsets(m, column);
+    const offsets = columnOffsets(m, column, index === peek);
     column.cards.forEach((card, i) => {
       placements[card] = {
         x: origin.x,
@@ -323,13 +331,23 @@ function placeWaste(
  * Each card's vertical offset within its column. A column that would outgrow
  * the space compresses proportionally — the column squeezes, the board never
  * scrolls.
+ *
+ * Under `peek` every card gets the face-up fan, face-down ones included. That
+ * is what a long press is *for*: in a squeezed column it puts the corner
+ * indices back where they can be read, and in any column it opens the
+ * face-down run out far enough to see how deep it goes. The compression below
+ * still applies, so a peek cannot push a column off the board either.
  */
-export function columnOffsets(m: Metrics, column: Column): number[] {
+export function columnOffsets(
+  m: Metrics,
+  column: Column,
+  peek = false,
+): number[] {
   const offsets: number[] = [];
   let y = 0;
   for (let i = 0; i < column.cards.length; i++) {
     offsets.push(y);
-    y += i < column.down ? m.fanDown : m.fanUp;
+    y += peek || i >= column.down ? m.fanUp : m.fanDown;
   }
 
   if (offsets.length < 2) return offsets;
@@ -374,6 +392,10 @@ function allPiles(): PileRef[] {
  *
  * Topmost wins ties, which is the only rule that makes a fanned column
  * tappable — every card but the last is mostly covered by the one above it.
+ *
+ * A hit is always taken against the *resting* board, open column or not: the
+ * press that opens one was made before it opened, and nothing else can be
+ * pressed while it is open.
  */
 export function hitTest(
   m: Metrics,

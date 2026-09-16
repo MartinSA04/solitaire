@@ -26,7 +26,7 @@ import {
 
 /** How a change of position should look. The catalogue is in docs/05. */
 export type Motion =
-  "instant" | "move" | "deal" | "draw" | "drop" | "undo" | "recycle";
+  "instant" | "move" | "deal" | "draw" | "drop" | "undo" | "recycle" | "peek";
 
 interface Style {
   className: string;
@@ -48,6 +48,8 @@ const MOTION: Record<Exclude<Motion, "instant">, Style> = {
   undo: { className: "is-undoing", stagger: 0 },
   // The whole waste, back under the stock as one block with a slight arc.
   recycle: { className: "is-sweeping", stagger: 0 },
+  // A column opening under a long press, and closing again when it ends.
+  peek: { className: "is-peeking", stagger: 0 },
 };
 
 /**
@@ -59,6 +61,7 @@ const MOTION_CLASSES = [
   "is-settling",
   "is-undoing",
   "is-sweeping",
+  "is-peeking",
   "is-flipping",
 ] as const;
 
@@ -82,6 +85,7 @@ export class CardLayer {
   #held: readonly Card[] = [];
   #flight: ReturnType<typeof setTimeout> | undefined;
   #rect: DOMRect | null = null;
+  #peek: number | null = null;
   #surrendered = false;
 
   /**
@@ -161,7 +165,7 @@ export class CardLayer {
     // their foundations mid-flight.
     if (m === null || this.#surrendered) return;
 
-    const next = placeAll(m, state);
+    const next = placeAll(m, state, this.#peek);
     // `null` is "arrive immediately": no class, so no transition is armed.
     const style = motion === "instant" ? null : MOTION[motion];
     const delays = this.#delays(style, order);
@@ -210,6 +214,21 @@ export class CardLayer {
 
     this.#placements = next;
     if (inFlight) this.#scheduleLanding(last);
+  }
+
+  /**
+   * Fan a column right out for as long as a long press lasts, or put it back
+   * when `column` is `null`.
+   *
+   * This is geometry, not game state — the position underneath is untouched,
+   * and the hit-test that started the press was taken against the collapsed
+   * column, so a press that turns into a drag picks up exactly the card it
+   * was always going to.
+   */
+  peek(column: number | null, state: GameState): void {
+    if (this.#peek === column) return;
+    this.#peek = column;
+    this.render(state, "peek");
   }
 
   /**

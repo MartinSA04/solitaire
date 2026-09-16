@@ -121,6 +121,52 @@ describe("board measurements", () => {
   });
 });
 
+describe("peeking a column", () => {
+  const m = metricsFor(PHONE);
+  /** Three buried cards under two face-up ones — an ordinary mid-game column. */
+  const BURIED = { cards: [0, 1, 2, 3, 4], down: 3 };
+
+  it("gives every card the face-up fan, face-down ones included", () => {
+    const open = columnOffsets(m, BURIED, true);
+    for (const [i, offset] of open.entries()) {
+      assert.ok(Math.abs(offset - i * m.fanUp) < 1e-9, `card ${i}`);
+    }
+  });
+
+  it("opens the column rather than moving it", () => {
+    const shut = columnOffsets(m, BURIED);
+    const open = columnOffsets(m, BURIED, true);
+    // The card you pressed on stays put and everything under it comes down:
+    // a peek that slid the whole column would lose your place in it.
+    assert.equal(open[0], shut[0]);
+    assert.ok((open[4] as number) > (shut[4] as number));
+  });
+
+  it("still cannot push a column off the board", () => {
+    // The compression is what makes that true, and a peek goes through it
+    // like every other fan.
+    const short = metricsFor({ width: 360, height: 240 });
+    const open = columnOffsets(short, WORST_COLUMN, true);
+    const last = open[open.length - 1] as number;
+    assert.ok(last + short.cardH <= short.tableauH + 1e-9);
+  });
+
+  it("is the whole of what placeAll does differently", () => {
+    const state = deal(24, 1);
+    const shut = placeAll(m, state);
+    const open = placeAll(m, state, 6);
+
+    const rightmost = (state.tableau[6] as { cards: Card[] }).cards;
+    assert.ok(
+      (open[rightmost[6] as Card] as Placement).y >
+        (shut[rightmost[6] as Card] as Placement).y,
+    );
+    // Every other column is exactly where it was.
+    const elsewhere = (state.tableau[0] as { cards: Card[] }).cards[0] as Card;
+    assert.deepEqual(open[elsewhere], shut[elsewhere]);
+  });
+});
+
 describe("pile positions", () => {
   const m = metricsFor(PHONE);
   const columnX = (n: number): number => m.originX + n * (m.cardW + m.gap);
