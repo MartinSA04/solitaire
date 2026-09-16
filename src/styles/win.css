@@ -88,9 +88,15 @@
  * Only `transform` and `opacity` ever animate on a card — a box-shadow that
  * *switches* when a class goes on costs one paint; one that interpolates for
  * 260ms costs a paint a frame, and that rule is in CLAUDE.md for a reason.
+ *
+ * It goes on `.card-flip`, which is where a card's shadow lives, so that it
+ * *replaces* the resting one rather than stacking on top of it.
  */
 .card.is-pulsing {
   animation: win-pulse 260ms var(--e-out) both;
+}
+
+.card.is-pulsing .card-flip {
   box-shadow: var(--card-shadow-lift), var(--card-shadow-lift);
 }
 
@@ -264,6 +270,9 @@
   .card.is-pulsing {
     /* No scaling and no movement: the slot's bloom carries Stage 1 alone. */
     animation: none;
+  }
+
+  .card.is-pulsing .card-flip {
     box-shadow: var(--card-shadow-rest);
   }
 
