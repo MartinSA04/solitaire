@@ -144,9 +144,14 @@ describe("theme contrast", () => {
           "--chrome-fg on a sheet",
           where,
         );
+        // 4.5, not the 3 docs/08 first wrote. The clock and the move counter
+        // are ordinary 15px text, and WCAG 2.2 AA asks 4.5 of ordinary text
+        // whatever a designer meant by "deliberately dim" — which the axe gate
+        // in e2e/axe.pw.ts pointed out the moment it was run against a light
+        // table for the first time.
         atLeast(
           ratio(over(colorOf(tokens, "--chrome-fg-dim"), chrome), chrome),
-          3,
+          4.5,
           "--chrome-fg-dim",
           where,
         );

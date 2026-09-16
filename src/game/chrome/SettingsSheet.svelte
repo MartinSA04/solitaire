@@ -16,6 +16,7 @@
   import {
     AUTO,
     BACKS,
+    CARD_SIZES,
     DECKS,
     THEMES,
     type Back,
@@ -102,6 +103,11 @@
   };
 
   const DRAWS = [1, 3] as const;
+
+  const SIZE_LABELS: Record<(typeof CARD_SIZES)[number], string> = {
+    comfortable: "Comfortable",
+    large: "Large",
+  };
 
   /** What a press is waiting on "yes, end this game" for. */
   type Pending =
@@ -282,6 +288,32 @@
             onchange={() => choose({ back: value })}
           />
           <span class="choice-label">{BACK_LABELS[value]}</span>
+        </label>
+      {/each}
+    </div>
+  </fieldset>
+
+  <!--
+    Geometry rather than a look, so it does not go near the three attributes.
+    "Large" shows five columns instead of seven and pages the tableau sideways
+    for the rest — the one place the no-scrolling rule bends, and docs/08 says
+    why. On a screen wide enough to hold all seven at 110px it changes nothing
+    and there is nothing to page through, which is most tablets and every
+    desktop; the setting is here for the phone it is for.
+  -->
+  <fieldset class="group">
+    <legend class="group-label">Card size</legend>
+    <div class="choices">
+      {#each CARD_SIZES as size (size)}
+        <label class="choice">
+          <input
+            type="radio"
+            name="card-size"
+            value={size}
+            checked={settings.cardSize === size}
+            onchange={() => choose({ cardSize: size })}
+          />
+          <span class="choice-label">{SIZE_LABELS[size]}</span>
         </label>
       {/each}
     </div>

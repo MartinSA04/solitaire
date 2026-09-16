@@ -94,6 +94,24 @@ const STOCK_COLUMN = 0;
 const WASTE_COLUMN = 1;
 const FIRST_FOUNDATION_COLUMN = 3;
 
+/**
+ * How big the cards are asked to be. docs/08-accessibility.md: "Comfortable"
+ * is the game, and "Large" is for somebody who cannot read a 46px card.
+ *
+ * The only thing it changes is **how many columns are on screen at once**. The
+ * aspect ratio is locked and the height is never the binding constraint on a
+ * phone, so the one way to make a card bigger is to show fewer of them — and
+ * the tableau pages sideways to reach the rest. That is the one place the
+ * no-scrolling rule bends, and it bends because for someone who cannot see a
+ * 46px card, a page is better than a game they cannot read.
+ */
+export type CardSize = "comfortable" | "large";
+
+const VISIBLE_COLUMNS: Record<CardSize, number> = {
+  comfortable: TABLEAU_COLUMNS,
+  large: 5,
+};
+
 export type PileRef =
   | { pile: "stock" }
   | { pile: "waste" }
@@ -111,6 +129,29 @@ export interface Point {
 }
 
 export interface Metrics extends Area {
+  size: CardSize;
+  /** How many of the seven columns fit across. Seven, unless the cards are Large. */
+  visibleColumns: number;
+  /**
+   * How many pages the tableau has, and which one is showing. One and zero
+   * whenever every column fits, which is every comfortable board and most
+   * large ones on anything bigger than a phone.
+   */
+  pages: number;
+  page: number;
+  /**
+   * How many rows the stock, waste and foundations take: one, or two when the
+   * cards are too big for six of them to stand side by side.
+   *
+   * This is the half of the Large card size docs/08 did not foresee. The top
+   * row is as wide as the tableau — the same seven slots — so a card big
+   * enough to need paging is a card too big for the top row as well, and the
+   * stock and the last foundation simply fall off the side. They cannot page
+   * with the tableau: they are where every move ends up, and a board whose
+   * fixed points slide away has none. So they wrap, and the height it costs is
+   * height a phone has spare — a real game uses under half of it.
+   */
+  topRows: number;
   cardW: number;
   cardH: number;
   gap: number;
@@ -133,25 +174,65 @@ export interface Metrics extends Area {
 
 /**
  * Card size is whichever of three limits bites first: the width has to hold
- * seven columns, the height has to hold the top row plus the worst column the
- * game can deal, and past 110px we simply stop growing.
+ * the columns that are on screen, the height has to hold the top row plus the
+ * worst column the game can deal, and past 110px we simply stop growing.
+ *
+ * `size` decides how many columns "on screen" means, and `page` which of them.
+ * Both are ordinary inputs — this is still an area in, numbers out — so what a
+ * Large board measures is a unit test rather than a browser.
  */
-export function metricsFor(area: Area): Metrics {
-  const byWidth = area.width / (TABLEAU_COLUMNS + 10 * GAP_RATIO);
+export function metricsFor(
+  area: Area,
+  size: CardSize = "comfortable",
+  page = 0,
+): Metrics {
+  const visible = VISIBLE_COLUMNS[size];
+  // A row is `visible` cards, the gaps between them, and two gutters, each of
+  // which is two gaps wide.
+  const byWidth = area.width / (visible + (visible + 3) * GAP_RATIO);
+  // The height has to hold the top rows and the worst column the game can
+  // deal. How many top rows there are depends on the card width, which depends
+  // on this — so it budgets for the two a Large board might need, which costs
+  // a Large desktop nothing because its cards are capped at 110px long before
+  // the height is the constraint.
+  const topRowBudget = size === "large" ? 2 : 1;
   const byHeight =
     area.height /
-    (ASPECT * (2 + ROW_GAP_RATIO + (WORST_COLUMN - 1) * MIN_FAN_RATIO));
+    (ASPECT *
+      (topRowBudget * (1 + ROW_GAP_RATIO) +
+        1 +
+        (WORST_COLUMN - 1) * MIN_FAN_RATIO));
 
   const cardW = Math.max(1, Math.min(MAX_CARD_W, byWidth, byHeight));
   const cardH = cardW * ASPECT;
   const gap = cardW * GAP_RATIO;
-  const boardW = TABLEAU_COLUMNS * cardW + (TABLEAU_COLUMNS - 1) * gap;
   const rowGap = cardH * ROW_GAP_RATIO;
-  const tableauY = cardH + rowGap;
+
+  // How many columns *actually* fit, which is what the row is built from. It
+  // is the asked-for number whenever the width is the binding constraint, and
+  // more than that whenever something else bit first: a Large tablet caps its
+  // cards at 110px and then has room for six of them rather than five, and a
+  // Large desktop has room for all seven and pages through nothing.
+  const across = Math.min(
+    TABLEAU_COLUMNS,
+    columnsAcross(area.width, cardW, gap),
+  );
+  const boardW = across * cardW + (across - 1) * gap;
+  const fits = across >= TABLEAU_COLUMNS;
+  const pages = fits ? 1 : Math.ceil(TABLEAU_COLUMNS / across);
+  // The top row wraps exactly when the tableau pages, and for the same reason.
+  const topRows = fits ? 1 : 2;
+
+  const tableauY = topRows * (cardH + rowGap);
 
   return {
     width: area.width,
     height: area.height,
+    size,
+    visibleColumns: across,
+    topRows,
+    pages,
+    page: Math.min(Math.max(0, Math.floor(page)), pages - 1),
     cardW,
     cardH,
     gap,
@@ -171,25 +252,77 @@ export function metricsFor(area: Area): Metrics {
   };
 }
 
+/**
+ * How many columns of this size fit the width, two gutters included. The half
+ * pixel of slack is for the arithmetic, not for the layout: a card width
+ * derived by dividing the viewport comes back a ten-thousandth short of the
+ * number it was derived from, and a floor would then lose a whole column to it.
+ */
+function columnsAcross(width: number, cardW: number, gap: number): number {
+  const usable = width - 4 * gap;
+  return Math.max(1, Math.floor((usable + gap + 0.5) / (cardW + gap)));
+}
+
 function columnX(m: Metrics, column: number): number {
   return m.originX + column * (m.cardW + m.gap);
 }
 
-/** The top-left corner of a pile's slot, in card-layer coordinates. */
+/**
+ * How far the tableau is slid left, in pixels, for the page being shown.
+ *
+ * Paged rather than free: a page is `visibleColumns` columns, and the last one
+ * is pulled back so it ends flush with column seven rather than running off
+ * into empty table. With five visible that makes two pages, showing columns
+ * one to five and three to seven — the overlap is deliberate, since a column
+ * you can see on both pages is a column you do not have to remember.
+ *
+ * The top row does not move. The stock, the waste and the four foundations are
+ * where every move ends up, and a board where those slide away is a board with
+ * no fixed points in it.
+ */
+export function pageShift(m: Metrics): number {
+  if (m.pages <= 1) return 0;
+  const last = TABLEAU_COLUMNS - m.visibleColumns;
+  const columns = Math.min(m.page * m.visibleColumns, last);
+  return columns * (m.cardW + m.gap);
+}
+
+/**
+ * The top-left corner of a pile's slot, in card-layer coordinates.
+ *
+ * On one top row this is the board docs/02 draws: stock, waste, a gap, then
+ * the four foundations. On two, the stock and the waste keep the first row and
+ * the four foundations take the second, from the left.
+ *
+ * "Foundations on the right" is a forty-year habit and it was worth trying to
+ * keep across the line break — but the habit is really about telling them
+ * apart from the waste *on the same row*, and a row that is nothing but
+ * foundations has already done that. Flush left is what a grid does by itself,
+ * it lines the suits up under the stock, and it leaves the right-hand edge to
+ * the column peeking in from the next page, which is the one thing there that
+ * needs to be noticed.
+ */
 export function pileOrigin(m: Metrics, ref: PileRef): Point {
+  const second = m.topRows > 1 ? m.cardH + m.rowGap : 0;
   switch (ref.pile) {
     case "stock":
       return { x: columnX(m, STOCK_COLUMN), y: 0 };
     case "waste":
       return { x: columnX(m, WASTE_COLUMN), y: 0 };
-    case "foundation":
-      return {
-        x: columnX(m, FIRST_FOUNDATION_COLUMN + foundationSlot(ref.suit)),
-        y: 0,
-      };
+    case "foundation": {
+      const slot = foundationSlot(ref.suit);
+      const column = m.topRows > 1 ? slot : FIRST_FOUNDATION_COLUMN + slot;
+      return { x: columnX(m, column), y: second };
+    }
     case "tableau":
-      return { x: columnX(m, ref.column), y: m.tableauY };
+      return { x: columnX(m, ref.column) - pageShift(m), y: m.tableauY };
   }
+}
+
+/** Which page a column is on, for a focus or a move that has gone off-screen. */
+export function pageOf(m: Metrics, column: number): number {
+  if (m.pages <= 1) return 0;
+  return Math.min(m.pages - 1, Math.floor(column / m.visibleColumns));
 }
 
 function foundationSlot(suit: Suit): number {
@@ -523,5 +656,10 @@ export function cssVariables(m: Metrics): Record<string, string> {
     "--gutter": `${m.gutter}px`,
     "--row-gap": `${m.rowGap}px`,
     "--card-radius": `${m.radius}px`,
+    // The slot grid is seven columns wide whatever is on screen; this is what
+    // slides it, so the empty slots page with the cards on them.
+    "--page-shift": `${-pageShift(m)}px`,
+    "--board-w": `${TABLEAU_COLUMNS * m.cardW + (TABLEAU_COLUMNS - 1) * m.gap}px`,
+    "--origin-x": `${m.originX}px`,
   };
 }

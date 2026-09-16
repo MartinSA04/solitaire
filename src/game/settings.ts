@@ -1,4 +1,5 @@
 import type { DrawCount } from "../engine/index.ts";
+import type { CardSize } from "./Layout.ts";
 
 /**
  * What the player has chosen, and how a choice becomes an attribute.
@@ -36,6 +37,13 @@ export const DECKS = [
 ] as const;
 export const BACKS = ["lattice", "dots", "solid"] as const;
 
+/**
+ * Not a look — the three attributes are the whole of a look, and this is
+ * geometry. It goes to `Layout.ts`, which is the only thing that decides how
+ * big a card is, and nothing about it reaches `<html>`.
+ */
+export const CARD_SIZES = ["comfortable", "large"] as const;
+
 export type Theme = (typeof THEMES)[number];
 export type Deck = (typeof DECKS)[number];
 export type Back = (typeof BACKS)[number];
@@ -53,6 +61,12 @@ export interface Settings {
   /** The clock can be hidden entirely; time is still recorded. docs/02. */
   timer: boolean;
   /**
+   * How big the cards are. "Large" shows fewer columns at once and pages the
+   * tableau sideways to reach the rest — see {@link CardSize}. The one place
+   * the no-scrolling rule bends, and docs/08 says why.
+   */
+  cardSize: CardSize;
+  /**
    * Deal only from the pre-verified winnable pool. On by default: a casual
    * player on a bus did not ask to find out that this one was never going to
    * come out. Off deals from the whole 2³² space, which is the honest version
@@ -68,6 +82,7 @@ export const DEFAULTS: Settings = Object.freeze({
   back: AUTO,
   sound: true,
   timer: true,
+  cardSize: "comfortable",
   winnableOnly: true,
   drawCount: 1,
 });

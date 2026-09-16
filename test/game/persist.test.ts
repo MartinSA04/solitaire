@@ -70,6 +70,7 @@ describe("settings", () => {
       back: "dots",
       sound: false,
       timer: false,
+      cardSize: "large",
       winnableOnly: false,
       drawCount: 3,
     };
@@ -88,12 +89,13 @@ describe("settings", () => {
         back: null,
         sound: "yes",
         timer: undefined,
+        cardSize: "enormous",
         winnableOnly: "no",
         drawCount: 5,
       }),
     );
     // Field by field, not all-or-nothing: one nonsense value should not cost
-    // the player the other five choices.
+    // the player the other six choices.
     assert.deepEqual(persist.settings(), DEFAULTS);
   });
 

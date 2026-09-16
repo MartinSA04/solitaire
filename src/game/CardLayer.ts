@@ -165,6 +165,11 @@ export class CardLayer {
     for (const [name, value] of Object.entries(cssVariables(m))) {
       board.style.setProperty(name, value);
     }
+    // Two things CSS cannot read out of a custom property: which branch of a
+    // layout it is in, and how many columns to repeat. Both are still decided
+    // here and only here — the stylesheet is told, it does not work them out.
+    board.dataset.topRows = String(m.topRows);
+    board.dataset.across = String(m.visibleColumns);
     this.#rect = null;
   }
 

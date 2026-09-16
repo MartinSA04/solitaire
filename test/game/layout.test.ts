@@ -21,6 +21,8 @@ import {
   dropTarget,
   hitTest,
   metricsFor,
+  pageOf,
+  pageShift,
   pileOrigin,
   placeAll,
 } from "../../src/game/Layout.ts";
@@ -352,3 +354,148 @@ function _typecheck(m: Metrics): number {
   return m.cardW;
 }
 void _typecheck;
+
+/**
+ * The Large card size, from docs/08-accessibility.md: cards a third bigger,
+ * bought by showing fewer columns at once and paging sideways for the rest.
+ *
+ * Everything here is arithmetic, so all of it can be pinned without a browser
+ * — including the part the design did not foresee, which is that a card too
+ * big for seven columns is also too big for the six piles in the top row.
+ */
+describe("the Large card size", () => {
+  it("buys a third more card on a phone, and pays in columns", () => {
+    const comfortable = metricsFor(PHONE_LARGE);
+    const large = metricsFor(PHONE_LARGE, "large");
+
+    assert.equal(comfortable.visibleColumns, TABLEAU_COLUMNS);
+    assert.equal(large.visibleColumns, 5);
+    assert.ok(
+      large.cardW / comfortable.cardW > 1.3,
+      `only ${((large.cardW / comfortable.cardW - 1) * 100).toFixed(0)}% bigger`,
+    );
+    assert.equal(large.pages, 2);
+  });
+
+  it("wraps the top row exactly when the tableau pages", () => {
+    for (const area of [PHONE, PHONE_LARGE, TABLET, DESKTOP]) {
+      for (const size of ["comfortable", "large"] as const) {
+        const m = metricsFor(area, size);
+        assert.equal(
+          m.topRows > 1,
+          m.pages > 1,
+          `${size} at ${area.width}×${area.height}`,
+        );
+      }
+    }
+  });
+
+  it("is only ever five, six or seven columns across", () => {
+    // src/styles/board.css spells the two wrapped counts out, because
+    // `repeat()` will not take a custom property. This is what says there are
+    // only two of them to spell.
+    const widths = [280, 320, 360, 390, 430, 540, 768, 834, 1024, 1440, 2560];
+    for (const width of widths) {
+      for (const height of [560, 680, 744, 900, 1180]) {
+        for (const size of ["comfortable", "large"] as const) {
+          const m = metricsFor({ width, height }, size);
+          assert.ok(
+            m.visibleColumns >= 5 && m.visibleColumns <= TABLEAU_COLUMNS,
+            `${m.visibleColumns} columns at ${width}×${height} ${size}`,
+          );
+          if (m.topRows > 1) {
+            assert.ok(
+              m.visibleColumns === 5 || m.visibleColumns === 6,
+              `wrapped at ${m.visibleColumns} columns, which board.css cannot draw`,
+            );
+          }
+        }
+      }
+    }
+  });
+
+  it("changes nothing on a board wide enough to hold every column", () => {
+    // A desktop is already at the 110px cap with all seven on screen, so there
+    // is nothing for the setting to buy and nothing to page through.
+    const comfortable = metricsFor(DESKTOP);
+    const large = metricsFor(DESKTOP, "large");
+    assert.equal(large.cardW, comfortable.cardW);
+    assert.equal(large.visibleColumns, TABLEAU_COLUMNS);
+    assert.equal(large.pages, 1);
+    assert.equal(large.topRows, 1);
+    assert.equal(pageShift(large), 0);
+  });
+
+  it("keeps the stock, the waste and the foundations still while it pages", () => {
+    const first = metricsFor(PHONE_LARGE, "large", 0);
+    const second = metricsFor(PHONE_LARGE, "large", 1);
+    for (const ref of [
+      { pile: "stock" } as const,
+      { pile: "waste" } as const,
+      ...FOUNDATION_ORDER.map(
+        (suit) => ({ pile: "foundation", suit }) as const,
+      ),
+    ]) {
+      assert.deepEqual(
+        pileOrigin(second, ref),
+        pileOrigin(first, ref),
+        `${ref.pile} moved`,
+      );
+    }
+    // And the tableau did move, by exactly the two columns the page is worth.
+    const shift = pageShift(second);
+    assert.equal(
+      Math.round(shift),
+      Math.round(2 * (second.cardW + second.gap)),
+    );
+    assert.equal(
+      Math.round(pileOrigin(first, { pile: "tableau", column: 0 }).x - shift),
+      Math.round(pileOrigin(second, { pile: "tableau", column: 0 }).x),
+    );
+  });
+
+  it("puts the last column flush with the right edge on the last page", () => {
+    const last = metricsFor(PHONE_LARGE, "large", 1);
+    const right =
+      pileOrigin(last, { pile: "tableau", column: TABLEAU_COLUMNS - 1 }).x +
+      last.cardW;
+    assert.equal(Math.round(right), Math.round(last.originX + last.boardW));
+  });
+
+  it("knows which page a column is on, and clamps a page it does not have", () => {
+    const m = metricsFor(PHONE_LARGE, "large");
+    for (const column of [0, 1, 2, 3, 4]) assert.equal(pageOf(m, column), 0);
+    for (const column of [5, 6]) assert.equal(pageOf(m, column), 1);
+
+    assert.equal(metricsFor(PHONE_LARGE, "large", 9).page, 1);
+    assert.equal(metricsFor(PHONE_LARGE, "large", -3).page, 0);
+    assert.equal(metricsFor(PHONE_LARGE, "comfortable", 1).page, 0);
+  });
+
+  it("still fits the worst column the game can deal", () => {
+    // The board never scrolls *vertically*, whatever the cards are doing
+    // sideways: the extra top row has to come out of somewhere, and it comes
+    // out of space a phone had spare.
+    for (const area of [PHONE, PHONE_LARGE, TABLET]) {
+      const m = metricsFor(area, "large");
+      assert.ok(
+        columnHeight(m, WORST_COLUMN) <= m.tableauH + 0.5,
+        `a 19-card column overflows at ${area.width}×${area.height}`,
+      );
+    }
+  });
+
+  it("hit-tests and drops against the page that is showing", () => {
+    const m = metricsFor(PHONE_LARGE, "large", 1);
+    const state = makeState({ tableau: ["", "", "", "", "", "", "K♠"] });
+    const seventh = pileOrigin(m, { pile: "tableau", column: 6 });
+
+    // Column seven is only reachable at all on the second page.
+    const hit = hitTest(m, state, seventh.x + 4, seventh.y + 4);
+    assert.deepEqual(hit?.ref, { pile: "tableau", column: 6 });
+    assert.deepEqual(dropTarget(m, state, seventh.x, seventh.y), {
+      pile: "tableau",
+      column: 6,
+    });
+  });
+});

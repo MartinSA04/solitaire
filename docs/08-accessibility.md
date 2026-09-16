@@ -17,7 +17,7 @@ by keyboard alone and by screen reader alone.
 | Card face (rank/suit) | 7:1 | Card background |
 | Card against table | 3:1 | Table surface — by the card's background **or** its edge |
 | Chrome text | 4.5:1 | Chrome background |
-| Clock/move counter at rest | 3:1 minimum | Deliberately dim, but readable |
+| Clock/move counter at rest | 4.5:1 | Dimmest thing in the chrome, still ordinary text |
 | Empty-slot outline | 3:1 | Table |
 | Legal-drop highlight | 3:1 | Table **and** the un-highlighted state |
 
@@ -26,6 +26,15 @@ Every theme in [04](04-art-direction.md) is checked against this table by
 translucent tokens onto whatever is behind them, and fails on the ratio —
 themes drift, and a colour nudged to look right on the one screen the person
 nudging it owns is how empty slots disappear on everyone else's.
+
+The clock row asked for **3:1** until the axe gate was pointed at a light
+table for the first time and found 3.87:1 on the Minimal chrome. "Deliberately
+dim" is a real intention and it survives — the clock is still the quietest
+thing on the screen — but it is ordinary 15px text, and WCAG 2.2 AA asks 4.5 of
+ordinary text no matter what it was meant to feel like. This document opens by
+naming that target; the row contradicted it, and the row was wrong. Only the
+Minimal table was short, because dark ink on a light ground loses contrast to
+transparency far faster than light ink on a dark one.
 
 The card-against-table row asks for 3:1 rather than the 4.5:1 it was first
 written as, and allows a theme to meet it with the card's edge instead of its
@@ -259,11 +268,36 @@ the board is inert.
   - **Drop targeting uses the dragged card's corner, not the fingertip** — see
     [05](05-interaction-and-motion.md) — which removes the fat-finger problem from
     dropping entirely.
-- **A card-size setting**: "Comfortable" (default) and "Large". Large drops the
-  tableau to a layout where cards are ~30% bigger and columns are horizontally
-  scrollable in a *paged* way — the one place the no-scrolling rule bends, because
-  for someone who can't see a 46px card, a scroll is better than a game they can't
-  read.
+- **A card-size setting**: "Comfortable" (default) and "Large". Large shows five
+  of the seven columns instead of all of them, which buys a card **38% wider** on
+  a phone — 49.6px to 68.5px at 390px — and pages the tableau sideways for the
+  other two. The one place the no-scrolling rule bends, because for someone who
+  can't see a 46px card, a page is better than a game they can't read.
+
+  Three things the build settled that the paragraph above did not foresee:
+
+  - **The top row has to wrap.** It is as wide as the tableau — the same seven
+    slots — so a card too big for seven columns is a card too big for the six
+    piles above them, and the stock and the last foundation simply fall off the
+    side. They cannot page with the tableau: they are where every move ends up,
+    and a board whose fixed points slide away has none. So the stock and waste
+    keep the first line and the four foundations take the second. It costs about
+    150px of height, and a phone has it — a real game uses under half the board's
+    height, because the cards are limited by width and never by height.
+  - **Buttons, not a swipe.** A horizontal drag on this board already means "pick
+    a card up and carry it", and a gesture that means two things on one surface
+    means neither. Buttons are also the only version a keyboard or a screen
+    reader can use — and the arrow keys need none of it, because the page follows
+    the roving focus rather than the other way round. The focus is the only idea
+    either of them has of where it is, so it cannot be left off the side.
+  - **Nothing needs a drag across a page.** Tap-to-auto-move is the primary
+    interaction for exactly the reasons listed above it, and it sends a card
+    wherever it should go whether or not that pile is on screen. Paging never
+    stands between a player and a move.
+
+  On a board wide enough to hold all seven columns at the 110px cap the setting
+  changes nothing and there is no pager, which is every desktop. It exists for
+  the phone it was written for.
 
 ## Text and language
 
@@ -305,7 +339,12 @@ the board is inert.
   `test/game/keyboard.test.ts`, which types the same winning line through the
   model with no browser in it: the browser test is about the wiring, the unit
   test is about the grammar, and the two fail in usefully different ways.
-- Screenshot tests at 200% zoom and with the Large card setting.
+- A visual baseline of the Large card setting, which is a second board layout
+  and so a second thing that can look wrong, and an axe pass over it including
+  the pager. `e2e/cardsize.pw.ts` holds the rest: that the top row does not move
+  while the tableau pages, that all six of its piles stay on screen, that the
+  keyboard drags the page along behind the focus, and that a card on the far
+  page still goes home when it is tapped.
 - Contrast assertions run as a unit test over the theme tokens.
 - Every sentence the game speaks is a unit test in `test/game/strings.test.ts`,
   including a sweep over every legal move of a whole game asserting that none of

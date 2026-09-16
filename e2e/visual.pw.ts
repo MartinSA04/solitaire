@@ -144,6 +144,22 @@ test.describe("every deck on every table", () => {
   });
 });
 
+test("the Large card size is a board of its own", async ({ page }) => {
+  // Bigger cards, five of the seven columns, and the top row wrapped onto two.
+  // Enough of a rearrangement to be worth a picture.
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "sol:v1:settings",
+      JSON.stringify({ v: 1, theme: "warm", cardSize: "large" }),
+    );
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(DEAL);
+  await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(7);
+  await expect(page.locator(".card.is-moving")).toHaveCount(0);
+  await expect(page).toHaveScreenshot("warm-large-phone.png", TOLERANCE);
+});
+
 test.describe("the board at every size", () => {
   for (const size of SIZES) {
     test(`warm · ${size.name}`, async ({ page }) => {

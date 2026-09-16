@@ -34,7 +34,13 @@
 
   --chrome-bg: #e4ded4;
   --chrome-fg: #2a2724;
-  --chrome-fg-dim: rgb(42 39 36 / 62%);
+  /*
+   * 70%, not the 62% the other tables use: dark ink on a light ground loses
+   * contrast much faster to transparency than light ink on a dark one, and at
+   * 62% this was 3.87:1 — dim enough to fail WCAG AA for ordinary text. It is
+   * still the dimmest thing in the chrome, which is all "dim" was ever for.
+   */
+  --chrome-fg-dim: rgb(42 39 36 / 70%);
   --sheet-bg: #f7f4ee;
 
   --win-bloom: #c0663d;

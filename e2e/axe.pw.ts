@@ -65,13 +65,25 @@ async function dealt(page: Page): Promise<void> {
   await expect(page.locator(".card.is-moving")).toHaveCount(0);
 }
 
-/** Choose a table the way the settings sheet does, before the page is looked at. */
-async function withTheme(page: Page, theme: string): Promise<void> {
+/**
+ * Choose settings the way the sheet does, before the page is looked at.
+ *
+ * `v: 1` is load-bearing and easy to leave out: the inline bootstrap that puts
+ * the table on `<html>` before the first paint does not check the schema
+ * version, but `Persist` does — so a record without it paints the right table
+ * and then has the default written straight back over it the moment the island
+ * hydrates. An audit run that way is an audit of the Warm table wearing
+ * somebody else's name.
+ */
+async function withSettings(
+  page: Page,
+  settings: Record<string, unknown>,
+): Promise<void> {
   await page.addInitScript(
     ([key, value]) => {
-      localStorage.setItem(key as string, JSON.stringify({ theme: value }));
+      localStorage.setItem(key as string, value as string);
     },
-    ["sol:v1:settings", theme],
+    ["sol:v1:settings", JSON.stringify({ v: 1, ...settings })],
   );
 }
 
@@ -79,9 +91,11 @@ for (const theme of THEMES) {
   test(`the board has no violations on the ${theme} table`, async ({
     page,
   }) => {
-    await withTheme(page, theme);
+    await withSettings(page, { theme });
     await page.goto(DEAL);
     await dealt(page);
+    // The table the island settled on, not the one the bootstrap guessed.
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
 
     const results = await audit(page);
     expect(describe(results), describe(results)).toBe("");
@@ -98,6 +112,17 @@ test("the board with a card in hand has none either", async ({ page }) => {
   await page.keyboard.press("s");
   await page.keyboard.press(" ");
   await expect(page.locator(".card.is-held")).toHaveCount(1);
+
+  const results = await audit(page);
+  expect(describe(results), describe(results)).toBe("");
+});
+
+test("the Large board has none, pager and all", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await withSettings(page, { theme: "warm", cardSize: "large" });
+  await page.goto(DEAL);
+  await dealt(page);
+  await expect(page.locator(".pager")).toBeVisible();
 
   const results = await audit(page);
   expect(describe(results), describe(results)).toBe("");

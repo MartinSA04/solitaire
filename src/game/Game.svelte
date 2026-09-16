@@ -18,10 +18,16 @@
     suitOf,
     topOf,
   } from "../engine/index.ts";
+  import { untrack } from "svelte";
   import { Sound } from "./Audio.ts";
   import { CardLayer, type Motion } from "./CardLayer.ts";
   import { Drag, type DragHost } from "./Drag.ts";
-  import { FOUNDATION_ORDER, PILE_ORDER, metricsFor } from "./Layout.ts";
+  import {
+    FOUNDATION_ORDER,
+    PILE_ORDER,
+    metricsFor,
+    pageOf,
+  } from "./Layout.ts";
   import {
     dealOrder,
     drawnCards,
@@ -236,6 +242,19 @@
    * one of the two is ever full.
    */
   let dragging: Grab | null = $state(null);
+
+  /**
+   * Which page of the tableau is showing, and how many there are.
+   *
+   * Only ever more than one under the Large card size, and not always then: a
+   * board wide enough to hold all seven columns at full size pages through
+   * nothing, which is every desktop. See `metricsFor`.
+   *
+   * The top row never moves. The stock, the waste and the foundations are where
+   * every move ends up, and a board whose fixed points slide away is not one.
+   */
+  let page = $state(0);
+  let pages = $state(1);
 
   /**
    * The piles that would take what is in hand, whichever hand it is in.
@@ -586,6 +605,7 @@
         // accessible name, so a screen reader reads the whole pile on arrival
         // and the live region stays quiet.
         focus = action.focus;
+        pageToFocus();
         pileEls[action.focus.at]?.focus();
         showSelection();
         break;
@@ -643,6 +663,7 @@
   function onPileFocus(at: number): void {
     boardFocused = true;
     if (focus.at !== at) focus = clampFocus(game.state, { at, reach: 1 });
+    pageToFocus();
     showSelection();
   }
 
@@ -674,6 +695,32 @@
     if (focus.at !== at) focus = clampFocus(game.state, { at, reach: 1 });
     const action = interpret({ key: " " }, game.state, focus, held);
     if (action !== null) perform(action);
+  }
+
+  /**
+   * Turn to a page, if there is one to turn to. Clamped rather than wrapped:
+   * a board is a row of columns with two ends, not a carousel, and arriving
+   * back at column one from column seven would be a surprise every time.
+   */
+  function turnTo(next: number): void {
+    const wanted = Math.min(Math.max(0, next), pages - 1);
+    if (wanted === page) return;
+    page = wanted;
+    remeasure?.("move");
+  }
+
+  /**
+   * Keep the focused pile on screen. The roving focus is the keyboard's and the
+   * screen reader's only idea of where it is, so a focus on a column that is
+   * off the side of the board is a focus nobody can see — the page follows it
+   * rather than the other way round.
+   */
+  function pageToFocus(): void {
+    const ref = PILE_ORDER[focus.at];
+    const m = layer?.metrics;
+    if (ref === undefined || m === null || m === undefined) return;
+    if (ref.pile !== "tableau") return;
+    turnTo(pageOf(m, ref.column));
   }
 
   function showSelection(): void {
@@ -783,6 +830,13 @@
 
   let layer: CardLayer | null = null;
   let sequence: WinSequence | null = null;
+  /**
+   * Re-measure the board and put the cards where the new numbers say, set up
+   * alongside the card layer it writes to. `"move"` slides them, which is the
+   * whole of the page-turn animation: every card simply gets a new transform
+   * with a transition already on it.
+   */
+  let remeasure: ((motion: Motion) => void) | null = null;
   /** The finishing cascade, and the notice's own lifetime. */
   let finishing = false;
   let finishTimer: ReturnType<typeof setTimeout> | undefined;
@@ -958,16 +1012,27 @@
     // Geometry is computed once per resize and never during a move. The first
     // one is taken here rather than waited for, so that the undealt board is on
     // screen in the frame the island mounts in.
-    const relayout = (): void => {
-      cards.setMetrics(
-        metricsFor({ width: board.clientWidth, height: board.clientHeight }),
-        board,
+    const relayout = (motion: Motion = "instant"): void => {
+      const m = metricsFor(
+        { width: board.clientWidth, height: board.clientHeight },
+        settings.cardSize,
+        page,
       );
-      cards.render(displayed(), "instant");
+      pages = m.pages;
+      // A board that has stopped paging, or never started, takes the page back
+      // down with it — which is also what makes changing the card size safe.
+      if (page !== m.page) page = m.page;
+      cards.setMetrics(m, board);
+      cards.render(displayed(), motion);
     };
-    relayout();
+    // Untracked, and it matters: this effect owns the card layer, the drag
+    // handler and the resize observer, and `relayout` reads the card size and
+    // the page. Tracked, turning a page would tear all three down and build
+    // them again.
+    untrack(() => relayout());
+    remeasure = relayout;
     showSelection();
-    const observer = new ResizeObserver(relayout);
+    const observer = new ResizeObserver(() => relayout());
     observer.observe(board);
 
     // These elements are new — a deal is the one time they are rebuilt — so a
@@ -989,6 +1054,7 @@
     return () => {
       cancelAnimationFrame(dealFrame);
       observer.disconnect();
+      remeasure = null;
       drag.destroy();
       cards.destroy();
       sequence?.destroy();
@@ -1048,6 +1114,18 @@
    */
   $effect(() => {
     apply(settings, document.documentElement);
+  });
+
+  /**
+   * A different card size is a different board, so it is measured again from
+   * scratch. The page goes back to the first one: the column you were looking
+   * at may not be on the page it was on, and there may be no pages at all.
+   */
+  $effect(() => {
+    void settings.cardSize;
+    // Untracked for the same reason as above, and the page needs no resetting:
+    // a board that cannot page clamps it back to zero on the way through.
+    untrack(() => remeasure?.("move"));
   });
 
   /** One master gain for the whole product, and it ramps rather than clicks. */
@@ -1196,6 +1274,12 @@
       {/each}
     </div>
 
+    <!--
+      Seven columns, whatever is on screen. The row slides by `--page-shift`,
+      which Layout.ts writes from the same number the card transforms use, so
+      the empty slots page with the cards standing on them — CSS still works
+      nothing out for itself.
+    -->
     <div class="row row-tableau">
       {#each [0, 1, 2, 3, 4, 5, 6] as column (column)}
         <button
@@ -1250,6 +1334,42 @@
       </div>
     {/key}
   </div>
+
+  <!--
+    Only ever on screen under the Large card size, and not always then. Buttons
+    rather than a swipe: a horizontal drag on this board already means "pick a
+    card up and carry it", and a gesture that means two things on one surface
+    means neither. They are also the only version of this a keyboard or a
+    screen reader can use, and the arrow keys page on their own anyway by
+    dragging the page along behind the focus.
+  -->
+  {#if pages > 1}
+    <div class="pager">
+      <button
+        class="control pager-step"
+        type="button"
+        disabled={page === 0}
+        aria-label="Columns to the left"
+        onclick={() => turnTo(page - 1)}
+      >
+        ‹
+      </button>
+      <span class="pager-where" aria-hidden="true">
+        {#each { length: pages } as _, index (index)}
+          <span class="pager-dot" class:is-here={index === page}></span>
+        {/each}
+      </span>
+      <button
+        class="control pager-step"
+        type="button"
+        disabled={page === pages - 1}
+        aria-label="Columns to the right"
+        onclick={() => turnTo(page + 1)}
+      >
+        ›
+      </button>
+    </div>
+  {/if}
 
   <BottomBar
     {canUndo}

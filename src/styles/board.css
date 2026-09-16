@@ -754,3 +754,125 @@ body {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ------------------------------------------------------------ the pager */
+
+/*
+ * Seven columns in the grid, however many of them are on screen. The row
+ * slides by a number `Layout.ts` computed, which is the same number the card
+ * transforms are built from — so the slots and the cards on them page
+ * together, and CSS still derives nothing it was not given.
+ *
+ * `justify-content: start` with an explicit left edge rather than `center`,
+ * because a centred seven-column grid would centre the *hidden* columns too
+ * and the visible five would sit off to one side.
+ */
+.row-tableau {
+  justify-content: start;
+  padding-left: var(--origin-x, 0px);
+  transform: translate3d(var(--page-shift, 0px), 0, 0);
+  transition: transform var(--t-quick) var(--e-out);
+}
+
+/*
+ * Which page the tableau is on, and the two ways to change it. Only rendered
+ * when there is more than one, which is only ever under the Large card size.
+ * It sits where the notice sits — above the bottom bar, out of the way of the
+ * board — because it is chrome rather than table.
+ */
+.pager {
+  position: absolute;
+  left: 50%;
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 8px);
+  z-index: 200;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--chrome-bg);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 30%);
+}
+
+.pager-step {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.pager-where {
+  display: flex;
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.pager-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--chrome-fg-dim);
+  opacity: 0.4;
+}
+
+.pager-dot.is-here {
+  background: var(--accent);
+  opacity: 1;
+}
+
+/* The bar it clears is at the top on a desktop, so there is nothing to clear. */
+@media (min-width: 48rem), (max-height: 34rem) {
+  .pager {
+    bottom: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-tableau {
+    transition: none;
+  }
+}
+
+/* --------------------------------------------- the Large board's top row */
+
+/*
+ * Six piles across is four hundred and eleven pixels at a Large card, and a
+ * phone is three hundred and ninety. So the top row wraps: the stock and the
+ * waste keep the first line and the four foundations take the second, still
+ * flush right, because the deck on the left and the goal on the right is a
+ * habit older than any of this and worth keeping across a line break.
+ *
+ * The two column counts are spelled out because `repeat()` will not take a
+ * custom property for its count. `Layout.ts` still decides which one applies —
+ * it writes the attribute — and `test/game/layout.test.ts` asserts no other
+ * value can occur.
+ */
+.board[data-top-rows="2"] .row-top {
+  height: auto;
+  grid-template-rows: var(--card-h) var(--card-h);
+  row-gap: var(--row-gap);
+}
+
+.board[data-top-rows="2"][data-across="5"] .row-top {
+  grid-template-columns: repeat(5, var(--card-w));
+}
+
+.board[data-top-rows="2"][data-across="6"] .row-top {
+  grid-template-columns: repeat(6, var(--card-w));
+}
+
+/* Nothing to space out when the two halves are on separate lines. */
+.board[data-top-rows="2"] .slot-spacer {
+  display: none;
+}
+
+/*
+ * The four foundations take the second row, in order, from the left — which is
+ * exactly what grid auto-placement does once they are told which row they are
+ * on, so it is one declaration and there is nothing to keep in step.
+ */
+.board[data-top-rows="2"] .slot-foundation {
+  grid-row: 2;
+}
