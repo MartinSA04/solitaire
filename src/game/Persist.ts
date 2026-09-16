@@ -162,6 +162,7 @@ export class Persist {
       sound: boolish(raw.sound, DEFAULTS.sound),
       timer: boolish(raw.timer, DEFAULTS.timer),
       cardSize: oneOf(raw.cardSize, CARD_SIZES, DEFAULTS.cardSize),
+      cardIndex: boolish(raw.cardIndex, DEFAULTS.cardIndex),
       winnableOnly: boolish(raw.winnableOnly, DEFAULTS.winnableOnly),
       drawCount: raw.drawCount === 3 ? 3 : 1,
     };

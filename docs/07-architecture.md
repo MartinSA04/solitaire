@@ -89,7 +89,8 @@ src/
     cascade.ts         the cascade as arithmetic — pure, no DOM
     Trails.ts          the canvas comet tails
     Audio.ts           WebAudio graph, sample-free synthesis
-    DeckArt.ts         fetches a sourced sprite, once, into the document
+    DeckArt.ts         fetches a sourced sprite into the document, keeps it
+                       in Cache Storage, and attaches exactly one at a time
     settings.ts        the chosen look, as data → three attributes on <html>
                        (and the inline bootstrap that writes them pre-paint)
     pool.ts            the winnable pools: fetch, a new deal, the daily
@@ -97,12 +98,14 @@ src/
     chrome/
       TopBar.svelte  BottomBar.svelte  Sheet.svelte
       SettingsSheet.svelte  StatsSheet.svelte  ResultPanel.svelte
+      DecksSheet.svelte     the deck gallery — see 04
   themes/
     tokens.css         the contract from 04
     warm.css  minimal.css  dark.css
   decks/               our own decks, as token sets like the themes
     minimal.css  high-contrast.css  four-colour.css  backs.css
-    sourced.ts         the decks we did not draw: sprite, mapping, licence
+    sourced.ts         the sixteen we did not draw: sprite, lattice, licence
+    catalogue.ts       all twenty-one, as the gallery lists them
   layouts/Layout.astro
   pages/
     index.astro        the game
@@ -112,11 +115,16 @@ src/
     base.css  board.css  motion.css  win.css  page.css
 
 public/
-  decks/french/deck.svg + LICENSE.txt   sourced card art, unmodified
+  decks/<id>/deck.svg + LICENSE.txt + preview.webp
+                                        sourced card art, unmodified, with the
+                                        licence it arrived under and a picture
+                                        for the gallery. Sixteen of them.
                                         (our own decks and backs are CSS — see 04)
 
 scripts/
   generate-winnable.ts   the build-time solver run — see 03
+  deck-geometry.ts       measures where a sourced deck's cards are — see 04
+  deck-previews.ts       renders the gallery's pictures from the sprites
 
 test/    **/*.test.ts    engine, persistence, layout maths
 e2e/     **/*.pw.ts      interaction, visual, performance
@@ -203,21 +211,33 @@ trip in front of the settings sheet and a failure mode where the menu does not
 open.
 
 That last figure used to read "one ~30KB sprite", written when a sourced deck
-was expected to be the phone default. Real traditional card art is nowhere near
-30KB — the deck we ship is 339KB gzipped, and the deck this project first
-picked is twenty times that — so the budget is kept by moving the art rather
-than by shrinking it. A sourced deck is fetched **when it is chosen**, once,
-and injected into the document for `<use>` to reach (Safari does not support
-cross-file `<use>`). Until then it does not exist as far as the page is
-concerned, and if the fetch fails the typographic deck simply stays. See
-[04](04-art-direction.md) and `src/decks/sourced.ts`.
+was expected to be the phone default. It is not the default, and the budget is
+kept by moving the art rather than by shrinking it: a sourced deck is fetched
+**when it is chosen**, once, and injected into the document for `<use>` to
+reach (Safari does not support cross-file `<use>`). Until then it does not
+exist as far as the page is concerned, and if the fetch fails the typographic
+deck simply stays.
+
+The sixteen that ship run from **3.5KB to 339KB** over the wire, eleven of them
+under 100KB — so "a sourced deck is expensive" turned out to be a fact about
+Victorian engravings rather than about sourced decks. It changes nothing here,
+because none of them is on the first load either way, and it is why the deck
+gallery prints the number on the tile: the cost is real, it is bounded, and it
+is the player's to spend.
+
+A fetched sprite is kept in **Cache Storage** under `sol:decks:v1`, which is
+what lets the gallery say "on this device" and mean it. It is not a service
+worker: nothing is intercepted, there is no lifecycle, and there is nothing to
+invalidate on deploy. See [04](04-art-direction.md) and
+`src/decks/sourced.ts`.
 
 ## Persistence
 
 `localStorage`, one key per concern, all namespaced and versioned.
 
 ```text
-sol:v1:settings     theme, deck, back, sound, timer, winnableOnly, drawCount
+sol:v1:settings     theme, deck, sound, timer, cardSize, cardIndex,
+                    winnableOnly, drawCount
 sol:v1:game         the in-progress game (see below)
 sol:v1:stats        lifetime counters, per draw mode
 sol:v1:records      per-deal bests — a capped list of {seed, draw, time, moves}
@@ -323,7 +343,7 @@ Unchanged from the scaffolding — `astro build` to `dist/`, deployed by
 | Persistence | `node --test` | Round-trip, corrupt input, a key from another schema version, a store that throws on every call, the record cap and the streak arithmetic |
 | Pools | `node --test` | The committed `.bin` files are sorted and long enough for the daily prefix, and a sample of each is re-solved and replayed through the rules |
 | Interaction | Playwright | Deal, drag, tap-to-auto-move, undo, hint, Finish, stock recycle, resume-after-reload, deal-from-URL, the daily, the share link |
-| Visual | Playwright | `e2e/visual.pw.ts`: every deck we draw on every table, the sourced deck on two of them, and the board at tablet and desktop. Catches what a token test cannot — a missing back, an index on top of a pip, a texture tiling at the wrong scale |
+| Visual | Playwright | `e2e/visual.pw.ts`: every deck we draw on every table, each sourced deck once, and the board at tablet and desktop. Catches what a token test cannot — a missing back, an index on top of a pip, a lattice one cell out putting the wrong rank on all 52 cards |
 | Performance | Playwright | `e2e/performance.pw.ts`: frame times through the full win sequence, unthrottled and at 4×; cold load to first card moved over throttled 4G, with and without a slow processor; and the gzipped weight of what the game page actually fetches |
 | Accessibility | Playwright | `e2e/keyboard.pw.ts` wins a whole game by key press alone; `e2e/axe.pw.ts` holds zero violations across ten surfaces and all three tables |
 | Site invariants | `node --test` | The existing three-file canonical-host check |
@@ -362,3 +382,7 @@ Flagged rather than hidden:
   budget a different file.
 - **Whether the Minimal deck can carry the default experience at 46px** or whether a
   sourced deck reads better. A legibility test at phone size decides it, not taste.
+  Two of the sixteen sourced decks are now real candidates where none was
+  before — Minium is 3.5KB and indexes larger than we do, and Simplistic is
+  5.4KB — so the question is no longer "ours or a 339KB engraving". It is still
+  open, and it is still not a matter of taste.

@@ -70,6 +70,7 @@ describe("settings", () => {
       sound: false,
       timer: false,
       cardSize: "large",
+      cardIndex: true,
       winnableOnly: false,
       drawCount: 3,
     };

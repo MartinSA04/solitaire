@@ -20,7 +20,7 @@
   } from "../engine/index.ts";
   import { untrack } from "svelte";
   import { Sound } from "./Audio.ts";
-  import { CardLayer, type Motion } from "./CardLayer.ts";
+  import { CardLayer, type DeckArt, type Motion } from "./CardLayer.ts";
   import { Drag, type DragHost } from "./Drag.ts";
   import {
     type PileRef,
@@ -49,8 +49,13 @@
     newSeed,
     previousDayKey,
   } from "./pool.ts";
-  import { type SourcedDeck, sourcedDeck } from "../decks/sourced.ts";
-  import { loadDeckArt } from "./DeckArt.ts";
+  import {
+    type SourcedDeck,
+    cardBox,
+    sourcedDeck,
+    viewBox,
+  } from "../decks/sourced.ts";
+  import { clearDeckArt, useDeckArt } from "./DeckArt.ts";
   import { type Settings, apply, resolve } from "./settings.ts";
   import {
     type Action,
@@ -82,6 +87,7 @@
   import SettingsSheet, { CONFIRM_MOVES } from "./chrome/SettingsSheet.svelte";
   import ShortcutSheet from "./chrome/ShortcutSheet.svelte";
   import StatsSheet from "./chrome/StatsSheet.svelte";
+  import DecksSheet from "./chrome/DecksSheet.svelte";
   import TopBar from "./chrome/TopBar.svelte";
 
   /**
@@ -286,6 +292,7 @@
   let stats = $state(persist.stats());
   let daily = $state(persist.daily());
   let statsOpen = $state(false);
+  let decksOpen = $state(false);
   /** The `?` overlay. The keyboard model is the one part of the product that
    * has to be told to somebody, because no part of the board suggests it. */
   let helpOpen = $state(false);
@@ -604,7 +611,7 @@
   function onKeyDown(event: KeyboardEvent): void {
     // A modal sheet owns every key while it is open, including Escape, which
     // is how it closes.
-    if (settingsOpen || statsOpen || helpOpen) return;
+    if (settingsOpen || statsOpen || decksOpen || helpOpen) return;
     if (event.defaultPrevented) return;
 
     // Stages 1 to 3 are one gesture with one meaning, and the keyboard's
@@ -1191,19 +1198,51 @@
     return sourcedDeck(resolve(settings).deck) ?? null;
   }
 
+  /**
+   * What the deck gallery shows on a tile while a sprite is in the air, and
+   * after it fails to arrive. The board itself needs neither — it is already
+   * showing a perfectly good deck — but a player who tapped a 126KB deck on a
+   * slow connection is owed the difference between "coming" and "nothing
+   * happened".
+   */
+  let deckPending = $state<string | null>(null);
+  let deckFailed = $state<string | null>(null);
+
+  /** The registry's shape, translated into the four things the layer wants. */
+  function artOf(deck: SourcedDeck): DeckArt {
+    return {
+      viewBox: (card) => viewBox(cardBox(deck, card)),
+      backViewBox: deck.back === null ? null : viewBox(deck.back),
+      paper: deck.paper,
+      ink: deck.ink ?? null,
+      symbol: deck.symbol,
+    };
+  }
+
   async function applyArt(deck: SourcedDeck | null): Promise<void> {
     if (deck === null) {
       layer?.setArt(null);
+      clearDeckArt();
+      deckPending = null;
       return;
     }
-    if (!(await loadDeckArt(deck))) return;
+    deckPending = deck.id;
+    const arrived = await useDeckArt(deck);
     // The sprite may have taken long enough for the player to change their
     // mind, or for a new deal to have replaced the elements.
-    if (chosenArt()?.id === deck.id) layer?.setArt(deck);
+    if (chosenArt()?.id !== deck.id) return;
+    deckPending = null;
+    deckFailed = arrived ? null : deck.id;
+    if (arrived) layer?.setArt(artOf(deck));
   }
 
   $effect(() => {
     void applyArt(chosenArt());
+  });
+
+  /** Ours over theirs, or not. See `Settings.cardIndex`. */
+  $effect(() => {
+    layer?.setOwnIndex(settings.cardIndex);
   });
 
   /** The displayed clock. Pauses with the tab, per docs/02-game-spec.md. */
@@ -1358,9 +1397,11 @@
                 <!--
                   Empty until somebody picks a deck we did not draw, and
                   pointed at that deck's sprite by CardLayer.setArt rather than
-                  by anything reactive. `preserveAspectRatio="none"` takes the
-                  three per cent between a 169 × 244.6 card and a poker card
-                  out of the height instead of cropping the border off.
+                  by anything reactive — including the viewBox, which is a
+                  different cell of the sheet for every card.
+                  `preserveAspectRatio="none"` fits a deck's own proportions to
+                  a poker card: one per cent for the French deck, ten for a
+                  bridge-sized one, instead of cropping an index off.
                 -->
                 <svg
                   class="card-art"
@@ -1376,7 +1417,22 @@
                 </span>
                 <span class="card-pip">{SUITS[suitOf(card)]}</span>
               </span>
-              <span class="card-back"></span>
+              <!--
+                A sourced deck is printed on its own back, the way a real pack
+                is — every sprite in the registry carries one beside its 52
+                faces. Until it arrives, and for good if it never does, what
+                shows through is the pattern `data-back` names in backs.css.
+              -->
+              <span class="card-back">
+                <svg
+                  class="card-back-art"
+                  viewBox="0 0 100 140"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <use />
+                </svg>
+              </span>
             </span>
           </div>
         {/each}
@@ -1493,6 +1549,7 @@
       onDaily={startDaily}
       onReplay={replay}
       onStats={() => (statsOpen = true)}
+      onDecks={() => (decksOpen = true)}
       onRedeal={redeal}
       onClose={() => (settingsOpen = false)}
     />
@@ -1504,6 +1561,21 @@
   -->
   {#if statsOpen}
     <StatsSheet {stats} {daily} onClose={() => (statsOpen = false)} />
+  {/if}
+
+  <!--
+    Every deck there is, with a picture of each and what it costs to fetch.
+    Its own sheet rather than a section of the menu, and mounted only while it
+    is open like the rest of them.
+  -->
+  {#if decksOpen}
+    <DecksSheet
+      {settings}
+      pending={deckPending}
+      failed={deckFailed}
+      onChange={(next) => (settings = next)}
+      onClose={() => (decksOpen = false)}
+    />
   {/if}
 
   <!-- What `?` opens, and the only place the key model is written down. -->

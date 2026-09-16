@@ -43,36 +43,56 @@ const TABLES = [
 /**
  * A deck that takes its ink from the table is a different drawing on each of
  * them, so every such pairing is a combination that can actually go wrong and
- * all of them are here. A deck that brings its own paper — High-contrast,
- * Vintage, and the sourced French art — is the same drawing wherever it is
- * put, and all that changes behind it is the felt; those are shot on the warm
- * table and on the dark one, a light card on a near-black table being the
- * pairing worth looking at, rather than on all three.
+ * all five of ours are here on all three tables — bar Vintage, which brings
+ * its own paper and is shot on the warm table and the dark one, a light card
+ * on a near-black table being the pairing worth looking at.
+ *
+ * A deck we did **not** draw takes nothing from the table at all: it is
+ * somebody's drawing, on its own paper, printed on its own back, and the only
+ * thing a second table changes behind it is the felt. So those get one shot
+ * each, on the warm table. Sixteen decks on three tables would be thirty-two
+ * more baselines to show the same cards on a different green.
  *
  * The trimming is not fastidiousness. Every baseline is a quarter of a
  * megabyte of PNG committed for good, and a suite nobody wants to regenerate
  * is a suite that gets deleted.
  *
+ * What the sourced shots are for is the one thing no other test can see:
+ * e2e/decks.pw.ts proves all 52 cards draw *something* and that it is the
+ * group the registry names, but a lattice one cell out satisfies both and puts
+ * the wrong rank on every card. Only a person looking at a picture catches it,
+ * which is why these exist and why a change to one gets looked at.
+ *
  * The card back comes with the deck rather than being chosen — see `DECK_BACK`
- * in src/game/settings.ts — so each of these shots is also the only look at
- * the back that deck is printed on.
+ * in src/game/settings.ts and `back` in src/decks/sourced.ts — so each of
+ * these shots is also the only look at the back that deck is printed on.
  */
 const DECKS = [
-  { id: "minimal", label: "Minimal", tables: ["warm", "minimal", "dark"] },
-  { id: "classic", label: "Classic", tables: ["warm", "minimal", "dark"] },
-  { id: "vintage", label: "Vintage", tables: ["warm", "dark"] },
-  {
-    id: "high-contrast",
-    label: "High contrast",
-    tables: ["warm", "minimal", "dark"],
-  },
-  {
-    id: "four-colour",
-    label: "Four colour",
-    tables: ["warm", "minimal", "dark"],
-  },
-  { id: "french", label: "French", tables: ["warm", "dark"] },
+  { id: "minimal", tables: ["warm", "minimal", "dark"] },
+  { id: "classic", tables: ["warm", "minimal", "dark"] },
+  { id: "vintage", tables: ["warm", "dark"] },
+  { id: "high-contrast", tables: ["warm", "minimal", "dark"] },
+  { id: "four-colour", tables: ["warm", "minimal", "dark"] },
+  { id: "minium", tables: ["warm"] },
+  { id: "minium-dark", tables: ["warm"] },
+  { id: "simplistic", tables: ["warm"] },
+  { id: "tango-nuevo", tables: ["warm"] },
+  { id: "pixelangelo-compact", tables: ["warm"] },
+  { id: "pixelangelo", tables: ["warm"] },
+  { id: "ornamental", tables: ["warm"] },
+  { id: "plastic", tables: ["warm"] },
+  { id: "neoclassical", tables: ["warm"] },
+  { id: "neoclassical-four-colour", tables: ["warm"] },
+  { id: "anglo", tables: ["warm"] },
+  { id: "anglo-poker", tables: ["warm"] },
+  { id: "atlasnye", tables: ["warm"] },
+  { id: "paris", tables: ["warm"] },
+  { id: "guyenne", tables: ["warm"] },
+  { id: "french", tables: ["warm", "dark"] },
 ] as const;
+
+/** The ids that arrive as a sprite, and so have to be waited for. */
+const SOURCED_IDS = new Set(DECKS.slice(5).map((deck) => deck.id));
 
 /**
  * The sizes the layout is designed against, on one table. What changes between
@@ -95,27 +115,40 @@ function choose(page: Page, group: string, label: string) {
     .click();
 }
 
-/** Open the game, pick a table and a deck through the sheet, and settle. */
+/**
+ * Open the game, pick a table and a deck through the sheets, and settle.
+ *
+ * The deck is given by id rather than by name — "auto" for the one a player
+ * who never opens anything gets — because the gallery is keyed by id and a
+ * tile's accessible name is a whole sentence.
+ */
 async function dress(
   page: Page,
   table: string,
   deck: string,
-  label: { table: string; deck: string },
+  tableLabel: string,
 ): Promise<void> {
   await page.goto(DEAL);
   await page.getByRole("button", { name: "Menu" }).click();
-  await choose(page, "Table", label.table);
-  await choose(page, "Cards", label.deck);
-  await page.getByRole("button", { name: "Done" }).click();
-  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
+  await choose(page, "Table", tableLabel);
+
+  // The deck is chosen in its own sheet — see e2e/decks.pw.ts — so this leaves
+  // the menu, picks the tile and comes back to the board.
+  await page.getByRole("button", { name: /^Deck/ }).click();
+  const decks = page.getByRole("dialog", { name: "Decks" });
+  await expect(decks).toBeVisible();
+  await decks.locator(`label:has(input[value="${deck}"])`).click();
+  await decks.getByRole("button", { name: "Done" }).click();
+  await expect(decks).toHaveCount(0);
 
   await expect
     .poll(() => page.evaluate(() => document.documentElement.dataset.theme))
     .toBe(table);
   // A sourced deck is a fetch, and the shot has to wait for it or it catches
   // the typographic face mid-crossfade.
-  if (deck === "french") {
+  if (SOURCED_IDS.has(deck as (typeof DECKS)[number]["id"])) {
     await expect(page.locator(".card-layer.has-art")).toHaveCount(1);
+    await expect(page.locator(".card-layer.has-art-back")).toHaveCount(1);
   }
 }
 
@@ -127,10 +160,7 @@ test.describe("every deck on every table", () => {
       (deck.tables as readonly string[]).includes(t.id),
     )) {
       test(`${table.id} · ${deck.id}`, async ({ page }) => {
-        await dress(page, table.id, deck.id, {
-          table: table.label,
-          deck: deck.label,
-        });
+        await dress(page, table.id, deck.id, table.label);
         await expect(page).toHaveScreenshot(
           `${table.id}-${deck.id}-phone.png`,
           TOLERANCE,
@@ -143,10 +173,7 @@ test.describe("every deck on every table", () => {
     // The one table that has two looks rather than one, and the only place
     // `prefers-color-scheme` changes anything in the product.
     await page.emulateMedia({ colorScheme: "dark" });
-    await dress(page, "minimal", "minimal", {
-      table: "Minimal",
-      deck: "Minimal",
-    });
+    await dress(page, "minimal", "minimal", "Minimal");
     await expect(page).toHaveScreenshot("minimal-dark-phone.png", TOLERANCE);
   });
 });
@@ -173,10 +200,7 @@ test.describe("the board at every size", () => {
       await page.setViewportSize({ width: size.width, height: size.height });
       // "Match the table": the deck a player who never opens the sheet twice
       // actually sees.
-      await dress(page, "warm", "minimal", {
-        table: "Warm",
-        deck: "Match the table",
-      });
+      await dress(page, "warm", "auto", "Warm");
       await expect(page).toHaveScreenshot(`warm-${size.name}.png`, TOLERANCE);
     });
   }

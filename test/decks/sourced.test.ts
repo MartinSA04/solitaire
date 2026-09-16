@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
 import { describe, it } from "node:test";
 import { DECK_SIZE, cardName } from "../../src/engine/index.ts";
-import { OURS, SOURCED } from "../../src/decks/sourced.ts";
+import { OURS, SOURCED, cardBox } from "../../src/decks/sourced.ts";
+import { CATALOGUE, wireSize } from "../../src/decks/catalogue.ts";
+import { DECKS } from "../../src/game/settings.ts";
 
 /**
  * A deck we did not draw is two obligations and one mapping, and all three are
@@ -61,6 +64,55 @@ describe("sourced decks", () => {
         }
       });
 
+      /**
+       * The lattice, checked without a browser: 52 cells, all the same size,
+       * none of them the same cell twice, and something like a card's shape.
+       *
+       * What this cannot see is whether a cell holds the card it is supposed
+       * to — that needs the sprite rendered, which is
+       * `node scripts/deck-geometry.ts --verify` and `e2e/decks.pw.ts`. What
+       * it does catch is the cheap half: a step of zero on a sheet that is a
+       * grid, which would silently draw the ace of clubs 52 times.
+       */
+      it("puts each of the 52 cards in its own cell", () => {
+        const seen = new Set<string>();
+        for (let card = 0; card < DECK_SIZE; card++) {
+          const box = cardBox(deck, card);
+          assert.equal(box.w, deck.grid.w);
+          assert.equal(box.h, deck.grid.h);
+          assert.ok(box.w > 0 && box.h > 0, `${cardName(card)} has no size`);
+          // The French sheet draws all 52 in one place on purpose.
+          if (deck.grid.dx !== 0) {
+            const cell = `${box.x},${box.y}`;
+            assert.ok(!seen.has(cell), `${cardName(card)} shares a cell`);
+            seen.add(cell);
+          }
+        }
+        const aspect = deck.grid.w / deck.grid.h;
+        assert.ok(
+          aspect > 0.55 && aspect < 0.85,
+          `a card of ${deck.grid.w} × ${deck.grid.h} is not a card shape`,
+        );
+      });
+
+      it("ships a preview, and says what it weighs", () => {
+        const preview = `public/decks/${deck.id}/preview.webp`;
+        assert.ok(exists(preview), `${preview} is missing`);
+
+        // The gallery tells a player what a deck costs before they pay it, so
+        // the number has to be the number. Regenerate a sprite without
+        // updating `bytes` and this is what says so.
+        const actual = gzipSync(
+          readFileSync(new URL(`../../${file}`, import.meta.url)),
+          { level: 9 },
+        ).length;
+        const drift = Math.abs(actual - deck.bytes) / actual;
+        assert.ok(
+          drift < 0.02,
+          `${deck.id} says ${deck.bytes} bytes and is ${actual}`,
+        );
+      });
+
       it("is on the credits page, by being in this registry", () => {
         // /credits is generated from SOURCED, so this is really an assertion
         // that the credit is complete enough to render.
@@ -71,6 +123,46 @@ describe("sourced decks", () => {
       });
     });
   }
+
+  /**
+   * The gallery is generated from `DECKS`, which is also what storage is
+   * validated against — so a deck added to that list and forgotten everywhere
+   * else would appear as a tile with no name and no description rather than
+   * not at all.
+   */
+  describe("the catalogue", () => {
+    it("has an entry for every deck there is, and no others", () => {
+      assert.deepEqual(
+        CATALOGUE.map((entry) => entry.id),
+        [...DECKS],
+      );
+    });
+
+    it("names and describes every one of them", () => {
+      for (const entry of CATALOGUE) {
+        assert.notEqual(entry.name, entry.id, `${entry.id} has no name`);
+        assert.ok(entry.blurb.length > 10, `${entry.id} has no description`);
+      }
+    });
+
+    it("prices the ones that cost something, and only those", () => {
+      for (const entry of CATALOGUE) {
+        if (entry.sourced === null) {
+          assert.equal(entry.bytes, null, `${entry.id} is ours and has a size`);
+        } else {
+          assert.equal(entry.bytes, entry.sourced.bytes);
+        }
+      }
+    });
+
+    it("says a size the way a person would", () => {
+      // Whole kilobytes where the difference does not matter, one decimal
+      // where it does: 3.5KB and 5.4KB are different decisions, 126 and 127
+      // are not.
+      assert.equal(wireSize(3581), "3.5 KB");
+      assert.equal(wireSize(128885), "126 KB");
+    });
+  });
 
   it("credits the decks we drew as well as the ones we didn't", () => {
     // docs/04: every deck gets an entry whether its licence demands one or not.

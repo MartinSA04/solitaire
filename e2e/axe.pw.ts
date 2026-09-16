@@ -139,6 +139,23 @@ test("the menu has none", async ({ page }) => {
   expect(describe(results), describe(results)).toBe("");
 });
 
+/**
+ * The gallery is the densest surface in the product — twenty-two radios, each
+ * with a picture, a name, a sentence and a size — and the one most likely to
+ * lose a label or drop its contrast on a table it was not designed against. It
+ * is audited on the Dark table for the second reason.
+ */
+test("the deck gallery has none", async ({ page }) => {
+  await page.goto(DEAL);
+  await dealt(page);
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("button", { name: /^Deck/ }).click();
+
+  await expect(page.getByRole("dialog", { name: "Decks" })).toBeVisible();
+  const results = await audit(page, ".sheet");
+  expect(describe(results), describe(results)).toBe("");
+});
+
 test("the statistics have none", async ({ page }) => {
   await page.goto(DEAL);
   await dealt(page);

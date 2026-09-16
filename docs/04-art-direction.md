@@ -191,30 +191,71 @@ Selection criteria, in order:
    seven columns. Ornate courts turn to mush; the corner index is what matters.
 4. **A complete 52**, consistently drawn.
 
+### Where the decks came from
+
+The search below was through deck *projects*, one at a time, and it found
+exactly one shippable deck and concluded there were no more. It was looking in
+the wrong place. The work of turning those projects into single, licence-
+documented, consistently-named sprites has already been done, by
+[**GNOME Aisleriot**](https://gitlab.gnome.org/GNOME/aisleriot/-/tree/master/cards),
+whose `cards/` directory holds about twenty-five card themes — each one SVG
+sheet, each with a README naming everyone who drew it and the licence the art
+arrived under.
+
+The part that made it nearly free: every one of them names its card groups
+`club_7`, `spade_king`, `diamond_1`, which is the convention the French deck
+already used and the card layer already generated. Adding a deck is an entry in
+`src/decks/sourced.ts` and two files under `public/decks/`.
+
+**Sixteen ship.** Their sizes over the wire run from 3.5KB to 339KB, and eleven
+of the sixteen are under 100KB — which retires the assumption underneath the
+delivery section below, that a sourced deck is necessarily expensive. Four of
+them are smaller than this paragraph's share of the JS bundle.
+
+Held back, and why, because these are the decisions worth not re-making:
+
+- **XSkat** and **Swiss XVII** are German- and Swiss-suited. Klondike is built
+  on alternating red and black; a deck of acorns, leaves, bells and hearts is
+  not a deck this game can be played with. That is a different objection from
+  not liking it.
+- **Tigullio**'s groups do not resolve to a card box: most of its cards render
+  blank through the mechanism every other deck here works through. Held back
+  rather than bodged into place.
+- **Adler, Clubkarte, L & H, Mittelalter, Tragy, Tarot** have JPEG court cards
+  and run 0.7 to 1.7MB. That is Byron Knoll's rejection again, below, and it
+  has not moved.
+
 ### Candidate decks
+
+The original search, kept because the two rejections are still the reasons we
+do not take a deck from just anywhere.
 
 | Deck | Source | Licence | Notes |
 | ---- | ------ | ------- | ----- |
 | **Classic** ✗ | [Byron Knoll's vector playing cards](http://byronknoll.blogspot.com/2011/03/vector-playing-cards.html), mirrored on [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:Playing_cards_set_by_Byron_Knoll) and [notpeter/Vector-Playing-Cards](https://github.com/notpeter/Vector-Playing-Cards) | **Public domain** | Was the safe default, until it was measured. **Rejected:** the courts are traced bitmaps — `KC.svg` alone is 1.1MB and the 52 come to **8MB**, about 2MB gzipped. Sixty times the sprite budget, whatever the licence says. |
 | **Traditional** ⏸ | [Vectorized Playing Cards 3.2](https://totalnonsense.com/open-source-vector-playing-cards/), Chris Aguilar | **LGPL 3.0** | The most handsome open deck, and **not shipped yet**: the canonical download is behind a download manager and the GitHub copies are exports of an export. Its licence demands an exact attribution string, and taking such a deck from a source we cannot verify is the wrong way to honour it. |
-| **French** ✓ | [SVG-cards 4.0.2](https://svg-cards.sourceforge.net/), David Bellot and Huub de Beer | **LGPL 2.1+** | **Shipped.** The GNOME/Aisleriot deck. Genuinely vector, already a single sprite of 52 groups, and from a source we can name. 962KB, 339KB over the wire. |
+| **French** ✓ | [SVG-cards 4.0.2](https://svg-cards.sourceforge.net/), David Bellot and Huub de Beer | **LGPL 2.1+** | **Shipped.** The GNOME/Aisleriot deck. Genuinely vector, already a single sprite of 52 groups, and from a source we can name. 962KB, 339KB over the wire — the heaviest of the sixteen by a distance. |
 | **Minimal** | Ours | — | The one thing we *do* draw — and it turns out we don't draw it at all. No court illustration: rank + suit glyph, large, centred, set in the theme's typeface, which makes it *typography* rather than art. Trivial to produce, the most legible deck at phone size by a distance, and it is the deck the board shipped with in milestone 1. |
 | **High contrast** | Ours | — | Minimal's geometry taken as far as it goes: a pure white card, black ink, oversized indices, maximum weight. An accessibility feature, not a skin — see [08](08-accessibility.md). |
 | **Four-colour** | Variant of Minimal | — | ♠ black, ♥ red, ♦ blue, ♣ green. The standard colour-vision accommodation and also just genuinely easier to scan. |
 | **Classic** | Ours | — | Minimal's geometry set in a system book serif, with a printed card's crimson. It takes the table's own card colour, so it is cream on the Warm table and white on the Minimal one. |
 | **Vintage** | Ours | — | A serif rank in sepia on aged board. Like High contrast it brings its own paper, because the paper *is* the deck — an old card is not a white card with old-looking ink on it. |
 
-A second *sourced* deck was looked for and not found. The two candidates that
-are genuinely vector and from a nameable source fail the same way the ones
-above do: [saulspatz/SVGCards](https://github.com/saulspatz/SVGCards) is public
-domain, jumbo-index and exactly what a solitaire game wants, and its sprite is
+A second *sourced* deck was looked for here and not found, and that paragraph
+stood until somebody looked at Aisleriot. The two near-misses it recorded are
+worth keeping, because both are now in the collection by another route:
+[saulspatz/SVGCards](https://github.com/saulspatz/SVGCards) is public domain,
+jumbo-index and exactly what a solitaire game wants, and its sprite is
 **8.5MB** — Byron Knoll's problem again; and [RevK's
 cards](https://www.me.uk/cards/) are CC0, tiny and handsome, but are published
-one file per card out of a deck-builder CGI, so shipping them would mean
+one file per card out of a deck-builder CGI, so shipping them would have meant
 shipping a sprite we had assembled rather than a file its author published.
-That is the provenance line drawn for Traditional above, and it does not move
-because the licence is friendlier. The variety went into the two token decks
-instead, which cost nothing to download and are not anybody else's to get wrong.
+
+Which is exactly what somebody else then published: **Simplistic** and **Anglo
+Poker** are both made with RevK's generator and both arrive as a single sheet
+with a maintainer's name on it. The provenance line did not move; the art came
+to the right side of it. That is worth remembering the next time a deck is
+rejected for how it is distributed rather than for what it is.
 
 "Minimal" being ours resolves the tension in the [product brief](01-product-brief.md)
 about sourced art limiting our identity: the *default look at phone size* can be
@@ -274,6 +315,18 @@ This matters enough to get right before any asset lands in the repo.
   inlined into the JS bundle, not recoloured. That keeps us squarely in "using the
   library", which is the arrangement LGPL is designed for. If a deck needs
   modification, the modified SVGs are published in-repo under the same licence.
+- **GPL decks are shipped the same way**, and the reasoning has to be said out
+  loud because this section only ever argued the LGPL case. A GPL-licensed
+  drawing, distributed unmodified, in its source form — an SVG *is* its
+  source — beside a page that references it, is aggregation rather than
+  linking. The site's own MIT code is not a derivative of a picture of a king
+  of spades. Each deck ships its full licence text and its authors' names
+  beside the file, which is the obligation, and if honouring one ever becomes
+  awkward the deck goes, per the last rule in this list.
+- **Previews are derived works.** `preview.webp` beside a deck is a rendering of
+  that deck's own cards, so it carries that deck's licence, lives in that
+  deck's directory next to the licence text saying so, and is regenerated from
+  the sprite rather than retouched.
 - **Vectorized Playing Cards requires this exact string**, publicly visible:
 
   ```text
@@ -297,7 +350,7 @@ crossfade.
 Drawn faces must **not** be inlined into the HTML — that's 52 cards of markup on
 every page load, and it would also inline LGPL art into our bundle.
 
-Two things this section got wrong, both found by shipping a deck:
+Five things this section got wrong, all of them found by shipping decks:
 
 - **The sprite is fetched and then injected into the document**, and the
   `<use>` reference is to a `#id` in the same document rather than across
@@ -306,12 +359,67 @@ Two things this section got wrong, both found by shipping a deck:
   the phones this game is played on. Injecting a fetched file into the DOM is
   not inlining it into the bundle: it is still one cacheable file, arriving
   over the network, unmodified, and only when somebody asks for that deck.
-- **~120KB gzipping to ~30KB was wishful.** Real traditional card art is an
-  order of magnitude more than that: the deck we ship is 962KB, 339KB gzipped,
-  and the one this doc picked first is twenty times *that*. The number was
-  written on the assumption that a sourced deck would be the phone default. It
-  is not — ours is, the sourced one is fetched on a deliberate choice, and
-  nothing about a first load touches it. See [07](07-architecture.md).
+- **~120KB gzipping to ~30KB was wishful, and then it was pessimistic.** The
+  first sourced deck is 962KB, 339KB gzipped, and the deck this doc picked
+  before it is twenty times *that*. But eleven of the sixteen that ship are
+  under 100KB and four are under 8KB, so "a sourced deck is expensive" is not a
+  fact about sourced decks — it is a fact about Victorian engravings. Either
+  way none of them is on the first load: ours is the default, a sourced deck is
+  a deliberate choice, and nothing about opening the site touches one. See
+  [07](07-architecture.md).
+- **One card is not "the sprite's viewBox".** These sheets are **contact
+  sheets** — thirteen ranks across, four suits down — so `#club_7` is drawn at
+  its place on the grid and showing one card means pointing a viewBox at one
+  cell. What is committed per deck is a lattice of eight numbers, *measured in
+  a browser* by `scripts/deck-geometry.ts` rather than divided out of the
+  sheet: several sheets carry a fifth row for the back and the jokers, and some
+  bleed their art outside the cell it nominally occupies, so arithmetic gives a
+  plausible wrong answer. The French sheet is the degenerate case — it draws
+  all 52 cards in the same place — and is the same formula with the steps at
+  zero.
+- **Two sprites in the document at once is a silent disaster.** `#club_7`
+  resolves to the first match in document order, and every deck in this family
+  names its cards the same way, so a second sprite means every card on the
+  table draws from whichever arrived first. There is **one attached sprite**,
+  and switching decks swaps it. Parsed sprites are kept in memory, so going
+  back to a deck already fetched is instant.
+- **The sprite host cannot be `display: none`.** A `<use>` can reach into an
+  undisplayed subtree, which is why that worked for a year with one deck. A
+  *paint server* cannot: `fill="url(#G1734)"` naming a gradient inside
+  `display: none` resolves to nothing and the shape is painted with whatever is
+  underneath it. On the Ornamental deck that is the gold edging its ivory paper
+  is printed over, so all 52 cards came out solid gold — not blank, not broken,
+  just quietly a different deck, with nothing logged. The host is zero-sized
+  and clipped instead.
+
+**Keeping a deck.** A fetched sprite goes into the Cache Storage API under
+`sol:decks:v1`, so "downloaded" is a state the gallery can check and mean: on
+this device, across reloads, with no connection. It is not a service worker and
+does not become one — nothing is intercepted, there is no lifecycle and nothing
+to invalidate on deploy, which is the liability [09](09-roadmap.md)
+deliberately put off. Every call into it is wrapped and a cache that is
+missing, full or refusing falls through to a plain fetch in silence, exactly as
+`Persist.ts` treats `localStorage`.
+
+### The gallery
+
+Twenty-one decks are not a row of chips in a settings list, so they have their
+own sheet: a grid of tiles, each with a picture of the deck, a line about it,
+and what it costs over the network.
+
+**It is a library, not a shop**, and this is the surface where a product
+usually breaks that promise. Nothing is locked, earned, bought, timed or
+recommended. The only thing that differs between one tile and another is how
+many bytes it takes to put that deck on the table — and the five we draw say
+"No download", which is not "0 KB" but "there is nothing to fetch".
+
+Looking is free: a tile shows a committed `preview.webp` of three or four
+kilobytes, rendered from the deck's own sprite by `scripts/deck-previews.ts`
+and lazily loaded, against three to three hundred and thirty-nine for the deck
+itself. Those previews are derived works and carry their deck's licence. The
+five decks we draw need no picture at all — a swatch wearing that deck's own
+tokens *is* the deck, and it restyles with the table exactly as the real thing
+does, which a photograph could not.
 
 **Minimal and its variants are the exception, and not really an exception**:
 they have no art to deliver. A Minimal face is two text nodes and a colour
@@ -321,9 +429,16 @@ is about *art*; typography is not art we have to ship.
 
 ## Card backs
 
-Backs are ours, always, because they're the most-seen surface in the game (28 of
-them on screen at deal time) and they're cheap: a tiling geometric pattern, two
-colours from the theme, a border.
+Backs are ours **for the decks we draw**, because those decks have no back of
+their own and ours are cheap: a tiling geometric pattern, two colours from the
+theme, a border.
+
+A deck we did *not* draw is printed on **its own back**, out of its own sprite.
+Every sheet in the Aisleriot family carries a `back` group beside its 52 faces,
+so this costs nothing and is what the rule below always implied: a back belongs
+to its deck, and a real pack's back is not repainted by the table it is dealt
+on. The trade is exactly that — a sourced back cannot take `--back-bg` — and it
+is the right way round.
 
 **A back is not a choice.** It belongs to its deck, the way it does in a real
 pack: `DECK_BACK` in `src/game/settings.ts` names one per deck and that naming
@@ -331,9 +446,14 @@ is the whole of the choosing. This doc originally called the two "independently
 swappable", and shipping it that way showed what that costs — a quarter of the
 settings sheet spent on a decision nobody has to make, and, worse, the standing
 possibility of putting the flat accessibility back on the French deck's
-Victorian courts, which is two decks in one pack. Six decks, six backs, no two
-the same: face-down is how a deck is recognised, and twenty-eight cards are
-face-down at deal time.
+Victorian courts, which is two decks in one pack.
+
+The five decks we draw get one of ours each, no two the same: face-down is how
+a deck is recognised, twenty-eight cards are face-down at deal time, and for
+those decks that pattern is the only back there is. The sixteen sourced ones
+are not held to that, because for them `DECK_BACK` names a **fallback** — what
+shows before the sprite arrives, and for good if it never does. Sixteen decks
+would otherwise need sixteen patterns to say something almost nobody sees.
 
 It is still selected by its own attribute rather than by `[data-deck]`, and
 that is not redundancy. A back is recoloured by the **table** — `--back-bg`,
@@ -343,8 +463,8 @@ a theme file knowing about it.
 
 Six ship: **Lattice** (a fine diagonal weave, Minimal's), **Argyle** (the same
 two threads at four times the pitch, Classic's), **Pinstripe** (Vintage's),
-**Ripple** (concentric rings, French's — the Bellot deck's own printed back is
-a set of nested frames and this is the nearest thing a gradient can say),
+**Ripple** (concentric rings, the fallback for most of the sourced decks — the
+one they wear for the second before their own arrives),
 **Dot grid** (Four-colour's), and **Solid** (flat, with just a border — High
 contrast's, because a pattern is noise to somebody who is already working to
 read the board).
@@ -370,15 +490,30 @@ Regardless of deck:
 - **Corner radius** from `--card-radius`: 8px at desktop size, scaling down
   proportionally — a 48px-wide card with an 8px radius looks like a lozenge.
 - **The corner index is the critical element.** In a fanned tableau column, only
-  ~28% of each card's height is visible. The rank and suit must be fully legible in
-  that strip, at 48px card width, for the deck to be acceptable. Any sourced deck
-  that fails this gets a CSS-overlaid index drawn by us on top of it.
+  ~28% of each card's height is visible. The rank and suit must be fully legible
+  in that strip, at 48px card width. For a deck we draw, that *is* the face and
+  there is nothing else to get right.
 
-  The French deck fails it — its index is drawn about five pixels tall at a 46px
-  card — so the overlay is not hypothetical: it ships. Our index sits in the
-  top-left corner on a patch of the deck's own paper colour, covering that
-  deck's index and only that. The courts, the pips and the bottom-right index
-  are the deck's own. The corner we take is the one a fanned column shows.
+  For a deck we did not draw, this doc used to make it a rule: any sourced deck
+  that fails it gets a CSS index drawn by us on top of it, full stop. That was
+  right while there was one sourced deck and it fails — the French deck's own
+  index is about five pixels tall at a 46px card. With sixteen it is the wrong
+  default. Half of them index more clearly than we do; Minium dark is a black
+  card, where our patch of the deck's own paper is a black square; and covering
+  somebody's drawing because a *different* deck is hard to read is vandalism
+  for no gain.
+
+  So it is `Settings.cardIndex`, **off**, and a sourced deck is shown as it was
+  drawn. Turned on, our index sits in the top-left corner on a patch of the
+  deck's own paper, covering that deck's index and only that — the courts, the
+  pips and the bottom-right index stay the deck's, and the corner we take is
+  the one a fanned column shows. It is in the deck gallery rather than the
+  menu, because it is a fact about the deck you are looking at.
+
+  What that gives up, plainly: on French, Paris, Atlasnye and Guyenne a fanned
+  column at 46px is genuinely hard to read, and a player who finds it so has to
+  find the switch. The five decks we draw, which are the default and are what
+  anybody who never opens the gallery is playing with, are unaffected.
 - **Face-down cards** show the back, full bleed to the card edge, with the same
   radius and border as a face.
 
@@ -395,8 +530,10 @@ the only place the game uses an icon to teach a rule.
 
 - No animated or video backgrounds.
 - No seasonal themes, event skins, or limited-time decks.
-- No unlockables. Every theme and deck is available on first load, in the settings
-  sheet.
+- No unlockables. Every theme and deck is available on first load, in the deck
+  gallery, and the only difference between two of them is how many bytes one
+  takes to fetch — which the tile says, before you choose it, so that the
+  waiting is the only cost there is.
 - No per-card animation flourishes that aren't motion feedback (no sparkles on
   every foundation drop — that's the [win sequence's](06-win-sequence.md) job, and
   spending it early cheapens it).

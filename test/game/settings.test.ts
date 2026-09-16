@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   AUTO,
+  BACKS,
   BOOTSTRAP,
   DECKS,
   DEFAULTS,
@@ -40,21 +41,37 @@ describe("settings", () => {
    * made it possible to put the flat accessibility back on the French deck's
    * Victorian courts — two decks in one pack.
    */
-  it("gives every deck its own back, and gives the player no say in it", () => {
+  it("gives every deck a back, and gives the player no say in it", () => {
     const backs = new Map(
       DECKS.map((deck) => [deck, resolve(with_({ deck })).back]),
     );
-    assert.deepEqual([...backs.values()].sort(), [
-      "argyle",
-      "dots",
-      "lattice",
-      "pinstripe",
-      "ripple",
-      "solid",
-    ]);
-    // No two decks share one, which is the point: the back is how a deck is
-    // recognised face-down, and twenty-eight of them are face-down at deal.
-    assert.equal(new Set(backs.values()).size, DECKS.length);
+    assert.equal(backs.size, DECKS.length);
+    for (const [deck, back] of backs) {
+      assert.ok(
+        (BACKS as readonly string[]).includes(back),
+        `${deck} is printed on ${back}, which is not one of ours`,
+      );
+    }
+    /*
+     * The five we draw get one each and no two the same: a back is how a deck
+     * is recognised face-down, twenty-eight of them are face-down at deal
+     * time, and for these decks this is the *only* back there is.
+     *
+     * The sourced decks are not held to that, because for them this is a
+     * fallback: each is printed on the back out of its own sprite, and what is
+     * named here is what a player sees for the second or two before that
+     * arrives — or for good, on a connection that never brings it. Sixteen
+     * decks would otherwise need sixteen patterns to say something no one ever
+     * sees.
+     */
+    const drawn = [
+      "minimal",
+      "classic",
+      "vintage",
+      "high-contrast",
+      "four-colour",
+    ] as const;
+    assert.equal(new Set(drawn.map((deck) => backs.get(deck))).size, 5);
   });
 
   it("keeps a chosen deck, and its back, across a change of table", () => {

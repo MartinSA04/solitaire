@@ -85,11 +85,15 @@ in the same commit.
   equal specificity. `test/themes/` asserts the token contract from `docs/04`
   and the contrast table from `docs/08` by reading the stylesheets.
 - **Only two of those three are chosen.** A back belongs to its deck, the way it
-  does in a real pack: `DECK_BACK` names one per deck, six decks have six
-  different backs, and there is no control for it anywhere. It stays its own
-  attribute because a back is recoloured by the *table* — `--back-bg`,
-  `--back-ink`, `--back-edge` are theme tokens — so one stylesheet can hold
-  every pattern without a deck file or a theme file knowing about it.
+  does in a real pack: `DECK_BACK` names one per deck and there is no control
+  for it anywhere. The five decks we draw get one of our six patterns each, no
+  two the same. A **sourced deck is printed on its own back**, out of the `back`
+  group in its own sprite, so for those sixteen `DECK_BACK` names the fallback
+  worn until that arrives — and for good if it never does. `data-back` stays its
+  own attribute because *our* backs are recoloured by the table — `--back-bg`,
+  `--back-ink`, `--back-edge` are theme tokens — so one stylesheet holds every
+  pattern without a deck file or a theme file knowing about it. A sourced back
+  takes none of them, which is the trade and is the right way round.
 - **A sourced deck is fetched, then injected into the document.** Cross-file
   `<use href="deck.svg#id">` is unsupported in Safari. `src/game/DeckArt.ts`
   fetches the sprite once and `CardLayer.setArt()` points the 52 `<use>`
@@ -97,6 +101,29 @@ in the same commit.
   leaves the typographic deck on screen. A deck in `src/decks/sourced.ts` ships
   its licence at `public/decks/<id>/LICENSE.txt` and is credited on `/credits`
   automatically; `test/decks/sourced.test.ts` refuses one that doesn't.
+- **Exactly one sprite is attached at a time, and its host is not
+  `display: none`.** Both are silent failures, which is why they are here.
+  Every deck names its cards `club_7`, so two sprites in the document means
+  every card draws from whichever arrived first. And a `<use>` can reach into an
+  undisplayed subtree while a *paint server* cannot: a gradient inside
+  `display: none` resolves to nothing and the shape is painted with whatever is
+  under it — the Ornamental deck came out solid gold that way, with nothing
+  logged. The host is zero-sized and clipped. Kept sprites live in Cache
+  Storage under `sol:decks:v1`, wrapped like `Persist`, falling through to a
+  plain fetch in silence; it is **not** a service worker and must not become
+  one.
+- **Where a sourced card is on its sheet is measured, not derived.** The sheets
+  are contact sheets, so a card is one cell of a committed lattice —
+  `scripts/deck-geometry.ts` measures it in a browser and `--verify` re-checks
+  every deck. Getting it wrong draws 52 perfectly good cards of the wrong rank,
+  which only a person looking at `e2e/visual.pw.ts`'s one shot per deck will
+  catch; `e2e/decks.pw.ts` catches everything coarser than that by putting all
+  sixteen on the table and asking each for its 52 cards.
+- **The gallery is a library, not a shop.** `docs/01` rules out anything locked,
+  earned, bought or timed, and `src/game/chrome/DecksSheet.svelte` is where a
+  product usually breaks that. The only thing a tile says beyond what the deck
+  looks like is what it costs to fetch — and the decks we draw say "No
+  download", which is not "0 KB".
 - **`e2e/visual.pw.ts-snapshots/` is committed expected output**, not an
   artifact. A change to it is a change to how the product looks and gets looked
   at before it is committed.

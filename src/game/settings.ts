@@ -25,9 +25,13 @@ import type { CardSize } from "./Layout.ts";
  */
 export const THEMES = ["warm", "minimal", "dark"] as const;
 /**
- * Five we draw as tokens, and one we don't draw at all: "french" is a sprite
- * of somebody else's art, fetched when it is chosen. See src/decks/sourced.ts
- * for what that costs and why it is not a default.
+ * Five we draw as tokens, and sixteen we don't draw at all: everything from
+ * "minium" down is a sprite of somebody else's art, fetched when it is chosen
+ * and never before. See src/decks/sourced.ts for where they came from and what
+ * each one costs, and the deck gallery for where a player is told.
+ *
+ * The order is the order they are offered in: ours first, because ours cost
+ * nothing and one of them is the default, then the rest by weight.
  */
 export const DECKS = [
   "minimal",
@@ -35,6 +39,21 @@ export const DECKS = [
   "vintage",
   "high-contrast",
   "four-colour",
+  "minium",
+  "minium-dark",
+  "simplistic",
+  "tango-nuevo",
+  "pixelangelo-compact",
+  "pixelangelo",
+  "ornamental",
+  "plastic",
+  "neoclassical",
+  "neoclassical-four-colour",
+  "anglo",
+  "anglo-poker",
+  "atlasnye",
+  "paris",
+  "guyenne",
   "french",
 ] as const;
 
@@ -82,6 +101,24 @@ export interface Settings {
    */
   cardSize: CardSize;
   /**
+   * Draw our own corner index on top of a sourced deck's art.
+   *
+   * Off, and this is the setting that used to be a rule. docs/04 requires a
+   * card's rank to be legible at a 46px card, because a fanned column shows
+   * about a quarter of each card and that corner is the only part of it
+   * anybody reads — and the French deck's own index is about five pixels tall
+   * at that size. The answer was to draw ours over every sourced deck's, full
+   * stop, which was right while there was one sourced deck and is wrong now
+   * there are sixteen: half of them index larger and more clearly than we do,
+   * and on Minium dark our patch of the deck's own paper is a black square.
+   *
+   * So a deck we did not draw is shown as it was drawn, and anyone who finds
+   * an engraved deck's index too small turns this on and gets it back — on
+   * whichever deck they are actually holding. A deck we *draw* is unaffected:
+   * its index is the whole of its face.
+   */
+  cardIndex: boolean;
+  /**
    * Deal only from the pre-verified winnable pool. On by default: a casual
    * player on a bus did not ask to find out that this one was never going to
    * come out. Off deals from the whole 2³² space, which is the honest version
@@ -97,6 +134,7 @@ export const DEFAULTS: Settings = Object.freeze({
   sound: true,
   timer: true,
   cardSize: "comfortable",
+  cardIndex: false,
   winnableOnly: true,
   drawCount: 1,
 });
@@ -130,6 +168,15 @@ const TABLE: Record<Theme, Deck> = {
  * `src/decks/backs.css` still knows nothing about which deck is on — because a
  * back is recoloured by the *table*, and keeping it its own attribute is what
  * lets one table's ink reach it without the deck files knowing about themes.
+ *
+ * What the argument above always implied, and what a deck we did not draw now
+ * makes possible, is that a sourced deck is printed on **its own** back: every
+ * sprite in src/decks/sourced.ts carries a `back` group beside its 52 cards,
+ * and the card layer points at it. That back cannot take `--back-bg` and does
+ * not want to — a real pack's back is not repainted by the table it is dealt
+ * on. What is named here for those decks is the pattern of ours they wear
+ * until their sprite lands, and for good if it never does, which is why this
+ * table stays total and stays the thing the pre-paint bootstrap reads.
  */
 const DECK_BACK: Record<Deck, Back> = {
   minimal: "lattice",
@@ -137,6 +184,26 @@ const DECK_BACK: Record<Deck, Back> = {
   vintage: "pinstripe",
   "high-contrast": "solid",
   "four-colour": "dots",
+  // The sourced decks are printed on their own backs — every sprite carries
+  // one — so what these name is the back a player sees *before* that arrives,
+  // and for good if it never does. They are grouped by what the deck is like
+  // rather than each being different, because there are sixteen of them and
+  // six patterns, and because none of them is the back you end up looking at.
+  minium: "lattice",
+  "minium-dark": "solid",
+  simplistic: "lattice",
+  "tango-nuevo": "argyle",
+  "pixelangelo-compact": "ripple",
+  pixelangelo: "ripple",
+  ornamental: "pinstripe",
+  plastic: "argyle",
+  neoclassical: "argyle",
+  "neoclassical-four-colour": "dots",
+  anglo: "ripple",
+  "anglo-poker": "ripple",
+  atlasnye: "ripple",
+  paris: "ripple",
+  guyenne: "ripple",
   french: "ripple",
 };
 

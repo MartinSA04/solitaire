@@ -318,13 +318,20 @@ Not committed to, in rough order of appeal:
   game, so the engine abstraction is a modest extension rather than a rewrite);
   FreeCell after that. Pyramid and TriPeaks need a genuinely different interaction
   model and are a much bigger piece of work.
-- **More decks**, particularly a historic public-domain deck sourced from museum
-  scans — visually distinctive in a way no vector deck is, but the pip cards in old
-  decks are inconsistent and it's real restoration work.
+- ~~**More decks**~~ — **done**, and by a route this line did not anticipate. It
+  expected restoration work on museum scans; what it took was noticing that
+  GNOME Aisleriot's card themes are single sprites using the same `club_7`
+  naming the French deck already used. Fifteen more decks, a gallery to choose
+  them in, and each one 3.5KB to 186KB fetched only when picked. See
+  [04](04-art-direction.md). The museum-scan idea is still open and still real
+  restoration work; it is now a *distinctiveness* project rather than a
+  variety one.
 - **Offline**: a service worker making the site fully playable with no connection.
   Deliberately *not* in v1 — a service worker is a permanent cache-invalidation
   liability and the site is small enough that a normal HTTP cache gets most of the
-  benefit.
+  benefit. The deck cache added with the gallery is **not** this and is not a
+  step toward it: Cache Storage used from the page is a box we put files in,
+  with no fetch interception and no lifecycle to get wrong.
 - **i18n**, starting with Norwegian. The string module from
   [08](08-accessibility.md) makes this mechanical apart from card names.
 

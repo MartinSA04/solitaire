@@ -13,14 +13,14 @@
 
 <script lang="ts">
   import type { DrawCount } from "../../engine/index.ts";
+  import { deckEntry } from "../../decks/catalogue.ts";
   import {
     AUTO,
     CARD_SIZES,
-    DECKS,
     THEMES,
-    type Deck,
     type Settings,
     type Theme,
+    resolve,
   } from "../settings.ts";
   import Sheet from "./Sheet.svelte";
 
@@ -41,6 +41,8 @@
     onDaily: () => void;
     onReplay: () => void;
     onStats: () => void;
+    /** The deck gallery, which is its own sheet. */
+    onDecks: () => void;
     /** Confirmed draw-mode change: a new deal, per docs/02-game-spec.md. */
     onRedeal: (drawCount: DrawCount) => void;
     onClose: () => void;
@@ -56,6 +58,7 @@
     onDaily,
     onReplay,
     onStats,
+    onDecks,
     onRedeal,
     onClose,
   }: Props = $props();
@@ -85,16 +88,16 @@
     dark: "Dark",
   };
 
-  const DECK_LABELS: Record<Deck, string> = {
-    minimal: "Minimal",
-    classic: "Classic",
-    vintage: "Vintage",
-    "high-contrast": "High contrast",
-    "four-colour": "Four colour",
-    // The one deck that is a download. It is last because it is the one that
-    // costs something, and it says so on /credits rather than in a warning.
-    french: "French",
-  };
+  /**
+   * What the one line in the Cards group says. "Match the table" names the
+   * deck it resolves to as well, because a player who has never opened the
+   * gallery is on it and the name is the useful half of that sentence.
+   */
+  const deckName = $derived(
+    settings.deck === AUTO
+      ? `Match the table · ${deckEntry(resolve(settings).deck).name}`
+      : deckEntry(resolve(settings).deck).name,
+  );
 
   const DRAWS = [1, 3] as const;
 
@@ -235,34 +238,26 @@
     The deck, and with it the back: a deck comes printed on one the way a real
     pack does, so there is no second control for it. See `DECK_BACK` in
     settings.ts for why that is one decision rather than two.
+
+    This used to be the list itself. Twenty-one decks — five we draw and
+    sixteen we did not — are not a row of chips: you choose a deck by looking
+    at it, and the ones with artwork have a size worth knowing before you pick
+    them. So the menu keeps the sentence and the gallery keeps the decks.
   -->
-  <fieldset class="group">
-    <legend class="group-label">Cards</legend>
-    <div class="choices">
-      <label class="choice">
-        <input
-          type="radio"
-          name="deck"
-          value={AUTO}
-          checked={settings.deck === AUTO}
-          onchange={() => choose({ deck: AUTO })}
-        />
-        <span class="choice-label">Match the table</span>
-      </label>
-      {#each DECKS as value (value)}
-        <label class="choice">
-          <input
-            type="radio"
-            name="deck"
-            {value}
-            checked={settings.deck === value}
-            onchange={() => choose({ deck: value })}
-          />
-          <span class="choice-label">{DECK_LABELS[value]}</span>
-        </label>
-      {/each}
-    </div>
-  </fieldset>
+  <div class="group">
+    <span class="group-label">Cards</span>
+    <button
+      type="button"
+      class="row-button"
+      onclick={() => {
+        onDecks();
+        sheet?.dismiss();
+      }}
+    >
+      <span class="row-label">Deck</span>
+      <span class="row-value">{deckName}</span>
+    </button>
+  </div>
 
   <!--
     Geometry rather than a look, so it does not go near the three attributes.
@@ -460,6 +455,46 @@
   .switch:has(input:focus-visible) {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+  }
+
+  /*
+   * The one line the deck list became: a name on the left, what it is on the
+   * right, and the gallery a tap away. Sized like a .choice so the menu keeps
+   * one rhythm down its whole length.
+   */
+  .row-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--chrome-fg) 8%, transparent);
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--chrome-fg) 14%, transparent);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .row-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .row-value {
+    color: var(--chrome-fg-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .row-value::after {
+    content: " ›";
   }
 
   .switches {

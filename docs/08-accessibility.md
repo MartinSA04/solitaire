@@ -68,11 +68,23 @@ Three accommodations, all in settings, none hidden behind a "disability" label:
 
 1. **Four-colour deck** — ♠ black, ♥ red, ♦ blue, ♣ green. The standard poker
    solution. Also just faster to scan, so it's offered to everyone as a deck
-   choice rather than an accessibility toggle.
+   choice rather than an accessibility toggle. There are two of them now: ours,
+   and a sourced **Neoclassical four-colour**, so the accommodation is not tied
+   to one look.
 2. **High-contrast deck** — oversized indices, pure black/white, maximum weight.
 3. **Suit-shape emphasis** — the corner index suit glyph enlarged to ~1.6× the
    default, so suit is readable by *silhouette* at a glance. A toggle that applies
    to any deck.
+
+A fourth, which exists for a different reason and answers this one too:
+**the large index over the art**, `Settings.cardIndex`, in the deck gallery. A
+deck we did not draw is somebody else's artwork and is shown as drawn — several
+of them index in five-pixel type at a 46px card, and two of them index in
+French. Turning this on replaces the top-left corner of every one of those
+cards with our own rank and suit, in our own weight, on the deck's own paper.
+It is the one control that makes an engraved deck legible on a phone, and
+[04](04-art-direction.md) records that it used to be a rule rather than a
+choice, and why it stopped being one.
 
 ## Motion
 

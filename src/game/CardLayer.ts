@@ -25,13 +25,42 @@ import {
  */
 
 /**
- * What a deck of drawn art tells the card layer: how big one card is inside
- * the sprite, and which group in it a given card is. See src/decks/sourced.ts.
+ * What a deck of drawn art tells the card layer: where in the sprite each card
+ * is, which group it is, and what the deck is printed on. Strings and
+ * functions rather than the registry's own shape, so this file knows nothing
+ * about contact sheets or licences. See src/decks/sourced.ts.
  */
 export interface DeckArt {
-  viewBox: string;
+  /** The viewBox that shows this one card. Per card: a sprite is a sheet. */
+  viewBox: (card: Card) => string;
+  /** The viewBox that shows the deck's own back, or null to keep ours. */
+  backViewBox: string | null;
   paper: string;
+  /** What our corner index is written in, when a player has asked for it. */
+  ink: string | null;
   symbol: (card: Card) => string;
+}
+
+/**
+ * Aim one `<use>` at one group in the sprite, or take it off.
+ *
+ * A `null` viewBox is "there is no art here": the reference goes, and what the
+ * player sees is whatever the stylesheet was drawing underneath all along —
+ * which is the whole of the failure path for a deck that will not load.
+ */
+function point(
+  svg: Element | null,
+  viewBox: string | null,
+  href: string | null,
+): void {
+  const use = svg?.firstElementChild;
+  if (svg == null || use == null) return;
+  if (viewBox === null || href === null) {
+    use.removeAttribute("href");
+    return;
+  }
+  svg.setAttribute("viewBox", viewBox);
+  use.setAttribute("href", href);
 }
 
 /** How a change of position should look. The catalogue is in docs/05. */
@@ -133,34 +162,63 @@ export class CardLayer {
   }
 
   /**
-   * Point the 52 faces at a sourced deck's sprite, or take them off it.
+   * Point the 52 cards at a sourced deck's sprite, or take them off it.
    *
-   * This is the only thing a deck of drawn art changes: one `<use>` per card,
-   * written once when the deck changes, and a class that lets the CSS show
-   * the art and stand our own corner index on top of it. The elements are the
-   * same elements — a deck is not a reason to rebuild the card layer, and
+   * This is the only thing a deck of drawn art changes: two `<use>` elements
+   * per card — its face and the back it is printed on — written once when the
+   * deck changes, and a class that lets the CSS show them. The elements are
+   * the same elements — a deck is not a reason to rebuild the card layer, and
    * doing it from here rather than from Svelte is what keeps that true.
+   *
+   * Every card gets its own `viewBox` because a sprite in this family is a
+   * **contact sheet**: `#club_7` is drawn at its place on a thirteen-by-four
+   * grid, not at the origin, so showing one card means looking at one cell.
+   * The French deck draws all 52 in the same place and is the same code path
+   * with the steps set to zero.
    *
    * `null` is the decks we draw ourselves, which have no art to point at.
    */
   setArt(art: DeckArt | null): void {
     this.#layer.classList.toggle("has-art", art !== null);
-    // What our corner index is drawn on: the deck's own paper, not the
-    // table's card colour, or every card gets a square of the wrong white.
-    if (art === null) this.#layer.style.removeProperty("--art-paper");
-    else this.#layer.style.setProperty("--art-paper", art.paper);
+    this.#layer.classList.toggle(
+      "has-art-back",
+      art !== null && art.backViewBox !== null,
+    );
+    // What shows at the rounded corners of our card, and what our index is
+    // written in if the player has asked for one: the deck's own paper and
+    // ink, not the table's, or every card wears four chips of the wrong white.
+    if (art === null) {
+      this.#layer.style.removeProperty("--art-paper");
+      this.#layer.style.removeProperty("--art-ink");
+    } else {
+      this.#layer.style.setProperty("--art-paper", art.paper);
+      if (art.ink === null) this.#layer.style.removeProperty("--art-ink");
+      else this.#layer.style.setProperty("--art-ink", art.ink);
+    }
     for (let card = 0; card < DECK_SIZE; card++) {
       const element = this.#elements[card] as HTMLElement;
-      const svg = element.querySelector(".card-art");
-      const use = svg?.firstElementChild;
-      if (svg == null || use == null) continue;
-      if (art === null) {
-        use.removeAttribute("href");
-        continue;
-      }
-      svg.setAttribute("viewBox", art.viewBox);
-      use.setAttribute("href", `#${art.symbol(card)}`);
+      point(
+        element.querySelector(".card-art"),
+        art === null ? null : art.viewBox(card),
+        art === null ? null : `#${art.symbol(card)}`,
+      );
+      point(
+        element.querySelector(".card-back-art"),
+        art?.backViewBox ?? null,
+        "#back",
+      );
     }
+  }
+
+  /**
+   * Draw our own corner index over a sourced deck's art, or stop.
+   *
+   * A setting rather than a rule — see `Settings.cardIndex`. It is a class on
+   * the layer because the 52 elements already carry the index markup for the
+   * decks we draw; nothing is created or destroyed by turning it on.
+   */
+  setOwnIndex(on: boolean): void {
+    this.#layer.classList.toggle("has-our-index", on);
   }
 
   /**
