@@ -3,11 +3,11 @@
 A solitaire website. Astro 6 static site, pnpm, deployed to GitHub Pages at
 <https://solitaire.martinsundal.no>.
 
-The engine, a playable board, the win sequence, the motion catalogue and the
-themes and decks are built (milestones 0 to 4 of `docs/09-roadmap.md`); the
-parts of their bars that need hardware or people are noted there. Everything is
-designed in `docs/` before it is written; a change that contradicts a doc
-changes the doc in the same commit.
+The engine, a playable board, the win sequence, the motion catalogue, the themes
+and decks, and the deals, persistence and statistics are built (milestones 0 to
+5 of `docs/09-roadmap.md`); the parts of their bars that need hardware or people
+are noted there. Everything is designed in `docs/` before it is written; a
+change that contradicts a doc changes the doc in the same commit.
 
 ## Invariants
 
@@ -41,8 +41,27 @@ changes the doc in the same commit.
   on only for as long as something is moving — the length of a move, or of the
   win sequence's stages 1 to 3. Permanent `will-change` on 52 elements costs
   real memory on a cheap GPU.
+- **The winnable pools are generated, committed, and append-only.**
+  `scripts/generate-winnable.ts` scans deal numbers upward from 0 at a **frozen
+  node budget** and keeps the ones its solver wins, so `src/data/winnable-{1,3}.bin`
+  are sorted and append-only at the same time — which is what stops the daily
+  deal, an index into the frozen first 4,096 entries, moving under a later run.
+  A different budget produces a different *file*, not a different pool. Every
+  seed's winning line is replayed through `applyMove` before it goes in;
+  `--verify` re-runs that over a committed pool and `test/engine/solve.test.ts`
+  re-derives a sample. `src/engine/solve.ts` is the one engine module
+  `index.ts` does not re-export — a search has no business in a phone's bundle.
+- **`localStorage` is untrusted input, and optional.** `src/game/Persist.ts` is
+  the only thing that touches it: every read is wrapped and validated field by
+  field, every failure falls back to a default *silently*, and a `Persist` with
+  no store is a complete object that remembers nothing. A corrupt save is a new
+  game, never an error. Keys are `sol:v1:*` and carry `v: 1`; a future `v2`
+  reads `v1`, writes `v2`, deletes `v1` — never a silent reinterpretation.
 - **A look is three attributes on `<html>`** — `data-theme`, `data-deck`,
-  `data-back` — and `src/game/settings.ts` is the only thing that writes them.
+  `data-back` — and `src/game/settings.ts` is the only thing that writes them,
+  including before the first paint: `BOOTSTRAP` is an inline script generated
+  from the same table `resolve()` uses, and `test/game/settings.test.ts` runs it
+  against every combination and asserts the two agree.
   A theme or deck is a set of custom properties and nothing else; the stylesheets
   in `src/themes/` and `src/decks/` hang off those attributes and know nothing
   about each other. **Deck files are imported after theme files**, and that

@@ -3,8 +3,8 @@
 A solitaire website. Live at
 [solitaire.martinsundal.no](https://solitaire.martinsundal.no/).
 
-> **Status: playable, it feels like cards, and it celebrates.**
-> [Milestones 0 to 3](docs/09-roadmap.md) are built —
+> **Status: playable, it feels like cards, it celebrates, and it remembers.**
+> [Milestones 0 to 5](docs/09-roadmap.md) are built —
 > [`src/engine/`](src/engine/) is the complete Klondike rules as a pure
 > TypeScript library, and [`src/game/`](src/game/) is a board you can deal,
 > drag, tap and win on a phone. The cards are dealt out of the stock a row at a
@@ -13,8 +13,16 @@ A solitaire website. Live at
 > noise doing it. Winning runs the full [cascade](docs/06-win-sequence.md):
 > fifty-two cards thrown off the foundations under real physics, with canvas
 > trails and a note per bounce. Add `?win` to the URL to watch it without
-> winning first. It is not pretty yet: one theme, one deck, no settings, and
-> nothing saved between visits.
+> winning first.
+>
+> Three tables, four decks and three card backs, all switchable and all
+> [contrast-checked](docs/08-accessibility.md). New deals come out of a pool of
+> 10,000 per draw mode that a [build-time solver](docs/03-engine.md) has
+> actually won, there is a daily deal with a streak nobody will ever nag you
+> about, and the game, your settings, your stats and your best on each deal
+> survive closing the tab. Hint points at a move; Finish plays out a deal that
+> is already won. What is left is [milestone 6](docs/09-roadmap.md): the
+> desktop layout, the keyboard model and the screen-reader work.
 
 ## Design
 

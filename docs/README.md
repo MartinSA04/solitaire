@@ -19,10 +19,17 @@ Read them in order the first time; after that they stand alone.
 
 ## Status
 
-[Milestone 0](09-roadmap.md) is built: `src/engine/` is the rules from
-[02](02-game-spec.md) as the pure library described in [03](03-engine.md),
-with the test suite that doc specifies. Everything a player can see is still
-design only — see the [roadmap](09-roadmap.md) for the order it gets built in.
+[Milestones 0 to 5](09-roadmap.md) are built: the engine, the playable board,
+the win sequence, the motion catalogue, the themes and decks, and — with this
+one — the winnable-deal pools, the daily, local persistence, the statistics and
+the two assists that needed them. What is left is milestone 6: desktop,
+keyboard, screen readers, and shipping.
+
+Each milestone's entry in the [roadmap](09-roadmap.md) says which half of its
+bar was met and which half needs a person with a phone; those notes are the
+honest record of where this is. Where the code has taught a doc something, the
+doc was changed in the same commit — that is the rule, and it is why these
+documents are still worth reading.
 
 ## Decisions already made
 
