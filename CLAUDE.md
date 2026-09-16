@@ -4,10 +4,11 @@ A solitaire website. Astro 6 static site, pnpm, deployed to GitHub Pages at
 <https://solitaire.martinsundal.no>.
 
 The engine, a playable board, the win sequence, the motion catalogue, the themes
-and decks, and the deals, persistence and statistics are built (milestones 0 to
-5 of `docs/09-roadmap.md`); the parts of their bars that need hardware or people
-are noted there. Everything is designed in `docs/` before it is written; a
-change that contradicts a doc changes the doc in the same commit.
+and decks, the deals, persistence and statistics, and the keyboard, screen-reader
+and desktop work are built (milestones 0 to 6 of `docs/09-roadmap.md`); the parts
+of their bars that need hardware or people are noted there. Everything is designed
+in `docs/` before it is written; a change that contradicts a doc changes the doc
+in the same commit.
 
 ## Invariants
 
@@ -78,6 +79,42 @@ change that contradicts a doc changes the doc in the same commit.
 - **`e2e/visual.pw.ts-snapshots/` is committed expected output**, not an
   artifact. A change to it is a change to how the product looks and gets looked
   at before it is committed.
+- **Zero axe violations is a gate**, across every surface the chrome can put on
+  screen and all three tables — `e2e/axe.pw.ts`. It finds about a third of what
+  can be wrong with a page and none of the third that decides whether the game
+  is playable, which is why it sits beside a test that wins a whole game by key
+  press. A fixture that writes settings must write `v: 1`, or `Persist` ignores
+  the record and the island paints the default over whatever the pre-paint
+  bootstrap did.
+- **The performance bar is measured, not inferred.** `e2e/performance.pw.ts`
+  times a cold load over throttled 4G to the first frame of the deal, with and
+  without a slow processor, against the brief's two seconds. The gzipped size
+  limit beside it is there to bound growth, not to protect that number.
+- **The keyboard model and the screen-reader model are one model.** A roving
+  focus over the thirteen piles of `PILE_ORDER` — which lives in `Layout.ts`,
+  because the board's structure is the board's, and the keyboard, the rendered
+  slots and the hit-tester all walk that one list. Moving the focus is how a
+  keyboard gets around *and* how a screen reader is told where it is, so there
+  is never a second model to keep in step. `src/game/keyboard.ts` is pure — a
+  key press and a position in, what the player meant out — which is what lets
+  `test/game/keyboard.test.ts` type a whole winning line through it with no
+  browser, alongside `e2e/keyboard.pw.ts` doing it again in one. `Tab` never
+  enters the card layer: one pile is in the tab order at a time.
+- **A pile is a `<button>` whose label is the whole pile**, and it is the only
+  thing a screen reader is given — the 52 cards stay `aria-hidden`. Every real
+  pointer on the board is hit-tested by `Layout.ts` and played by `Drag`, so
+  `activatePile` throws away any click carrying a non-zero `detail`; what is
+  left is a screen reader's activate gesture, which is the whole interaction on
+  a phone. All of it is written in `src/game/strings.ts` and nowhere else —
+  cards and numbers spelled out, because the failure mode of a suit glyph in a
+  live region is silence. There are **two polite live regions, written in
+  turn**: one cannot say the same thing twice.
+- **`Layout.ts` still takes an area and returns numbers** with the card size and
+  the page as two more arguments, so the Large board is a unit test rather than
+  a browser. It is the only thing that decides how big a card is; the card size
+  is not a look and never reaches the three attributes. A page turn is a
+  re-measure — which is also the whole of the animation — and the top row never
+  moves, because it is where every move ends up.
 - **The win sequence owns the card layer once it starts.** `CardLayer.surrender()`
   hands the 52 elements to `WinSequence.ts`'s physics loop and makes `render()`
   a no-op, so a resize mid-cascade cannot put the cards back on their

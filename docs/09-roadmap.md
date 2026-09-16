@@ -231,6 +231,64 @@ Zero axe violations. Cold-load to first card moved under two seconds on throttle
 
 **This is v1.** It ships.
 
+Built: the keyboard model and the screen-reader model, which turned out to be
+one model — a roving focus over thirteen piles, where moving it is both how a
+keyboard gets around and how a screen reader is told where it is. The board
+keeps its thirteen empty slots and they became thirteen named buttons; `Tab`
+still never enters the card layer. `?` opens the shortcut list, the desktop
+gets its one bar and its hover lift, landscape gets the same bar for the
+opposite reason, the Large card size pages the tableau, and `/how-to-play`
+writes the rules down.
+
+Three of the four halves of the bar are met and mechanised:
+
+- **A complete game can be won by keyboard alone.** `e2e/keyboard.pw.ts` wins
+  deal 3 in Chromium with nothing but key presses, and
+  `test/game/keyboard.test.ts` types the same winning line through the pure
+  model with no browser in it, in both draw modes.
+- **Zero axe violations**, on eleven surfaces: the board on all three tables,
+  the board with a card in hand, the Large board and its pager, the menu, the
+  statistics, the shortcut list, the result panel, `/credits` and
+  `/how-to-play`.
+- **Under two seconds on throttled 4G** — 793ms, or 852ms with a cheap phone's
+  processor behind it as well. It is now a measurement rather than the
+  inference from a bundle size it used to be; see
+  [07](07-architecture.md#first-paint), where the size limit has been loosened
+  to 60KB and given the smaller job of bounding growth.
+
+The fourth is **only a screen reader**, and it is this milestone's version of
+M2's three unprompted reactions: it needs VoiceOver on an iPhone and TalkBack
+on an Android, and it is not a thing automation can answer. Everything it
+depends on is built and tested as far as a machine can test it — every pile
+names itself in full, every move is announced, the win is announced at Stage 0
+rather than after thirteen seconds of cascade, and a pile can be activated by a
+double-tap because on a phone that gesture is the whole interaction. What no
+test here can tell you is whether the speech is *bearable* over a fifty-move
+game. Until somebody has played one that way, this half is a claim rather than
+a fact.
+
+Four things the milestone changed, all recorded where they were decided:
+
+- **The JS budget was a proxy, and it was wrong by more than half.** See above.
+- **The clock's contrast row in [08](08-accessibility.md) contradicted the
+  WCAG 2.2 AA that document opens by targeting.** It allowed 3:1 for
+  "deliberately dim" text; the Minimal chrome was at 3.87:1 and it is ordinary
+  15px text. Found the first time the axe gate was pointed at a light table.
+- **Landscape's left rail was not built.** One bar gets most of the height back
+  for none of the cost of a third chrome arrangement, for the one orientation
+  [05](05-interaction-and-motion.md) opens by saying nobody uses.
+- **The Large card size needed a second row at the top**, which the design had
+  not foreseen: the top row is as wide as the tableau, so a card too big for
+  seven columns is too big for the six piles above them — and those cannot page
+  with it, because they are where every move ends up.
+
+What is *not* claimed: that this ships. Three things stand between here and
+that, and two of them are the manual passes above. The third is the accumulated
+soft half of every milestone since M2 — the three unprompted reactions, the
+hundred moves that feel right, the 95% auto-move judgement, the Minimal deck at
+46px. None of them is code, all of them need somebody playing the game, and a
+v1 that ships without them is a v1 nobody has played.
+
 ---
 
 ## After v1
