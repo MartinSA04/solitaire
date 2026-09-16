@@ -83,6 +83,7 @@ src/
     cascade.ts         the cascade as arithmetic — pure, no DOM
     Trails.ts          the canvas comet tails
     Audio.ts           WebAudio graph, sample-free synthesis
+    settings.ts        the chosen look, as data → three attributes on <html>
     Persist.ts         localStorage schema + migration
     chrome/
       TopBar.svelte  BottomBar.svelte  SettingsSheet.svelte

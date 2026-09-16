@@ -183,8 +183,15 @@ Four durations. Everything in the product uses one of them.
 --t-instant   90ms    feedback that must feel immediate: flip start, press
 --t-quick    180ms    a card moving between piles — the workhorse
 --t-settle   280ms    drop settle, sheet open, undo
---t-slow     480ms    theme crossfade, stats card
+--t-slow     480ms    stats card, the win sequence's slow fades
 ```
+
+`--t-slow` was written down as the length of a **theme crossfade**, and there
+is no theme crossfade: switching tables is instant. Two themes are two sets of
+custom properties, and CSS cannot interpolate between most of what they hold —
+a gradient into a flat colour, a shadow into `none`, a 1px hairline into 1.5px.
+What *is* possible is fading the table while the cards on it snap, which reads
+as a glitch rather than as a transition. A clean switch reads as "applied".
 
 ### The easing scale
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    type DrawCount,
     type Game,
     type GameState,
     type Move,
@@ -24,8 +25,10 @@
   import { dealOrder, drawnCards, homedCard, predealt } from "./motion.ts";
   import { PULSE_GAP_MS, WinSequence, type WinStage } from "./WinSequence.ts";
   import { Stopwatch } from "./clock.ts";
+  import { DEFAULTS, type Settings, apply } from "./settings.ts";
   import BottomBar from "./chrome/BottomBar.svelte";
   import ResultPanel from "./chrome/ResultPanel.svelte";
+  import SettingsSheet from "./chrome/SettingsSheet.svelte";
   import TopBar from "./chrome/TopBar.svelte";
 
   /**
@@ -83,14 +86,26 @@
   let clock = new Stopwatch(() => performance.now());
 
   /**
+   * The table, the deck, the back, the sound, the clock and the draw mode.
+   *
+   * They last as long as the tab: `localStorage` is milestone 5, and the
+   * module they will be read out of writes into exactly this shape. The draw
+   * mode starts from the game rather than from the defaults, because
+   * `?deal=…&draw=3` has already decided it by the time this runs.
+   */
+  let settings: Settings = $state({ ...DEFAULTS, drawCount: game.drawCount });
+  let settingsOpen = $state(false);
+
+  /**
    * One audio graph for the whole product, outliving any one deal — the win
    * sequence plays through this one too. It builds nothing until the first
    * move asks it to, so a visit that never plays makes no context and no
    * noise.
    *
-   * It is audible from the first move, per docs/07: the sound setting and the
-   * storage it lives in are milestone 4's settings sheet, and until that
-   * exists the documented default is the only behaviour there is.
+   * It is audible from the first move, per docs/07, and the settings sheet can
+   * turn it off — through one master gain that ramps rather than clicks. What
+   * is still missing is the *remembering*: a muted tab comes back audible
+   * until milestone 5 gives the setting somewhere to live.
    */
   const sound = new Sound();
 
@@ -169,7 +184,18 @@
   }
 
   function newDeal(): void {
-    game = newGame(randomSeed());
+    redeal(settings.drawCount);
+  }
+
+  /**
+   * A deal in a named draw mode. Changing the mode starts a new game rather
+   * than reinterpreting this one, because draw-1 and draw-3 make genuinely
+   * different games out of the same seed — see docs/02-game-spec.md. It takes
+   * the count rather than reading it so it cannot race the settings update
+   * that asked for it.
+   */
+  function redeal(drawCount: DrawCount): void {
+    game = newGame(randomSeed(), drawCount);
     reset();
   }
 
@@ -402,6 +428,21 @@
     return () => sound.close();
   });
 
+  /**
+   * A chosen look is three attributes on `<html>` and nothing else — see
+   * settings.ts. It goes on the document element rather than on the island so
+   * that the pages around the game (credits, how-to-play) are the same table
+   * as the game is.
+   */
+  $effect(() => {
+    apply(settings, document.documentElement);
+  });
+
+  /** One master gain for the whole product, and it ramps rather than clicks. */
+  $effect(() => {
+    sound.muted = !settings.sound;
+  });
+
   /** The displayed clock. Pauses with the tab, per docs/02-game-spec.md. */
   $effect(() => {
     const tick = setInterval(() => {
@@ -424,7 +465,7 @@
 
 <div class="game" data-win={winStage}>
   <h1 class="sr-only">Solitaire</h1>
-  <TopBar {elapsedMs} {moves} />
+  <TopBar {elapsedMs} {moves} showClock={settings.timer} />
 
   <!--
     The empty slots are ordinary CSS grid, so they are server-rendered and in
@@ -490,7 +531,12 @@
     {/key}
   </div>
 
-  <BottomBar {canUndo} onUndo={undo} onNewDeal={newDeal} />
+  <BottomBar
+    {canUndo}
+    onUndo={undo}
+    onNewDeal={newDeal}
+    onSettings={() => (settingsOpen = true)}
+  />
 
   <!--
     The trail canvas. Beneath the cards, over everything else, and sized to the
@@ -526,6 +572,21 @@
       onReplay={replay}
       onNewDeal={newDeal}
       onDismiss={() => (dismissed = true)}
+    />
+  {/if}
+
+  <!--
+    Every theme, deck and back, available on first load. Mounted only while it
+    is open, because a <dialog> that is in the document but closed is still a
+    dozen controls in the accessibility tree.
+  -->
+  {#if settingsOpen}
+    <SettingsSheet
+      {settings}
+      inProgress={moves > 0 && !won}
+      onChange={(next) => (settings = next)}
+      onRedeal={redeal}
+      onClose={() => (settingsOpen = false)}
     />
   {/if}
 </div>
