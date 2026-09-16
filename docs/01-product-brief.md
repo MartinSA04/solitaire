@@ -53,10 +53,19 @@ If we win on those four and have one game to their five, we win.
 
 ## Principles
 
-**No ads. No accounts. No tracking. Ever.** This is the premise, not a phase.
-There is no analytics script, no consent banner (because there is nothing to
-consent to), and no network request after the page loads. It should be possible to
-play the whole game with the device in airplane mode after first load.
+**No ads. No accounts. Nothing that identifies you. Ever.** This is the premise,
+not a phase. There is one exception and it is named here rather than buried:
+**GoatCounter**, a cookieless pageview counter, loaded on every page and
+described in full on `/credits`, because a counter the player is not told
+about is the thing this principle exists to rule out. It records a path, a
+title, a referrer, a screen size, a country and a browser; it sets no cookie,
+writes no `localStorage`, and keeps no identifier that outlives the day, which
+is why there is still no consent banner — there is still nothing to consent to.
+
+Everything else holds. Nothing about *how you play* leaves the device: not a
+deal number, not a time, not a result, not a setting. The counter fires once at
+load and never again, so after the first load it should still be possible to
+play the whole game with the device in airplane mode.
 
 **The game is the product; the chrome is furniture.** Every pixel of UI that is not
 a card has to justify itself. Default state shows the board, a clock, a move count
@@ -89,8 +98,12 @@ Stated so they don't creep back in:
 - **No server.** The site is static files on GitHub Pages. No API, no database,
   no serverless function. This is a hard architectural constraint, not a
   preference — see [07 — Architecture](07-architecture.md).
-- **No analytics**, no error reporting, no fonts or scripts from a third-party
-  origin. Zero outbound requests at runtime.
+- **No error reporting, and no fonts from a third-party origin.** The one
+  script from another origin is the GoatCounter counter in the principle
+  above. Nothing else reaches the network once the page has loaded.
+- **No analytics that follow a person.** A pageview count is a pageview count:
+  no cookie, no fingerprint, no cross-site identifier, no per-player record,
+  and nothing about a game in progress.
 - **No leaderboards or social features.** Sharing a deal number is a URL, not a
   platform.
 - **No engagement mechanics**: no XP, no levels, no currencies, no daily-login
@@ -102,7 +115,8 @@ Stated so they don't creep back in:
 
 ## How we'd know it worked
 
-There is no analytics, so these are qualitative and that's fine:
+The counter says how many people arrived and where from. It cannot say whether
+any of this worked, so the things worth knowing stay qualitative:
 
 - A stranger can go from cold URL to first card moved in under two seconds on 4G.
 - Someone who plays Klondike daily on their phone switches to it and doesn't switch

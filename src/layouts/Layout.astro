@@ -1,6 +1,7 @@
 ---
 import "../styles/base.css";
 import { BOOTSTRAP } from "../game/settings.ts";
+import { ANALYTICS } from "../site.ts";
 
 interface Props {
   title: string;
@@ -34,6 +35,23 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       which is the only thing allowed to write these three attributes.
     -->
     <script is:inline set:html={BOOTSTRAP} />
+
+    <!--
+      GoatCounter, on every page. Cookieless, storing no personal data, so
+      there is nothing to put a consent banner in front of — but it is still
+      analytics and still a request to another origin, which is the one
+      exception docs/01-product-brief.md names. What it collects is written
+      out in src/site.ts and told to the player on /credits.
+
+      `async`, and last in the head, so it is never in front of the deal.
+      count.js does not count localhost, so `pnpm dev` and the Playwright
+      suite cannot report pageviews into the real account.
+    -->
+    <script
+      is:inline
+      async
+      src="https://gc.zgo.at/count.js"
+      data-goatcounter={`${ANALYTICS}/count`}></script>
   </head>
   <body>
     <slot />

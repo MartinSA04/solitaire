@@ -35,6 +35,52 @@ describe("canonical host", () => {
 });
 
 /**
+ * The counter is one endpoint, named once, and loaded by the one layout every
+ * page goes through — so "is it on this page?" is never a question asked per
+ * page. What this pins is that nobody pastes the GoatCounter snippet into a
+ * page by hand later: a second copy is how one page ends up reporting into a
+ * different account, or how a page quietly stops reporting at all.
+ *
+ * The other half is the promise on `/credits`. A counter the player is not
+ * told about is the thing docs/01 says this site does not do, and that page is
+ * where it gets said — so it has to still say it.
+ */
+describe("the pageview counter", () => {
+  it("is loaded by the layout every page shares", () => {
+    const layout = read("src/layouts/Layout.astro");
+    assert.match(layout, /import \{ ANALYTICS \} from "\.\.\/site\.ts"/);
+    assert.match(layout, /src="https:\/\/gc\.zgo\.at\/count\.js"/);
+    assert.match(layout, /data-goatcounter=\{`\$\{ANALYTICS\}\/count`\}/);
+  });
+
+  it("names its endpoint in exactly one place", () => {
+    assert.match(
+      read("src/site.ts"),
+      /export const ANALYTICS = "https:\/\/[\w-]+\.goatcounter\.com"/,
+    );
+    for (const file of [
+      "src/pages/index.astro",
+      "src/pages/credits.astro",
+      "src/pages/how-to-play.astro",
+    ]) {
+      assert.equal(
+        read(file).includes("gc.zgo.at"),
+        false,
+        `${file} loads the counter itself instead of leaving it to the layout`,
+      );
+    }
+  });
+
+  it("is disclosed to the player on /credits", () => {
+    const credits = read("src/pages/credits.astro");
+    assert.match(credits, /goatcounter\.com/i);
+    // The specific claims that stop being true if the counter ever changes.
+    assert.match(credits, /sets no cookie/i);
+    assert.match(credits, /What this site counts/i);
+  });
+});
+
+/**
  * `/how-to-play` renders the shortcut table out of `src/game/strings.ts`, which
  * is the same list `?` shows and `test/game/keyboard.test.ts` presses every key
  * in. This is what stops somebody writing the keys out by hand into the page

@@ -115,6 +115,17 @@ in the same commit.
   is not a look and never reaches the three attributes. A page turn is a
   re-measure — which is also the whole of the animation — and the top row never
   moves, because it is where every move ends up.
+- **The pageview counter is named once and disclosed once.** `src/site.ts`
+  holds the GoatCounter endpoint and `src/layouts/Layout.astro` is the only
+  thing that loads it, so every page gets it by going through the one layout —
+  a snippet pasted into a page is how one page reports into a different account
+  or quietly stops reporting. It is `async` and last in the head, never in
+  front of the deal, and `count.js` declines to count `localhost`, so dev and
+  the Playwright suite cannot report into the real account. What it collects is
+  written out on `/credits`; `test/site.test.ts` holds that page to it. It is
+  the site's **only** request to another origin, and the only exception to
+  `docs/01-product-brief.md`'s privacy principle.
+
 - **The win sequence owns the card layer once it starts.** `CardLayer.surrender()`
   hands the 52 elements to `WinSequence.ts`'s physics loop and makes `render()`
   a no-op, so a resize mid-cascade cannot put the cards back on their

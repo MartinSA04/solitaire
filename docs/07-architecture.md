@@ -2,10 +2,15 @@
 
 ## The constraint that decides everything
 
-**Static files on GitHub Pages. No server, no build-time secrets, no runtime
-network requests.** Everything in [01 — Product brief](01-product-brief.md) that
-sounds like a value — no accounts, no tracking, no ads — is also enforced by the
-fact that there is nowhere to put them.
+**Static files on GitHub Pages. No server, no build-time secrets.** Everything
+in [01 — Product brief](01-product-brief.md) that sounds like a value — no
+accounts, no per-player records, no ads — is also enforced by the fact that
+there is nowhere to put them.
+
+The one runtime request to another origin is the GoatCounter counter, and it is
+the exception that proves the constraint: it is somebody else's server because
+this site does not have one, it is fire-and-forget, and nothing on the page
+waits for it or reads it back. There is still nowhere here to put an account.
 
 Anything that looks like it needs a backend gets solved at build time instead:
 
@@ -155,8 +160,12 @@ card moved on 4G**. That budget:
   as a hashed asset, and `assetsInlineLimit` is told to leave `.bin` alone —
   inlined as a base64 data URL it would be 53KB of deal numbers inside the
   island, which is the one thing the budget below cannot afford.
-- Fonts are **self-hosted, subset, `font-display: swap`**. No third-party origin,
-  per the brief's zero-outbound-requests rule.
+- Fonts are **self-hosted, subset, `font-display: swap`**. No third-party
+  origin: nothing the first paint needs comes from one.
+- The GoatCounter script is the single third-party fetch, and it is `async` and
+  last in the head, so it is never in front of the deal. It is not free on a
+  throttled connection, though — it shares the 4G pipe with the island — which
+  is why the two numbers below are measured after it was added, not before.
 
 **The goal is the two seconds, and it is now measured rather than inferred.**
 `e2e/performance.pw.ts` loads the site cold over Chrome's Slow 4G profile —
@@ -166,8 +175,8 @@ Connection, HTML, CSS, island, hydration and deal:
 
 | | Time to first card moved |
 | --- | --- |
-| Slow 4G | **793ms** |
-| Slow 4G, and 4× CPU throttling | **852ms** |
+| Slow 4G | **796ms** |
+| Slow 4G, and 4× CPU throttling | **854ms** |
 
 Both are gates. The second is the same four-year-old mid-range Android the
 cascade is measured against, and it is the honest one: a cheap phone is slow at

@@ -286,8 +286,9 @@ test("the game page stays inside its download budget", () => {
 });
 
 test("and the pages that are not the game ship no island at all", () => {
-  // /credits and /how-to-play are documents. A script tag on either of them is
-  // a regression, not a feature.
+  // /credits and /how-to-play are documents. They carry the theme bootstrap
+  // and the analytics counter, which every page does, and nothing else — a
+  // bundle of ours on either of them is a regression, not a feature.
   for (const page of ["credits/index.html", "how-to-play/index.html"]) {
     expect(assetsOf(page, ".js"), page).toEqual([]);
   }
