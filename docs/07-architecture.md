@@ -217,6 +217,10 @@ Unchanged from the scaffolding — `astro build` to `dist/`, deployed by
   result must be stable across builds (the daily deal depends on the pool not
   changing). A CI job can verify the committed pool matches what the script produces
   for a sample, but does not regenerate it.
+- `scripts/audit-automove.ts` is not part of anything either — not the build,
+  not `pnpm test`. It plays a few hundred deals twice over to measure what
+  tap-to-auto-move costs, takes a minute or two, and exists to be re-run
+  whenever that heuristic is argued about. See the note below.
 - No other build step. No image pipeline — the decks are SVG and ship as authored.
 
 ## Testing
@@ -242,7 +246,19 @@ in [06](06-win-sequence.md); neither touches the deal.
 Flagged rather than hidden:
 
 - **Whether the auto-move heuristic in [05](05-interaction-and-motion.md) is
-  right.** It can only be judged by playing. Expect to tune it after Milestone 3.
+  right.** Half of this is now measured rather than argued.
+  `scripts/audit-automove.ts` plays a greedy player's games twice over the same
+  deals — once playing its moves, once tapping the cards those moves name and
+  letting the heuristic choose — and the tapped run *wins more*: 53.5% against
+  51.0% at draw-1 over 400 deals, 17.5% against 16.5% at draw-3. It sends a
+  card somewhere unasked on 2.2% of taps, and almost every one of those is rule
+  1 declining to send a card home while the tableau could still want it, which
+  is the rule doing exactly what it was written to do. The arbitrary tie-break
+  between equal columns turns out to fire on under 1% of taps and to be worth
+  nothing either way. So the heuristic does not lose games. Whether it picks
+  the move you *wanted* is the other half, it is the half the bar in
+  [09](09-roadmap.md) actually asks about, and it can only be judged by
+  playing.
 - **Sound on by default** (above). Genuinely uncertain.
 - **Pool size and daily-pool freezing** — 4,096 frozen daily seeds is ~11 years,
   which is probably fine and is trivially extensible by appending, but the

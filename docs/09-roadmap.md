@@ -85,6 +85,24 @@ The polish pass that turns M1's "works" into "nice". This is where the
 **Bar**: a hundred consecutive moves with nothing that feels wrong, slow, or
 surprising. The auto-move heuristic picks the move you wanted ≥ 95% of the time.
 
+Built: the timing and easing scales, every motion in the catalogue — the deal
+stagger, the real flip, the draw fan, the recycle sweep, the drop settle, the
+illegal-move shake, the slower undo — the long-press peek, and both sounds, on
+the same audio graph as the win sequence.
+
+The auto-move heuristic has been *measured* rather than tuned, because it
+turned out there was nothing to tune. `scripts/audit-automove.ts` plays a
+greedy player's games twice over the same deals, once playing its moves and
+once tapping the cards those moves name; the tapped run wins slightly more, and
+the tie-break the design flagged as arbitrary fires on under 1% of taps and is
+worth nothing whichever way it goes. See the note in
+[07](07-architecture.md#what-isnt-decided-yet).
+
+What is outstanding is the bar itself, both halves of it: a hundred consecutive
+moves that feel right, and the 95% judgement. Neither is mechanisable — they
+are this milestone's version of M2's three unprompted reactions, and they need
+someone playing fifty games.
+
 ---
 
 ## M4 — Themes and decks

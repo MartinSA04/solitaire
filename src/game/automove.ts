@@ -36,6 +36,11 @@ import { type Hit } from "./Layout.ts";
  * the only playable card doing nothing reads as broken.
  *
  * Every auto-move is undoable, which is what lets the heuristic be aggressive.
+ *
+ * `scripts/audit-automove.ts` is what stops the tuning being an argument. It
+ * plays a greedy player's games twice, once playing its moves and once tapping
+ * the cards those moves name, and the tapped run wins slightly *more* — so
+ * whatever else is true of this heuristic, it does not lose games.
  */
 export function autoMove(state: GameState, hit: Hit): Move | null {
   switch (hit.ref.pile) {
@@ -117,8 +122,14 @@ function forSingleCard(
 
 /**
  * The best tableau target: a column with a card in it, else a hole for a King.
- * Ties go to the leftmost column, which is arbitrary but at least predictable —
- * one of the things a play-test will want to revisit.
+ *
+ * Ties go to the leftmost column. That was flagged as arbitrary and as
+ * something a play-test would want to revisit, and the audit above answers it:
+ * 0.4% of taps that have a column to go to have more than one, and six
+ * different tie-breaks — leftmost, rightmost, most buried, least buried,
+ * shortest, longest — finish within one game of each other over four hundred
+ * deals, at both draw counts. There is nothing here to tune, so it keeps the
+ * rule whose only virtue is that a player can predict it.
  */
 function bestColumn(
   state: GameState,
