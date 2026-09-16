@@ -98,6 +98,7 @@ export class CardLayer {
   #peek: number | null = null;
   #surrendered = false;
   #hinted: Card[] = [];
+  #selected: Card[] = [];
 
   /**
    * `reducedMotion` zeroes the staggers. The durations take care of
@@ -370,6 +371,37 @@ export class CardLayer {
   }
 
   /**
+   * What the keyboard has under its selection, and whether it is in hand.
+   *
+   * The roving focus lives on the thirteen pile elements, which is what a
+   * screen reader reads; this is the same position drawn for somebody who can
+   * see it. It is static — an outline and, once picked up, a lift — because
+   * the selection can sit there for as long as it takes to decide where a card
+   * is going, and the only continuous motion in the product is the win
+   * cascade.
+   *
+   * Cleared and re-applied wholesale on every change, because it is at most a
+   * dozen elements and a diff would be more code than the write it saves.
+   */
+  select(cards: readonly Card[], held = false): void {
+    this.clearSelection();
+    for (const card of cards) {
+      const element = this.#elements[card] as HTMLElement;
+      element.classList.add("is-selected");
+      if (held) element.classList.add("is-held");
+      this.#selected.push(card);
+    }
+  }
+
+  clearSelection(): void {
+    for (const card of this.#selected) {
+      const element = this.#elements[card] as HTMLElement;
+      element.classList.remove("is-selected", "is-held");
+    }
+    this.#selected = [];
+  }
+
+  /**
    * A tap with nowhere to go. A shake is enough; a red flash reads as being
    * told off.
    */
@@ -402,6 +434,7 @@ export class CardLayer {
   surrender(): void {
     clearTimeout(this.#flight);
     this.clearHint();
+    this.clearSelection();
     this.#surrendered = true;
     this.#held = [];
     for (let card = 0; card < DECK_SIZE; card++) {

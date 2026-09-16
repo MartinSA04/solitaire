@@ -88,13 +88,74 @@ body {
   margin-bottom: var(--row-gap);
 }
 
+/*
+ * A slot is a `<button>`, which is the whole of the keyboard and screen-reader
+ * model's foothold on the board: thirteen focusable, named piles, one of them
+ * in the tab order at a time. The reset below is everything a button brings
+ * that a slot does not want — it has to look exactly like the div it replaced,
+ * because it is the same drawing.
+ *
+ * A real press on it is still the board's. Every pointer that lands anywhere
+ * here is hit-tested arithmetically by `Layout.ts` and handled by `Drag`, and
+ * `Game.svelte` throws away any click that came from one — see `activatePile`,
+ * which is what stops a tapped move being played twice. What is left is a
+ * screen reader's activate gesture, and on a phone with VoiceOver that gesture
+ * is the whole of how the board is played.
+ */
 .slot {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: default;
+
   aspect-ratio: 2.5 / 3.5;
   border: var(--card-stroke-width) solid var(--slot-stroke);
   border-radius: var(--card-radius);
   background: var(--slot-fill);
   display: grid;
   place-items: center;
+  /* So the focus ring below can be positioned against it. */
+  position: relative;
+}
+
+/*
+ * The focus ring, from docs/08-accessibility.md: 3px of `--accent` at a 2px
+ * offset, with a contrasting stroke outside it so the ring reads on a light
+ * table and a dark one without either theme having to think about it.
+ *
+ * It is a pseudo-element rather than an `outline` because a slot sits *under*
+ * the cards — an outline on the slot itself would be hidden behind whatever is
+ * stacked on the pile, which is every pile that matters. The ring lifts clear
+ * of the resting cards (the highest of which is a foundation's king, around
+ * 900) and stays below the win sequence's trail canvas at 1500, which by the
+ * time it has anything to draw has the board to itself anyway.
+ */
+.slot::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: calc(var(--card-radius) + 2px);
+  pointer-events: none;
+  z-index: 1200;
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 0 0 5px var(--accent-contrast);
+  opacity: 0;
+}
+
+/*
+ * Keyboard only. A pointer player never sees this — they have just touched the
+ * thing they are looking at.
+ */
+.slot:focus-visible {
+  outline: none;
+}
+
+.slot:focus-visible::after {
+  opacity: 1;
 }
 
 /* Column 2 of the top row is the space between the waste and the foundations. */
@@ -399,6 +460,32 @@ body {
   50% {
     scale: 1.06;
   }
+}
+
+/*
+ * What the keyboard has under its selection, and what it is carrying.
+ *
+ * Static, both of them. A selection sits there for as long as it takes to
+ * decide where a card is going, and docs/08 is firm that nothing in the
+ * product moves without the player having caused it — a pulsing selection
+ * would be the one thing on the board that never stopped.
+ *
+ * The ring goes on `.card-flip`, with the card's own shadow, so it turns with
+ * the card and cannot outlive a flip. The lift is the drag shadow: a card in
+ * hand looks the same whether a finger or the space bar picked it up.
+ */
+.card.is-selected .card-flip {
+  box-shadow:
+    var(--card-shadow-rest),
+    0 0 0 2px var(--accent),
+    0 0 0 4px var(--accent-contrast);
+}
+
+.card.is-held .card-flip {
+  box-shadow:
+    var(--card-shadow-lift),
+    0 0 0 2px var(--accent),
+    0 0 0 4px var(--accent-contrast);
 }
 
 .card.is-shaking {

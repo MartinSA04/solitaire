@@ -105,7 +105,26 @@ columns — thirteen positions, in a fixed order.
 
 `Tab` never enters the card layer. Fifty-two tab stops is not navigation, it's a
 punishment; the board is a single composite widget with its own arrow-key model,
-which is exactly what the ARIA practices for grid-like widgets prescribe.
+which is exactly what the ARIA practices for grid-like widgets prescribe. One
+pile carries `tabindex="0"` and the other twelve carry `-1`, so the board is one
+stop on the way to the chrome and the arrows are what move the focus inside it.
+
+Three things the model settled once it was built:
+
+- **The focus wraps.** Thirteen piles is a ring you scan, not a list you walk
+  off the end of, and being stuck at the stock while looking for column seven is
+  how people stop using a keyboard model.
+- **Arriving at a pile always takes its top card.** A reach carried over from
+  the column you left would mean the selection changing under a key that only
+  said "right".
+- **`N` and `R` ask before they throw a game away**, past the same five moves
+  the menu asks at — as a second press of the same key rather than a dialog to
+  tab into and back out of. The question goes on screen in the same
+  `role="status"` line a hint uses, so it is heard as well as seen.
+
+`Escape` belongs to an open sheet before it belongs to a pickup, and a sheet is
+a real `<dialog>` opened with `showModal`, so that is simply true rather than
+arranged.
 
 ### Focus visibility
 
@@ -121,26 +140,55 @@ an offscreen live region announces state.
 ### Structure
 
 ```html
-<section role="application" aria-roledescription="Klondike solitaire board"
-         aria-describedby="board-help">
-  <!-- 13 piles, each a focusable group with an accessible name -->
-</section>
+<div class="board" role="application" aria-roledescription="Klondike solitaire board"
+     aria-describedby="board-help">
+  <!-- 13 piles, each a <button> with an accessible name -->
+</div>
 <p id="board-help" class="sr-only">Arrow keys to move between piles… </p>
 ```
+
+The thirteen piles are **buttons**, not bare focusable groups. Two reasons, and
+the second is the one that matters:
+
+- Every screen reader announces a focused button and its name. A `div` with a
+  `tabindex` and an `aria-label` is at the mercy of which one is running.
+- A button can be **activated**, and on a phone that is the entire interaction.
+  VoiceOver and TalkBack have no arrow keys: you swipe to a pile and double-tap
+  it, and the double-tap dispatches a click straight at the element. That click
+  does exactly what the space bar does — pick up, then put down.
+
+These are the same slot elements the empty piles were always drawn as, so the
+board gained thirteen names and no new geometry.
+
+A click from a *finger* is a different matter: the board hit-tests every real
+pointer arithmetically and `Drag` plays the move, so a click that also reached
+the button would play it twice. The two are told apart by `detail` — a
+synthesised click carries zero, a real one carries the click count — and
+`e2e/keyboard.pw.ts` holds both halves of that, because a bug in either one is
+silent.
 
 ### Pile naming
 
 Each pile's accessible name is a **complete, readable description of its state**,
 updated on every move:
 
-- `"Tableau column 4. Seven cards, three face down. Top card: Jack of hearts."`
+- `"Tableau column four. Seven cards, three face down. Top card: Jack of hearts."`
 - `"Foundation, spades. Empty."`
 - `"Foundation, hearts. Up to the seven."`
 - `"Stock. Eleven cards remaining."`
 - `"Waste. Top card: Queen of clubs."`
 
 Card names are spelled out — "Queen of clubs", never "Q♣", which screen readers
-render unpredictably.
+render unpredictably. **So are numbers**: "column four", not "column 4". These
+are sentences being spoken rather than a display being read, and a bare "4"
+after a colon comes out as an ordinal in some voices. `src/game/strings.ts` is
+the one module any of this text lives in, and `test/game/strings.test.ts` walks
+every pile of a whole game asserting that no label ever contains a glyph or a
+digit.
+
+The count of face-down cards is the one thing a sighted player gets for free and
+a screen-reader user cannot infer, which is why it is in the label rather than
+left to the live region.
 
 ### Live announcements
 
@@ -157,17 +205,41 @@ unplayable:
 | Recycle | `"Waste returned to stock."` |
 | Undo | `"Undid. Jack of hearts back to column 2."` |
 | Hint | `"Hint: jack of hearts from column 2 to column 4."` |
-| No moves | `"No moves available. Undo, or start a new deal."` |
+| Picked up | `"Picked up jack of hearts."` (a run: `"…and two more."`) |
+| Put back | `"Put back."` |
+| Selection grew or shrank | `"Jack of hearts and two more."` |
+| No moves | `"No moves left — undo, or try a new deal."` |
 | Win | `"You won. Two minutes fourteen seconds, one hundred and twenty-eight moves."` — `assertive` |
 
-Selection during keyboard play is announced on focus, not on every arrow press
-beyond the pile boundary, so scanning the board doesn't produce a wall of speech.
+Moving the focus between piles is **not** a live-region announcement. Focus
+landing on a pile is what makes a screen reader read its name, and the name is
+already a complete description — announcing it again would say everything twice.
+The live region is for what the player *did*, and `↑` and `↓` are the one
+exception, because changing the selection does not move the focus.
+
+"No moves left" is not in the live region either: it is the one sentence the
+game puts on the screen, in a `role="status"` line, so it announces itself. One
+string, one place, and the same is true of the second-press question `N` and
+`R` ask.
+
+Two live regions, not one, and they are written in turn. A screen reader
+announces a *change* of text, and "Not a legal move." following "Not a legal
+move." is not one — which is precisely the announcement a player pressing space
+at the wrong pile twice most needs to hear.
 
 ### The win sequence with a screen reader
 
-The cascade is decorative and is `aria-hidden`. The win announcement fires at
-**Stage 0**, immediately — a screen-reader user is not made to wait 13 seconds to be
-told they won — and focus moves to the result panel when it appears.
+The cascade is decorative and the board is taken out of the accessibility tree
+for the length of it — with `inert` rather than `aria-hidden`, because the focus
+is very likely sitting on a pile when the last card goes home and
+`aria-hidden` over a focused element is a lie the browser will not tell for you.
+`inert` hides it *and* moves the focus out.
+
+The win announcement fires at **Stage 0**, immediately — a screen-reader user is
+not made to wait 13 seconds to be told they won — and focus moves to the result
+panel when it appears. The live regions sit outside the board for exactly this
+reason: the one moment they have something important to say is the one moment
+the board is inert.
 
 ## Targets and ergonomics
 
@@ -208,10 +280,16 @@ told they won — and focus moves to the result panel when it appears.
 - `axe-core` runs in Playwright against the game page, the settings sheet, the
   stats sheet and the result panel. Zero violations is the gate.
 - A **keyboard-only Playwright test plays a complete game to a win** using nothing
-  but key events. This is the real proof; an audit tool can't tell you the game is
-  completable.
+  but key events — `e2e/keyboard.pw.ts`. This is the real proof; an audit tool
+  can't tell you the game is completable. It has a twin in
+  `test/game/keyboard.test.ts`, which types the same winning line through the
+  model with no browser in it: the browser test is about the wiring, the unit
+  test is about the grammar, and the two fail in usefully different ways.
 - Screenshot tests at 200% zoom and with the Large card setting.
 - Contrast assertions run as a unit test over the theme tokens.
+- Every sentence the game speaks is a unit test in `test/game/strings.test.ts`,
+  including a sweep over every legal move of a whole game asserting that none of
+  them is announced as silence.
 - Manual VoiceOver (iOS) and TalkBack (Android) passes before any release that
   touches the board, because live-region behaviour is not reliably testable in
   automation.

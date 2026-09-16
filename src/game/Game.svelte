@@ -43,9 +43,36 @@
   import { type SourcedDeck, sourcedDeck } from "../decks/sourced.ts";
   import { loadDeckArt } from "./DeckArt.ts";
   import { type Settings, apply, resolve } from "./settings.ts";
+  import {
+    type Action,
+    type Command,
+    type Focus,
+    FIRST_FOCUS,
+    PILE_ORDER,
+    clampFocus,
+    focusedCards,
+    interpret,
+  } from "./keyboard.ts";
+  import { type Grab } from "./pickup.ts";
+  import {
+    BOARD_HELP,
+    CONFIRM_NEW,
+    CONFIRM_REPLAY,
+    NOT_LEGAL,
+    NO_MOVES,
+    PUT_BACK,
+    announceHint,
+    announceMove,
+    announcePickup,
+    announceSelection,
+    announceUndo,
+    announceWin,
+    pileLabel,
+  } from "./strings.ts";
   import BottomBar from "./chrome/BottomBar.svelte";
   import ResultPanel from "./chrome/ResultPanel.svelte";
-  import SettingsSheet from "./chrome/SettingsSheet.svelte";
+  import SettingsSheet, { CONFIRM_MOVES } from "./chrome/SettingsSheet.svelte";
+  import ShortcutSheet from "./chrome/ShortcutSheet.svelte";
   import StatsSheet from "./chrome/StatsSheet.svelte";
   import TopBar from "./chrome/TopBar.svelte";
 
@@ -118,6 +145,32 @@
   let notice = $state("");
 
   /**
+   * The two live regions, alternating.
+   *
+   * One region cannot say the same thing twice: a screen reader announces a
+   * *change* of text, and "Not a legal move." following "Not a legal move." is
+   * not one. Two regions, written in turn, make every announcement a change in
+   * whichever one is next — which is the standard way round this and the only
+   * reason there are two of anything here.
+   */
+  let politeA = $state("");
+  let politeB = $state("");
+  let turn = false;
+  /** Assertive, and used for exactly one sentence in the whole product. */
+  let shouted = $state("");
+
+  function announce(text: string): void {
+    turn = !turn;
+    if (turn) {
+      politeB = "";
+      politeA = text;
+    } else {
+      politeA = "";
+      politeB = text;
+    }
+  }
+
+  /**
    * Everything that outlives a tab. `Persist` is defensive to the point of
    * tedium on purpose — storage throws in private browsing and holds whatever
    * anyone last pasted into it — and with none available it is a complete
@@ -142,9 +195,47 @@
   let game: Game = openingGame();
   let clock = new Stopwatch(() => performance.now());
 
+  /**
+   * The board as the *chrome* sees it — thirteen pile labels, not fifty-two
+   * cards.
+   *
+   * This is reactive where `game` deliberately is not, and it does not
+   * contradict docs/07: the rule is that the card layer is never re-rendered
+   * by Svelte, and this re-renders no cards. It is thirteen `aria-label`
+   * attributes, and they have to be right after every move because they are
+   * the entire board as far as a screen reader is concerned.
+   */
+  let position: GameState = $state(game.state);
+
+  /**
+   * The roving focus, and what it is carrying. See keyboard.ts: thirteen
+   * positions, arrow keys between them, and a hand that stays put while the
+   * focus walks to wherever the card is going.
+   */
+  let focus: Focus = $state(FIRST_FOCUS);
+  let held: Grab | null = $state(null);
+  /** True while the focus ring is on a pile, which is when a selection is worth drawing. */
+  let boardFocused = $state(false);
+  /** The thirteen pile elements, in PILE_ORDER, so a focus change can move the real one. */
+  const pileEls: (HTMLElement | undefined)[] = new Array(PILE_ORDER.length);
+  /**
+   * Where each kind of pile starts in PILE_ORDER. The markup below is three
+   * separate pieces of grid and PILE_ORDER is one list, so these two have to
+   * agree; `test/game/keyboard.test.ts` is what says they do.
+   */
+  const STOCK_AT = 0;
+  const WASTE_AT = 1;
+  const FOUNDATION_AT = 2;
+  const TABLEAU_AT = FOUNDATION_AT + SUIT_COUNT;
+  /** A second press of `N` or `R` inside this window is the "yes" the menu asks for. */
+  let pendingCommand: "newDeal" | "replay" | null = null;
+
   let stats = $state(persist.stats());
   let daily = $state(persist.daily());
   let statsOpen = $state(false);
+  /** The `?` overlay. The keyboard model is the one part of the product that
+   * has to be told to somebody, because no part of the board suggests it. */
+  let helpOpen = $state(false);
   /** Today's daily, once a pool has arrived. `null` until then. */
   let dailyToday: number | null = $state(null);
   const dailyDone = $derived(daily.lastWon === dayKey(new Date()));
@@ -236,11 +327,18 @@
     moves = game.movesPlayed;
     canUndo = game.canUndo;
     canFinish = game.canAutoComplete;
+    // The pile labels, and a focus the new position can still honour: a column
+    // can empty and a run can be carried off under a selection that named it.
+    position = game.state;
+    focus = clampFocus(game.state, focus);
     if (game.isWon && !won) {
       won = true;
       // The clock stops at Stage 0, before anything has moved — see docs/06.
       clock.pause();
       elapsedMs = clock.elapsed;
+      // Assertive, and *here* rather than at the end of the cascade: nobody is
+      // made to sit through thirteen seconds of decoration to be told they won.
+      shouted = announceWin(elapsedMs, moves);
       keep();
       celebrate();
     }
@@ -320,15 +418,21 @@
 
     sync();
     save();
+    // The finishing cascade plays thirty moves in a second; narrating them
+    // would be a wall of speech ending in the one sentence that matters, which
+    // `sync` has already queued as the win.
+    if (!finishing) announce(announceMove(before, game.state, move));
     return true;
   }
 
   function undo(): void {
-    if (!game.undo()) return;
+    const undone = game.undo();
+    if (undone === null) return;
     layer?.clearHint();
     render("undo");
     sync();
     save();
+    announce(announceUndo(game.state, undone));
   }
 
   function newDeal(): void {
@@ -358,10 +462,13 @@
     if (won) return;
     const move = game.hint();
     if (move === null) {
-      say("No moves left — undo, or try a new deal.");
+      say(NO_MOVES);
       return;
     }
     layer?.hint(hintCards(game.state, move));
+    // Spelled out as well as pulsed: a hint that is only a glow on the board
+    // is a hint half the people it exists for cannot use.
+    announce(announceHint(game.state, move));
   }
 
   /**
@@ -391,10 +498,224 @@
     step();
   }
 
+  // ----------------------------------------------------------- the keyboard
+  //
+  // docs/08-accessibility.md's model, wired up. `keyboard.ts` decides what a
+  // key *meant*; everything below is what happens next, and the split is what
+  // lets a test play a whole game through the model with no browser in it.
+
+  /**
+   * Keys that belong to the board rather than to the page. They are handled
+   * only while the focus is on the board or nowhere at all — `Space` on the
+   * Undo button has to press Undo, and an arrow key while a sheet is open is
+   * the sheet's.
+   */
+  const BOARD_KEYS = new Set([
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+    " ",
+    "Enter",
+    "Escape",
+  ]);
+
+  function chorded(event: KeyboardEvent): boolean {
+    return event.ctrlKey || event.metaKey || event.altKey;
+  }
+
+  function boardHasFocus(): boolean {
+    const active = document.activeElement;
+    return (
+      active === null ||
+      active === document.body ||
+      boardEl?.contains(active) === true
+    );
+  }
+
+  function onKeyDown(event: KeyboardEvent): void {
+    // A modal sheet owns every key while it is open, including Escape, which
+    // is how it closes.
+    if (settingsOpen || statsOpen || helpOpen) return;
+    if (event.defaultPrevented) return;
+
+    // Stages 1 to 3 are one gesture with one meaning, and the keyboard's
+    // version of a tap anywhere is any key at all. Skipping a celebration has
+    // to be at least as easy as starting one — but a celebration is still not
+    // a reason to swallow Tab or somebody's Cmd+W.
+    if (celebrating) {
+      if (event.key === "Tab" || chorded(event)) return;
+      event.preventDefault();
+      skip();
+      return;
+    }
+
+    const board = BOARD_KEYS.has(event.key);
+    if (board && (won || !boardHasFocus())) return;
+
+    const action = interpret(event, game.state, focus, held);
+    if (action === null) return;
+    event.preventDefault();
+    perform(action);
+  }
+
+  function perform(action: Action): void {
+    // Any key that does something is an answer of "no" to a question asked by
+    // the last one, except the second press that answers it "yes".
+    if (action.kind !== "command") pendingCommand = null;
+
+    switch (action.kind) {
+      case "focus":
+        // Moving the real focus is the announcement: the pile's label is its
+        // accessible name, so a screen reader reads the whole pile on arrival
+        // and the live region stays quiet.
+        focus = action.focus;
+        pileEls[action.focus.at]?.focus();
+        showSelection();
+        break;
+
+      case "select":
+        focus = action.focus;
+        showSelection();
+        announce(announceSelection(focusedCards(game.state, focus)));
+        break;
+
+      case "pick":
+        held = action.held;
+        showSelection();
+        announce(announcePickup(action.held.cards));
+        break;
+
+      case "release":
+        held = null;
+        showSelection();
+        announce(PUT_BACK);
+        break;
+
+      case "play":
+        // `play` announces the move itself, and is the one thing that can
+        // still refuse it — the engine has the last word on every move.
+        if (play(action.move, "move")) held = null;
+        else announce(NOT_LEGAL);
+        showSelection();
+        break;
+
+      case "refuse":
+        if (action.card !== null) layer?.shake(action.card);
+        announce(NOT_LEGAL);
+        break;
+
+      case "command":
+        command(action.name);
+        break;
+    }
+  }
+
+  /**
+   * The selection, drawn. Only while the focus ring is actually on the board —
+   * a player who has never touched the keyboard should not find a highlight
+   * sitting on the stock — and always while something is in hand, because a
+   * card you are carrying has to be visible wherever the focus has gone.
+   */
+  /**
+   * A pile taking focus, however it got it — an arrow key, a Tab into the
+   * board, or a screen reader moving its cursor. Arriving somewhere new takes
+   * the top card; arriving where we already were leaves a reach that a `↑` put
+   * there, which is what stops `perform` undoing its own selection when it moves
+   * the real focus.
+   */
+  function onPileFocus(at: number): void {
+    boardFocused = true;
+    if (focus.at !== at) focus = clampFocus(game.state, { at, reach: 1 });
+    showSelection();
+  }
+
+  /** Leaving the board altogether; moving between its piles is not leaving. */
+  function onBoardFocusOut(event: FocusEvent): void {
+    if (boardEl?.contains(event.relatedTarget as Node | null) === true) return;
+    boardFocused = false;
+    showSelection();
+  }
+
+  /**
+   * A pile activated by something other than a pointer — which in practice
+   * means a screen reader’s activate gesture. It is deliberately the same
+   * thing the space bar does: on a phone with VoiceOver there are no arrow
+   * keys, and this is the whole of how the board is played there. Swipe to a
+   * pile, double-tap to pick up, swipe, double-tap to put down.
+   *
+   * `detail` is what tells that gesture from a real one, and the distinction
+   * has to be exact: every press on the board is *already* being handled by
+   * `Drag` a layer above, so a click that got through here would play the
+   * tapped move twice. A click synthesised by an assistive technology carries
+   * a detail of zero; a click that came from a finger or a mouse carries the
+   * click count. A screen reader that taps by coordinate instead lands on the
+   * board and gets tap-to-auto-move, which is the right answer for it too.
+   */
+  function activatePile(event: MouseEvent, at: number): void {
+    if (event.detail !== 0) return;
+    if (won || celebrating) return;
+    if (focus.at !== at) focus = clampFocus(game.state, { at, reach: 1 });
+    const action = interpret({ key: " " }, game.state, focus, held);
+    if (action !== null) perform(action);
+  }
+
+  function showSelection(): void {
+    if (held !== null) {
+      layer?.select(held.cards, true);
+      return;
+    }
+    layer?.select(boardFocused ? focusedCards(game.state, focus) : []);
+  }
+
+  /**
+   * The keys that are not about the board. `N` and `R` throw a game away, so
+   * past the same number of moves the menu asks at, they ask too — as a second
+   * press rather than a dialog, which is the keyboard's way of saying it.
+   */
+  function command(name: Command): void {
+    const asking = pendingCommand;
+    pendingCommand = null;
+
+    switch (name) {
+      case "undo":
+        undo();
+        break;
+      case "hint":
+        hint();
+        break;
+      case "finish":
+        if (canFinish) finish();
+        break;
+      case "help":
+        helpOpen = true;
+        break;
+      case "newDeal":
+        if (asking === "newDeal" || won || moves < CONFIRM_MOVES) newDeal();
+        else {
+          pendingCommand = "newDeal";
+          say(CONFIRM_NEW);
+        }
+        break;
+      case "replay":
+        if (asking === "replay" || won || moves < CONFIRM_MOVES) replay();
+        else {
+          pendingCommand = "replay";
+          say(CONFIRM_REPLAY);
+        }
+        break;
+    }
+  }
+
   function say(text: string): void {
     notice = text;
     clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(() => (notice = ""), NOTICE_MS);
+    noticeTimer = setTimeout(() => {
+      notice = "";
+      // A question that has left the screen is no longer being asked, so the
+      // next N is a fresh one rather than the answer to a forgotten prompt.
+      pendingCommand = null;
+    }, NOTICE_MS);
   }
 
   /**
@@ -423,6 +744,11 @@
     layer?.clearHint();
     notice = "";
     record = null;
+    // A new deal is a new board: nothing is in hand, and the focus goes back
+    // to the stock, which is where a game starts.
+    held = null;
+    focus = FIRST_FOCUS;
+    pendingCommand = null;
     // Race yourself: the time to beat on this deal, if you have beaten it.
     bestMs = persist.record(game.seed, game.drawCount)?.bestTimeMs ?? null;
     // Every card back on the stock, ready to be dealt out of it again.
@@ -620,6 +946,7 @@
       cards.render(displayed(), "instant");
     };
     relayout();
+    showSelection();
     const observer = new ResizeObserver(relayout);
     observer.observe(board);
 
@@ -648,6 +975,17 @@
       sequence = null;
       if (layer === cards) layer = null;
     };
+  });
+
+  /**
+   * One keydown listener for the whole product, on the document rather than on
+   * the board: `Z` has to undo while the focus is still on the Undo button, and
+   * `H` has to hint from wherever you are. Which keys are the board’s and which
+   * are the page’s is `onKeyDown`’s to sort out.
+   */
+  $effect(() => {
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   });
 
   /** The audio graph outlives every deal, but not the island. */
@@ -764,37 +1102,82 @@
     place before any JS runs. They consume the measurements Layout.ts writes
     onto this element; they never work any out.
 
-    The screen-reader model — a labelled application region, named piles, a
-    live region — is milestone 6. Until it exists the board is marked
-    decorative throughout, which is honest; half a label is worse than none.
+    They are also the whole of the screen-reader model. Each one is a focusable
+    button whose accessible name is a complete description of the pile under
+    it, and moving the roving focus between them is what makes a screen reader
+    read the board — there is no second model to keep in step with this one.
+    The fifty-two cards stay decorative: a pile says everything about itself.
+
+    `inert` while the cascade runs, because for those thirteen seconds the labels
+    would be describing a board the cards have left. docs/08 asks for the
+    cascade to be hidden; `inert` hides it *and* takes the focus out of it, which
+    `aria-hidden` on its own would only lie about.
   -->
-  <div class="board" bind:this={boardEl}>
+  <div
+    class="board"
+    role="application"
+    aria-roledescription="Klondike solitaire board"
+    aria-describedby="board-help"
+    inert={celebrating}
+    bind:this={boardEl}
+    onfocusout={onBoardFocusOut}
+  >
     <!-- Stage 1's light sweep and Stage 3's radial wipe. Both are pure CSS,
          driven by `data-win` above; see src/styles/win.css. -->
     <div class="win-sweep" aria-hidden="true"></div>
     <div class="win-wipe" aria-hidden="true"></div>
 
-    <div class="row row-top" aria-hidden="true">
-      <div class="slot slot-stock">
-        <span class="slot-mark">↻</span>
-      </div>
-      <div class="slot slot-waste"></div>
-      <div class="slot-spacer"></div>
+    <div class="row row-top">
+      <button
+        class="slot slot-stock"
+        type="button"
+        tabindex={focus.at === STOCK_AT ? 0 : -1}
+        aria-label={pileLabel(position, PILE_ORDER[STOCK_AT])}
+        bind:this={pileEls[STOCK_AT]}
+        onfocus={() => onPileFocus(STOCK_AT)}
+        onclick={(event) => activatePile(event, STOCK_AT)}
+      >
+        <span class="slot-mark" aria-hidden="true">↻</span>
+      </button>
+      <button
+        class="slot slot-waste"
+        type="button"
+        tabindex={focus.at === WASTE_AT ? 0 : -1}
+        aria-label={pileLabel(position, PILE_ORDER[WASTE_AT])}
+        bind:this={pileEls[WASTE_AT]}
+        onfocus={() => onPileFocus(WASTE_AT)}
+        onclick={(event) => activatePile(event, WASTE_AT)}
+      ></button>
+      <div class="slot-spacer" aria-hidden="true"></div>
       <!-- The foundations pulse ♠ ♥ ♦ ♣ in turn at Stage 1, and the stagger
            is the same interval WinSequence gives the cards on top of them. -->
       {#each FOUNDATION_ORDER as suit, index (suit)}
-        <div
+        <button
           class="slot slot-foundation"
+          type="button"
           style="--pulse-delay: {index * PULSE_GAP_MS}ms"
+          tabindex={focus.at === FOUNDATION_AT + index ? 0 : -1}
+          aria-label={pileLabel(position, PILE_ORDER[FOUNDATION_AT + index])}
+          bind:this={pileEls[FOUNDATION_AT + index]}
+          onfocus={() => onPileFocus(FOUNDATION_AT + index)}
+          onclick={(event) => activatePile(event, FOUNDATION_AT + index)}
         >
-          <span class="slot-mark">{SUITS[suit]}</span>
-        </div>
+          <span class="slot-mark" aria-hidden="true">{SUITS[suit]}</span>
+        </button>
       {/each}
     </div>
 
-    <div class="row row-tableau" aria-hidden="true">
+    <div class="row row-tableau">
       {#each [0, 1, 2, 3, 4, 5, 6] as column (column)}
-        <div class="slot slot-column"></div>
+        <button
+          class="slot slot-column"
+          type="button"
+          tabindex={focus.at === TABLEAU_AT + column ? 0 : -1}
+          aria-label={pileLabel(position, PILE_ORDER[TABLEAU_AT + column])}
+          bind:this={pileEls[TABLEAU_AT + column]}
+          onfocus={() => onPileFocus(TABLEAU_AT + column)}
+          onclick={(event) => activatePile(event, TABLEAU_AT + column)}
+        ></button>
       {/each}
     </div>
 
@@ -923,4 +1306,20 @@
   {#if statsOpen}
     <StatsSheet {stats} {daily} onClose={() => (statsOpen = false)} />
   {/if}
+
+  <!-- What `?` opens, and the only place the key model is written down. -->
+  {#if helpOpen}
+    <ShortcutSheet onClose={() => (helpOpen = false)} />
+  {/if}
+
+  <!--
+    The live regions, and the board’s description. All four are outside the
+    board on purpose: the board goes `inert` for the length of the cascade, and a
+    live region inside it would be silenced at exactly the moment it has the
+    most important thing in the game to say.
+  -->
+  <p class="sr-only" aria-live="polite" aria-atomic="true">{politeA}</p>
+  <p class="sr-only" aria-live="polite" aria-atomic="true">{politeB}</p>
+  <p class="sr-only" aria-live="assertive" aria-atomic="true">{shouted}</p>
+  <p id="board-help" class="sr-only">{BOARD_HELP}</p>
 </div>

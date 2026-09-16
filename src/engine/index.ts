@@ -119,7 +119,12 @@ export interface Game {
    */
   readonly movesPlayed: number;
   play(move: Move): boolean;
-  undo(): boolean;
+  /**
+   * Take back the last move, and say which one it was. The UI has to name it
+   * out loud — "jack of hearts back to column two" — and recovering that by
+   * diffing two positions is strictly harder than not throwing it away.
+   */
+  undo(): Move | null;
   /** Replay this deal: back to the deal, moves and history reset. */
   restart(): void;
   hint(): Move | null;
@@ -184,10 +189,9 @@ class KlondikeGame implements Game {
     return true;
   }
 
-  undo(): boolean {
-    if (!undo(this.#history)) return false;
-    this.#played.pop();
-    return true;
+  undo(): Move | null {
+    if (!undo(this.#history)) return null;
+    return this.#played.pop() ?? null;
   }
 
   restart(): void {

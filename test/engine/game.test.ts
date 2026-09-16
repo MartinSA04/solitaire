@@ -100,7 +100,9 @@ describe("saving and restoring", () => {
     const restored = deserialise(game.serialise());
     assert.ok(restored);
     for (let step = 0; step < 30; step++) {
-      assert.equal(restored.undo(), game.undo(), `undo ${step}`);
+      // Both hand back the move they took, which a restored game only knows
+      // because it replayed the same list to get here.
+      assert.deepEqual(restored.undo(), game.undo(), `undo ${step}`);
       assert.deepEqual(restored.state, game.state);
     }
     assert.equal(restored.canUndo, false);

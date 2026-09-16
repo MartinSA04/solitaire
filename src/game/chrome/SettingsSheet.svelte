@@ -1,3 +1,16 @@
+<script module lang="ts">
+  /**
+   * Long enough to be a game worth keeping. docs/02-game-spec.md: a new deal
+   * or a replay is one tap under about five moves and asks first over it —
+   * which is a modal in direct response to something just pressed, and so the
+   * one kind docs/01 allows.
+   *
+   * Exported because the keyboard asks the same question with a second press
+   * of the same key — see Game.svelte. One number, two ways of putting it.
+   */
+  export const CONFIRM_MOVES = 5;
+</script>
+
 <script lang="ts">
   import type { DrawCount } from "../../engine/index.ts";
   import {
@@ -89,14 +102,6 @@
   };
 
   const DRAWS = [1, 3] as const;
-
-  /**
-   * Long enough to be a game worth keeping. docs/02-game-spec.md: a new deal
-   * or a replay is one tap under about five moves and asks first over it —
-   * which is a modal in direct response to something just pressed, and so the
-   * one kind docs/01 allows.
-   */
-  const CONFIRM_MOVES = 5;
 
   /** What a press is waiting on "yes, end this game" for. */
   type Pending =
