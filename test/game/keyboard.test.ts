@@ -10,13 +10,12 @@ import {
   isWon,
   newGame,
 } from "../../src/engine/index.ts";
-import { FOUNDATION_ORDER } from "../../src/game/Layout.ts";
+import { FOUNDATION_ORDER, PILE_ORDER } from "../../src/game/Layout.ts";
 import {
   type Action,
   type Focus,
   type Press,
   FIRST_FOCUS,
-  PILE_ORDER,
   clampFocus,
   focusedCards,
   interpret,

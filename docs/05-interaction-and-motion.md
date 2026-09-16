@@ -73,9 +73,21 @@ solitaire game. The whole board is always on screen.
 
 ### Phone, landscape
 
-The tableau gets short and wide. Cards grow to fill the width, the fan offsets
-shrink, and the bars collapse into a single narrow left rail. Supported, not
-optimised — nobody plays solitaire in landscape.
+The tableau gets short and wide. Cards grow to fill the width and the fan
+offsets shrink, both of which the one layout engine already does — landscape
+needed nothing from `Layout.ts`.
+
+What it needed was the chrome. This was drawn as "a single narrow left rail",
+and what shipped is the **desktop chrome**: one bar at the top, controls at the
+right of it. The rail would give slightly larger cards (it costs width, which
+landscape has, rather than height, which it has not) at the price of a third
+chrome arrangement to build, test and keep working, for the one orientation
+this section opens by saying nobody uses. One bar gets most of the height back
+for none of that, and it is a layout the product already had.
+
+So the chrome collapses on `(min-width: 48rem) or (max-height: 34rem)` — wide,
+*or short*. Everything else about landscape is what the engine was already
+doing. Supported, not optimised.
 
 ### Tablet and desktop
 
@@ -87,8 +99,21 @@ nice table.
 Desktop adds:
 
 - Controls move to the top bar (there is no thumb zone), bottom bar disappears.
+  The controls *move* rather than being rendered twice — two sets of the same
+  three buttons would be two sets in the accessibility tree, and the wrong one
+  would rot.
 - Hover states: a card under the cursor lifts 2px; legal targets highlight while
-  dragging.
+  dragging. The lift is on **the cards a click would move**, not the one under
+  the pixel: on a fanned column the visible strip of a buried card is nineteen
+  pixels, and lifting it alone would promise something a click does not do. On
+  a board where nothing is a click target and hit-testing is arithmetic, this
+  is the only thing that tells you the game agrees with you about what you are
+  pointing at.
+- The legal-target highlight belongs to whatever is carrying the cards, which
+  means the space bar gets it too — see [08](08-accessibility.md). It is a
+  lighter fill and a ring, never a hue, and it is computed once when the pickup
+  starts: what a pile will accept is a fact about the position, and the
+  position does not change while a card is in the air.
 - Keyboard shortcuts — see [08 — Accessibility](08-accessibility.md).
 - A wider settings sheet as a centred dialog rather than a bottom sheet.
 
@@ -96,7 +121,13 @@ Desktop adds:
 
 One layout engine, driven by a single computed `--card-w`. Everything else —
 gaps, fans, radii, type scale — is a multiple of it, in a `calc()`. There are no
-breakpoints for the board, only a breakpoint for where the chrome goes (`48rem`).
+breakpoints for the board, only one for where the chrome goes: `48rem` wide, or
+`34rem` short, which is the same arrangement arrived at from the other side.
+
+The board is anchored to the top of whatever space it is given, and stays there.
+Columns grow downward, so an anchored top row is a top row that never moves
+while you play; the room left underneath on a tall screen is table, which is
+what the [cascade](06-win-sequence.md) falls through at the end.
 
 Card positions are **absolute, in a single positioned container, set via
 `transform: translate3d()`**. Not flex, not grid. This is the load-bearing decision

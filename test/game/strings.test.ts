@@ -13,8 +13,7 @@ import {
   deal,
   legalMoves,
 } from "../../src/engine/index.ts";
-import { type PileRef } from "../../src/game/Layout.ts";
-import { PILE_ORDER } from "../../src/game/keyboard.ts";
+import { type PileRef, PILE_ORDER } from "../../src/game/Layout.ts";
 import {
   BOARD_HELP,
   SHORTCUTS,

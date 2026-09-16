@@ -2,8 +2,13 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { type GameState } from "../../src/engine/index.ts";
-import { type Hit, type PileRef } from "../../src/game/Layout.ts";
-import { type Grab, dropMove, grab } from "../../src/game/pickup.ts";
+import { type Hit, type PileRef, PILE_ORDER } from "../../src/game/Layout.ts";
+import {
+  type Grab,
+  dropMove,
+  grab,
+  legalTargets,
+} from "../../src/game/pickup.ts";
 import { makeState, showCards } from "../engine/helpers.ts";
 
 function at(state: GameState, ref: PileRef, index: number): Hit {
@@ -63,10 +68,11 @@ describe("picking a stack up", () => {
   });
 });
 
-describe("putting a stack down", () => {
-  const held = (state: GameState, ref: PileRef, index: number): Grab =>
-    grab(state, at(state, ref, index)) as Grab;
+/** Whatever `ref`/`index` names, in hand — every drop test starts by picking something up. */
+const held = (state: GameState, ref: PileRef, index: number): Grab =>
+  grab(state, at(state, ref, index)) as Grab;
 
+describe("putting a stack down", () => {
   it("plays the waste onto a column", () => {
     const state = makeState({ waste: "5♠", tableau: ["6♥"] });
     assert.deepEqual(
@@ -138,5 +144,71 @@ describe("putting a stack down", () => {
     const stack = held(state, { pile: "tableau", column: 0 }, 0);
     assert.equal(dropMove(state, stack, { pile: "stock" }), null);
     assert.equal(dropMove(state, stack, { pile: "waste" }), null);
+  });
+});
+
+describe("where a pickup could go", () => {
+  /** The thirteen flags back as pile names, which is what the assertions read as. */
+  function targetNames(state: GameState, stack: Grab | null): string[] {
+    return legalTargets(state, stack)
+      .map((ok, index) => (ok ? pileName(PILE_ORDER[index] as PileRef) : null))
+      .filter((name): name is string => name !== null);
+  }
+
+  function pileName(ref: PileRef): string {
+    switch (ref.pile) {
+      case "foundation":
+        return `foundation ${ref.suit}`;
+      case "tableau":
+        return `column ${ref.column}`;
+      default:
+        return ref.pile;
+    }
+  }
+
+  it("is nothing at all when nothing is in hand", () => {
+    const state = makeState({ tableau: ["K♠"], waste: "A♦" });
+    assert.deepEqual(targetNames(state, null), []);
+    assert.equal(legalTargets(state, null).length, PILE_ORDER.length);
+  });
+
+  it("is one foundation for an ace, and nowhere else", () => {
+    const state = makeState({ waste: "A♦", tableau: ["K♠", "", "5♥"] });
+    assert.deepEqual(targetNames(state, held(state, { pile: "waste" }, 0)), [
+      "foundation 1",
+    ]);
+  });
+
+  it("is every column that would take the card, and no others", () => {
+    // A black six goes on either red seven — not on the eight, and not into
+    // the empty column, which only a King may have. docs/02.
+    const state = makeState({
+      waste: "6♠",
+      tableau: ["7♥", "", "7♦", "8♠"],
+    });
+    assert.deepEqual(targetNames(state, held(state, { pile: "waste" }, 0)), [
+      "column 0",
+      "column 2",
+    ]);
+  });
+
+  it("is only the holes for a king, and never the stock or the waste", () => {
+    const state = makeState({ waste: "K♠", tableau: ["7♥", ""] });
+    const stack = held(state, { pile: "waste" }, 0);
+    assert.deepEqual(targetNames(state, stack), [
+      "column 1",
+      "column 2",
+      "column 3",
+      "column 4",
+      "column 5",
+      "column 6",
+    ]);
+  });
+
+  it("is nowhere for a run a foundation could otherwise have taken", () => {
+    // A foundation takes one card at a time; a run of two has only columns.
+    const state = makeState({ tableau: ["9♠ 8♥", "T♥", "T♦"] });
+    const run = held(state, { pile: "tableau", column: 0 }, 0);
+    assert.deepEqual(targetNames(state, run), ["column 1", "column 2"]);
   });
 });

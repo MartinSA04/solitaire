@@ -6,7 +6,7 @@ import {
   isLegal,
   suitOf,
 } from "../engine/index.ts";
-import { type Hit, type PileRef, pileCards } from "./Layout.ts";
+import { type Hit, type PileRef, PILE_ORDER, pileCards } from "./Layout.ts";
 
 /**
  * What a drag picks up, and what putting it down means. Pure, so the pointer
@@ -54,6 +54,25 @@ export function dropMove(
 ): Move | null {
   const move = intent(held, onto);
   return move !== null && isLegal(state, move) ? move : null;
+}
+
+/**
+ * Which of the thirteen piles would take what is in hand, aligned with
+ * {@link PILE_ORDER}.
+ *
+ * Asked once when a pickup starts rather than on every frame of the drag: what
+ * a pile will accept is a fact about the position, and the position does not
+ * change while a card is in the air. It is the same question whether the card
+ * was picked up by a finger or by the space bar, which is why it lives here
+ * with the rest of picking things up rather than in either of them.
+ */
+export function legalTargets(
+  state: GameState,
+  held: Grab | null,
+): readonly boolean[] {
+  return PILE_ORDER.map(
+    (ref) => held !== null && dropMove(state, held, ref) !== null,
+  );
 }
 
 function intent(held: Grab, onto: PileRef): Move | null {

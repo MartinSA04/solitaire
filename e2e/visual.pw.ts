@@ -76,6 +76,9 @@ const DECKS = [
 const SIZES = [
   { name: "tablet", width: 768, height: 1024 },
   { name: "desktop", width: 1440, height: 900 },
+  // Supported, not optimised — and the one shape where the chrome collapses
+  // for a reason other than width. See docs/05.
+  { name: "landscape", width: 844, height: 390 },
 ] as const;
 
 function choose(page: Page, group: string, label: string) {

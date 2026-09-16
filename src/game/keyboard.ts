@@ -3,15 +3,15 @@ import {
   type Column,
   type GameState,
   type Move,
-  TABLEAU_COLUMNS,
   faceUpCount,
   isLegal,
 } from "../engine/index.ts";
 import {
-  FOUNDATION_ORDER,
   type Hit,
   type PileRef,
+  PILE_ORDER,
   pileCards,
+  samePile,
 } from "./Layout.ts";
 import { autoMove } from "./automove.ts";
 import { type Grab, dropMove, grab } from "./pickup.ts";
@@ -36,20 +36,11 @@ import { type Grab, dropMove, grab } from "./pickup.ts";
  */
 
 /**
- * The thirteen positions, in the fixed order docs/08 gives them — which is
- * also reading order on the board, so "right" on the keyboard is right on the
- * table.
+ * The thirteen positions are {@link PILE_ORDER}, which lives in Layout.ts
+ * because the board's structure is the board's — the keyboard walks that list,
+ * the thirteen slot elements are rendered from it, and hit-testing sweeps it.
+ * Three copies of one list would be three things to keep in step.
  */
-export const PILE_ORDER: readonly PileRef[] = Object.freeze([
-  { pile: "stock" },
-  { pile: "waste" },
-  ...FOUNDATION_ORDER.map((suit): PileRef => ({ pile: "foundation", suit })),
-  ...Array.from({ length: TABLEAU_COLUMNS }, (_, column): PileRef => ({
-    pile: "tableau",
-    column,
-  })),
-]);
-
 export interface Focus {
   /** Index into {@link PILE_ORDER}. */
   at: number;
@@ -298,14 +289,4 @@ function sendHome(state: GameState, focus: Focus): Action | null {
 
   if (move === null || !isLegal(state, move)) return { kind: "refuse", card };
   return { kind: "play", move };
-}
-
-export function samePile(a: PileRef, b: PileRef): boolean {
-  if (a.pile !== b.pile) return false;
-  if (a.pile === "tableau" && b.pile === "tableau")
-    return a.column === b.column;
-  if (a.pile === "foundation" && b.pile === "foundation") {
-    return a.suit === b.suit;
-  }
-  return true;
 }

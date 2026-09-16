@@ -21,7 +21,7 @@
   import { Sound } from "./Audio.ts";
   import { CardLayer, type Motion } from "./CardLayer.ts";
   import { Drag, type DragHost } from "./Drag.ts";
-  import { FOUNDATION_ORDER, metricsFor } from "./Layout.ts";
+  import { FOUNDATION_ORDER, PILE_ORDER, metricsFor } from "./Layout.ts";
   import {
     dealOrder,
     drawnCards,
@@ -48,12 +48,11 @@
     type Command,
     type Focus,
     FIRST_FOCUS,
-    PILE_ORDER,
     clampFocus,
     focusedCards,
     interpret,
   } from "./keyboard.ts";
-  import { type Grab } from "./pickup.ts";
+  import { type Grab, legalTargets } from "./pickup.ts";
   import {
     BOARD_HELP,
     CONFIRM_NEW,
@@ -229,6 +228,23 @@
   const TABLEAU_AT = FOUNDATION_AT + SUIT_COUNT;
   /** A second press of `N` or `R` inside this window is the "yes" the menu asks for. */
   let pendingCommand: "newDeal" | "replay" | null = null;
+
+  /**
+   * What a finger or a mouse has picked up, which is deliberately not the same
+   * variable as what the keyboard has: a drag lasts as long as a button is
+   * down, and the keyboard's hand outlives whole sequences of arrow keys. Only
+   * one of the two is ever full.
+   */
+  let dragging: Grab | null = $state(null);
+
+  /**
+   * The piles that would take what is in hand, whichever hand it is in.
+   *
+   * Computed once when a pickup starts rather than on every frame of the drag:
+   * what a pile will accept is a fact about the position, and the position does
+   * not change while a card is in the air.
+   */
+  const targets = $derived(legalTargets(position, held ?? dragging));
 
   let stats = $state(persist.stats());
   let daily = $state(persist.daily());
@@ -932,6 +948,10 @@
         if (card !== null) cards.shake(card);
       },
       peek: (column) => cards.peek(column, displayed()),
+      hover: (over) => cards.hover(won ? [] : over),
+      carrying: (grabbed) => {
+        dragging = grabbed;
+      },
     };
     const drag = new Drag(board, cards, host);
 
@@ -1137,6 +1157,7 @@
       <button
         class="slot slot-stock"
         type="button"
+        class:is-legal={targets[STOCK_AT]}
         tabindex={focus.at === STOCK_AT ? 0 : -1}
         aria-label={pileLabel(position, PILE_ORDER[STOCK_AT])}
         bind:this={pileEls[STOCK_AT]}
@@ -1148,6 +1169,7 @@
       <button
         class="slot slot-waste"
         type="button"
+        class:is-legal={targets[WASTE_AT]}
         tabindex={focus.at === WASTE_AT ? 0 : -1}
         aria-label={pileLabel(position, PILE_ORDER[WASTE_AT])}
         bind:this={pileEls[WASTE_AT]}
@@ -1162,6 +1184,7 @@
           class="slot slot-foundation"
           type="button"
           style="--pulse-delay: {index * PULSE_GAP_MS}ms"
+          class:is-legal={targets[FOUNDATION_AT + index]}
           tabindex={focus.at === FOUNDATION_AT + index ? 0 : -1}
           aria-label={pileLabel(position, PILE_ORDER[FOUNDATION_AT + index])}
           bind:this={pileEls[FOUNDATION_AT + index]}
@@ -1178,6 +1201,7 @@
         <button
           class="slot slot-column"
           type="button"
+          class:is-legal={targets[TABLEAU_AT + column]}
           tabindex={focus.at === TABLEAU_AT + column ? 0 : -1}
           aria-label={pileLabel(position, PILE_ORDER[TABLEAU_AT + column])}
           bind:this={pileEls[TABLEAU_AT + column]}

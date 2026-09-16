@@ -1,8 +1,7 @@
 import { type Page, expect, test } from "@playwright/test";
 
 import { type Move, type Suit, DIAMONDS, deal } from "../src/engine/index.ts";
-import { FOUNDATION_ORDER } from "../src/game/Layout.ts";
-import { PILE_ORDER } from "../src/game/keyboard.ts";
+import { FOUNDATION_ORDER, PILE_ORDER } from "../src/game/Layout.ts";
 import { playGreedily } from "../test/engine/helpers.ts";
 
 /**

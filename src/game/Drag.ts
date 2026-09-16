@@ -42,6 +42,16 @@ export interface DragHost {
   illegal(card: Card | null): void;
   /** Fan a column out under a long press, or let it back down with `null`. */
   peek(column: number | null): void;
+  /**
+   * The cards a click here would move, for the 2px lift docs/05 gives a
+   * desktop. Never called on a device without a hovering pointer.
+   */
+  hover(cards: readonly Card[]): void;
+  /**
+   * What is in hand, as it is picked up and put down. The board draws the piles
+   * that would take it; see `legalTargets` in pickup.ts.
+   */
+  carrying(held: Grab | null): void;
 }
 
 interface Press {
@@ -60,20 +70,38 @@ interface Press {
   peeked: boolean;
 }
 
+/**
+ * Does this device have a pointer that hovers? A finger does not, and a touch
+ * device that paid for hover tracking would be doing a hit-test per frame of
+ * every scroll for a lift nobody can see.
+ */
+function canHover(): boolean {
+  return (
+    typeof matchMedia !== "undefined" &&
+    matchMedia("(hover: hover) and (pointer: fine)").matches
+  );
+}
+
 export class Drag {
   readonly #target: HTMLElement;
   readonly #layer: CardLayer;
   readonly #host: DragHost;
+  readonly #hovers: boolean;
   #press: Press | null = null;
+  /** The last mouse position, and the frame that will do something about it. */
+  #at: { x: number; y: number } | null = null;
+  #frame = 0;
 
   constructor(target: HTMLElement, layer: CardLayer, host: DragHost) {
     this.#target = target;
     this.#layer = layer;
     this.#host = host;
+    this.#hovers = canHover();
     target.addEventListener("pointerdown", this.#onDown);
     target.addEventListener("pointermove", this.#onMove);
     target.addEventListener("pointerup", this.#onUp);
     target.addEventListener("pointercancel", this.#onCancel);
+    if (this.#hovers) target.addEventListener("pointerleave", this.#onLeave);
   }
 
   destroy(): void {
@@ -81,8 +109,52 @@ export class Drag {
     this.#target.removeEventListener("pointermove", this.#onMove);
     this.#target.removeEventListener("pointerup", this.#onUp);
     this.#target.removeEventListener("pointercancel", this.#onCancel);
+    this.#target.removeEventListener("pointerleave", this.#onLeave);
+    cancelAnimationFrame(this.#frame);
+    this.#frame = 0;
     this.#release(this.#press);
     this.#press = null;
+  }
+
+  /**
+   * The hover lift, recomputed at most once a frame.
+   *
+   * A hit-test walks the thirteen piles against fifty-two placements, which is
+   * nothing next to a frame of compositing but is worth doing once per frame
+   * rather than once per pointer event — a 120Hz mouse delivers twice as many
+   * of those as there are frames to draw.
+   */
+  #onLeave = (): void => {
+    this.#at = null;
+    this.#host.hover([]);
+  };
+
+  #scheduleHover(event: PointerEvent): void {
+    this.#at = { x: event.clientX, y: event.clientY };
+    if (this.#frame !== 0) return;
+    this.#frame = requestAnimationFrame(() => {
+      this.#frame = 0;
+      const at = this.#at;
+      const m = this.#host.metrics();
+      if (at === null || m === null || this.#press !== null) return;
+      const point = this.#layer.pointOf({ clientX: at.x, clientY: at.y });
+      const hit = hitTest(m, this.#host.state(), point.x, point.y);
+      this.#host.hover(hit === null ? [] : this.#liftable(hit));
+    });
+  }
+
+  /**
+   * What a click on this hit would actually move: the run a drag would take,
+   * or the top of the stock, which has a click of its own. A face-down card in
+   * a column moves nothing, and nothing is what it should look like.
+   */
+  #liftable(hit: Hit): readonly Card[] {
+    const state = this.#host.state();
+    if (hit.ref.pile === "stock") {
+      const top = state.stock[state.stock.length - 1];
+      return top === undefined ? [] : [top];
+    }
+    return grab(state, hit)?.cards ?? [];
   }
 
   #onDown = (event: PointerEvent): void => {
@@ -128,7 +200,15 @@ export class Drag {
 
   #onMove = (event: PointerEvent): void => {
     const press = this.#press;
-    if (press === null || press.pointerId !== event.pointerId) return;
+    if (press === null) {
+      // No button down: this is a cursor crossing the table, and all it does is
+      // lift whatever it is over.
+      if (this.#hovers && event.pointerType === "mouse") {
+        this.#scheduleHover(event);
+      }
+      return;
+    }
+    if (press.pointerId !== event.pointerId) return;
 
     const dx = event.clientX - press.startX;
     const dy = event.clientY - press.startY;
@@ -148,7 +228,14 @@ export class Drag {
       // The stock and face-down cards have no drag; the gesture is now neither
       // a tap nor a drag, and releasing does nothing.
       press.held = grab(this.#host.state(), press.hit);
-      if (press.held !== null) this.#layer.beginDrag(press.held.cards);
+      if (press.held !== null) {
+        this.#layer.beginDrag(press.held.cards);
+        // A card is off the table and in the air: the piles that would take it
+        // are worth showing, and the one it came from is no longer under the
+        // cursor to be lifted.
+        this.#host.hover([]);
+        this.#host.carrying(press.held);
+      }
     }
 
     if (press.held === null) return;
@@ -171,6 +258,7 @@ export class Drag {
     // nothing else. Without this, every peek would also play an auto-move.
     const peeked = press.peeked;
     this.#release(press);
+    this.#host.carrying(null);
     if (peeked) return;
 
     if (press.held !== null) {
@@ -189,6 +277,7 @@ export class Drag {
     if (press === null || press.pointerId !== event.pointerId) return;
     this.#press = null;
     this.#release(press);
+    this.#host.carrying(null);
     if (press.held !== null) this.#layer.returnHome();
   };
 

@@ -99,6 +99,7 @@ export class CardLayer {
   #surrendered = false;
   #hinted: Card[] = [];
   #selected: Card[] = [];
+  #hovered: Card[] = [];
 
   /**
    * `reducedMotion` zeroes the staggers. The durations take care of
@@ -402,6 +403,30 @@ export class CardLayer {
   }
 
   /**
+   * What is under the cursor, lifted 2px — docs/05's one desktop affordance.
+   *
+   * The cards it lifts are the cards a click would *move*, not the one pixel
+   * the pointer happens to be over: on a fanned column the visible strip of a
+   * buried card is nineteen pixels, and lifting it alone would promise
+   * something a click does not do.
+   *
+   * A pointer that cannot hover never calls this, so a phone pays nothing for
+   * it — see Drag.ts. The lift is `translate`, which composes with the
+   * `transform` that positions the card instead of fighting it: the same trick
+   * the illegal-move shake uses.
+   */
+  hover(cards: readonly Card[]): void {
+    if (sameCards(cards, this.#hovered)) return;
+    for (const card of this.#hovered) {
+      (this.#elements[card] as HTMLElement).classList.remove("is-hovered");
+    }
+    this.#hovered = [...cards];
+    for (const card of this.#hovered) {
+      (this.#elements[card] as HTMLElement).classList.add("is-hovered");
+    }
+  }
+
+  /**
    * A tap with nowhere to go. A shake is enough; a red flash reads as being
    * told off.
    */
@@ -435,6 +460,7 @@ export class CardLayer {
     clearTimeout(this.#flight);
     this.clearHint();
     this.clearSelection();
+    this.hover([]);
     this.#surrendered = true;
     this.#held = [];
     for (let card = 0; card < DECK_SIZE; card++) {
@@ -523,4 +549,9 @@ export class CardLayer {
 
 function translate(x: number, y: number): string {
   return `translate3d(${x}px, ${y}px, 0)`;
+}
+
+/** Two runs are the same run if they hold the same cards in the same order. */
+function sameCards(a: readonly Card[], b: readonly Card[]): boolean {
+  return a.length === b.length && a.every((card, i) => card === b[i]);
 }

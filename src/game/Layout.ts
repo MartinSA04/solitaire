@@ -373,17 +373,34 @@ export interface Hit {
   card: Card | null;
 }
 
-/** Every pile on the board, in no particular order — hit-testing sorts by z itself. */
-function allPiles(): PileRef[] {
-  return [
-    { pile: "stock" },
-    { pile: "waste" },
-    ...FOUNDATION_ORDER.map((suit): PileRef => ({ pile: "foundation", suit })),
-    ...Array.from({ length: TABLEAU_COLUMNS }, (_, column): PileRef => ({
-      pile: "tableau",
-      column,
-    })),
-  ];
+/**
+ * Every pile on the board: stock, waste, four foundations, seven columns.
+ *
+ * In reading order, which is also the order the keyboard's roving focus walks
+ * them in and the order the thirteen slot elements are rendered in — see
+ * docs/08-accessibility.md. Hit-testing does not care about the order (it sorts
+ * by z itself) but everything else does, and one list is what stops three
+ * copies of it disagreeing.
+ */
+export const PILE_ORDER: readonly PileRef[] = Object.freeze([
+  { pile: "stock" },
+  { pile: "waste" },
+  ...FOUNDATION_ORDER.map((suit): PileRef => ({ pile: "foundation", suit })),
+  ...Array.from({ length: TABLEAU_COLUMNS }, (_, column): PileRef => ({
+    pile: "tableau",
+    column,
+  })),
+]);
+
+/** Are these the same pile? Two refs to column four are not the same object. */
+export function samePile(a: PileRef, b: PileRef): boolean {
+  if (a.pile !== b.pile) return false;
+  if (a.pile === "tableau" && b.pile === "tableau")
+    return a.column === b.column;
+  if (a.pile === "foundation" && b.pile === "foundation") {
+    return a.suit === b.suit;
+  }
+  return true;
 }
 
 /**
@@ -404,7 +421,7 @@ export function hitTest(
   y: number,
 ): Hit | null {
   const placements = placeAll(m, state);
-  const piles = allPiles();
+  const piles = PILE_ORDER;
 
   let best: Hit | null = null;
   let bestZ = -1;
@@ -471,7 +488,7 @@ export function dropTarget(
   let best: PileRef | null = null;
   let bestArea = 0;
 
-  for (const ref of allPiles()) {
+  for (const ref of PILE_ORDER) {
     const origin = pileOrigin(m, ref);
     const height =
       ref.pile === "tableau"
