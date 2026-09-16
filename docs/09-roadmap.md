@@ -119,6 +119,32 @@ Minimal deck is legible at 46px (the flagged open question — if it isn't, a so
 deck becomes the phone default), and every licence obligation is honoured on a page
 a user can reach in two taps.
 
+Built: the three tables, our three decks and the three backs — all of them sets
+of custom properties rather than assets — the settings sheet that switches
+them, one sourced deck with its licence, `/credits`, and the visual suite.
+
+Two of the three halves of the bar are met and mechanised. The contrast table
+is asserted by `test/themes/`, which reads the stylesheets and composites the
+translucent tokens rather than trusting the values as written; writing it found
+three things the docs had wrong, and all three are now fixed in both places.
+The licence obligations are honoured on `/credits`, two taps from the game,
+generated from the same registry the card layer loads decks out of so that a
+deck cannot ship without appearing there.
+
+What the milestone *changed* is which decks exist. Classic, the doc's safe
+default, is 8MB of traced bitmaps and cannot ship at all; Traditional cannot be
+sourced from anywhere we can verify, and its licence has an exact obligation,
+so it waits. French ships, and at 339KB it is a download rather than a default
+— which is only acceptable because the default deck is ours and costs nothing.
+See [04](04-art-direction.md).
+
+Outstanding is the middle clause, and it is a judgement rather than a test: is
+the Minimal deck legible at 46px? The arithmetic is suggestive — its index is
+0.36 × the card width, about 17px at a 46px card, against the ~5px of the
+sourced deck's own index, which is why that one gets ours drawn over it — but
+"legible at arm's length with reading glasses off" is answered by holding a
+phone, not by a ratio. The visual baselines are where to look.
+
 ---
 
 ## M5 — Deals, persistence, stats

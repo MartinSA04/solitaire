@@ -246,7 +246,7 @@ Unchanged from the scaffolding — `astro build` to `dist/`, deployed by
 | Layout maths | `node --test` | `Layout.ts` is pure: viewport → measurements. Golden values for 360/390/768/1440px, and the "worst-case column fits" assertion. |
 | Persistence | `node --test` | Round-trip, corrupt input, missing keys, quota errors, `v1→v2` migration |
 | Interaction | Playwright | Deal, drag, tap-to-auto-move, undo, hint, stock recycle, resume-after-reload, deal-from-URL |
-| Visual | Playwright | Screenshot per theme × deck at three viewports. Catches theme-token regressions, which no unit test can. |
+| Visual | Playwright | `e2e/visual.pw.ts`: every deck we draw on every table, the sourced deck on two of them, and the board at tablet and desktop. Catches what a token test cannot — a missing back, an index on top of a pip, a texture tiling at the wrong scale |
 | Performance | Playwright traces | Frame times for deal, drag and the full win sequence on a throttled profile |
 | Site invariants | `node --test` | The existing three-file canonical-host check |
 
