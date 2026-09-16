@@ -17,7 +17,12 @@ import type { DrawCount } from "../engine/index.ts";
  */
 
 export type Theme = "warm" | "minimal" | "dark";
-export type Deck = "minimal" | "high-contrast" | "four-colour";
+/**
+ * Three we draw as tokens, and one we don't draw at all: "french" is a sprite
+ * of somebody else's art, fetched when it is chosen. See src/decks/sourced.ts
+ * for what that costs and why it is not a default.
+ */
+export type Deck = "minimal" | "high-contrast" | "four-colour" | "french";
 export type Back = "lattice" | "dots" | "solid";
 
 /** A deck or back chosen for you by the table, until you choose one yourself. */

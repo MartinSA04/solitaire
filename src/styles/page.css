@@ -1,0 +1,100 @@
+/*
+ * The pages that are not the game: /credits now, /how-to-play in milestone 6.
+ *
+ * They are ordinary documents — no island, no board — and they read the same
+ * theme tokens the table does, so whichever table the player picked is the
+ * paper this is printed on. That is why the theme attribute goes on <html>
+ * rather than on the game.
+ *
+ * These pages scroll, which the game deliberately never does.
+ */
+html:has(.page),
+html:has(.page) body {
+  height: auto;
+  overflow: auto;
+  background: var(--table-bg);
+  color: var(--chrome-fg);
+}
+
+.page {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 24px 20px calc(48px + env(safe-area-inset-bottom, 0px));
+  line-height: 1.55;
+}
+
+.page h1 {
+  font-size: 28px;
+  margin: 0 0 24px;
+}
+
+.page h2 {
+  font-size: 18px;
+  margin: 36px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--slot-stroke);
+}
+
+.page p {
+  margin: 0 0 12px;
+}
+
+.page a {
+  color: var(--accent);
+}
+
+.page a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.page-back {
+  margin-bottom: 20px;
+}
+
+.page-back a {
+  display: inline-block;
+  min-height: 44px;
+  line-height: 44px;
+  color: var(--chrome-fg-dim);
+}
+
+.credits {
+  margin: 0;
+}
+
+.credit {
+  padding: 14px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--chrome-fg) 12%, transparent);
+}
+
+.credit dt {
+  font-weight: 650;
+  margin-bottom: 6px;
+}
+
+.credit dd {
+  margin: 0;
+  color: var(--chrome-fg-dim);
+  font-size: 15px;
+}
+
+.credit-note {
+  font-style: italic;
+}
+
+/*
+ * A string a licence requires be displayed verbatim. It is set apart so that
+ * nobody tidies it up later: reflowing one of these is how an obligation stops
+ * being honoured.
+ */
+.credit-required {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--chrome-fg) 8%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  font-style: normal;
+  overflow-wrap: anywhere;
+}

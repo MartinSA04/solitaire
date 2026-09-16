@@ -25,7 +25,9 @@
   import { dealOrder, drawnCards, homedCard, predealt } from "./motion.ts";
   import { PULSE_GAP_MS, WinSequence, type WinStage } from "./WinSequence.ts";
   import { Stopwatch } from "./clock.ts";
-  import { DEFAULTS, type Settings, apply } from "./settings.ts";
+  import { type SourcedDeck, sourcedDeck } from "../decks/sourced.ts";
+  import { loadDeckArt } from "./DeckArt.ts";
+  import { DEFAULTS, type Settings, apply, resolve } from "./settings.ts";
   import BottomBar from "./chrome/BottomBar.svelte";
   import ResultPanel from "./chrome/ResultPanel.svelte";
   import SettingsSheet from "./chrome/SettingsSheet.svelte";
@@ -401,6 +403,11 @@
     const observer = new ResizeObserver(relayout);
     observer.observe(board);
 
+    // These elements are new — a deal is the one time they are rebuilt — so a
+    // sourced deck has to be pointed at again. The sprite is already in the
+    // document by now, so this is 52 attribute writes and no network.
+    void applyArt(chosenArt());
+
     if (flags.debug && !debugged) {
       debugged = true;
       dealFrame = requestAnimationFrame(() => {
@@ -441,6 +448,34 @@
   /** One master gain for the whole product, and it ramps rather than clicks. */
   $effect(() => {
     sound.muted = !settings.sound;
+  });
+
+  /**
+   * A deck of drawn art, fetched the first time it is asked for.
+   *
+   * The card layer is not reactive, so this does not re-render anything: it
+   * points 52 `<use>` elements at a sprite. The fetch is the only thing in the
+   * product that waits on the network after load, and nothing waits on *it* —
+   * the typographic deck stays on screen until the art is there to cross-fade
+   * to, and stays for good if the fetch fails.
+   */
+  function chosenArt(): SourcedDeck | null {
+    return sourcedDeck(resolve(settings).deck) ?? null;
+  }
+
+  async function applyArt(deck: SourcedDeck | null): Promise<void> {
+    if (deck === null) {
+      layer?.setArt(null);
+      return;
+    }
+    if (!(await loadDeckArt(deck))) return;
+    // The sprite may have taken long enough for the player to change their
+    // mind, or for a new deal to have replaced the elements.
+    if (chosenArt()?.id === deck.id) layer?.setArt(deck);
+  }
+
+  $effect(() => {
+    void applyArt(chosenArt());
   });
 
   /** The displayed clock. Pauses with the tab, per docs/02-game-spec.md. */
@@ -517,6 +552,21 @@
             <!-- The face and the back turn together: see .card-flip in board.css. -->
             <span class="card-flip">
               <span class="card-face">
+                <!--
+                  Empty until somebody picks a deck we did not draw, and
+                  pointed at that deck's sprite by CardLayer.setArt rather than
+                  by anything reactive. `preserveAspectRatio="none"` takes the
+                  three per cent between a 169 × 244.6 card and a poker card
+                  out of the height instead of cropping the border off.
+                -->
+                <svg
+                  class="card-art"
+                  viewBox="0 0 100 140"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <use />
+                </svg>
                 <span class="card-index">
                   <span>{RANKS[rankOf(card)]}</span>
                   <span class="card-index-suit">{SUITS[suitOf(card)]}</span>

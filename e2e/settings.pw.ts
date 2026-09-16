@@ -97,6 +97,50 @@ test("the choice shows on the table, not just in the sheet", async ({
     .not.toBe(before);
 });
 
+test("a deck we did not draw is fetched, once, when it is asked for", async ({
+  page,
+}) => {
+  const sprites: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/decks/")) sprites.push(request.url());
+  });
+
+  await openSheet(page);
+  // Nothing about a first load touches the sprite: the deck that costs a
+  // download is never the one you get without asking.
+  expect(sprites).toHaveLength(0);
+
+  await choose(page, "Cards", "French");
+  await expect(page.locator(".card-layer.has-art")).toHaveCount(1);
+  await expect(page.locator('[data-sprite="french"]')).toHaveCount(1);
+
+  // Every card points into the sprite, and our own corner index stays on top
+  // of the art — at a 46px card the deck's own index is about five pixels.
+  const art = page.locator('.card[data-card="0"] .card-art use');
+  await expect(art).toHaveAttribute("href", "#club_1");
+  await expect(page.locator('.card[data-card="0"] .card-index')).toBeVisible();
+
+  // A new deal rebuilds the 52 elements and must point them again — from the
+  // copy of the sprite that is already in the document.
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "New deal" }).click();
+  await expect(page.locator(".card-layer.has-art")).toHaveCount(1);
+  expect(sprites).toHaveLength(1);
+});
+
+test("the licences are two taps from the game", async ({ page }) => {
+  await openSheet(page);
+  await page.getByRole("link", { name: "Credits and licences" }).click();
+
+  await expect(page.getByRole("heading", { name: "Credits" })).toBeVisible();
+  // The deck that has an obligation, the decks that do not, and the text.
+  await expect(page.getByText("David Bellot")).toBeVisible();
+  await expect(page.getByText("Four colour")).toBeVisible();
+  const licence = await page.request.get("/decks/french/LICENSE.txt");
+  expect(licence.ok()).toBe(true);
+  expect(await licence.text()).toContain("GNU LESSER GENERAL PUBLIC LICENSE");
+});
+
 test("the clock can be hidden, and the move counter stays", async ({
   page,
 }) => {

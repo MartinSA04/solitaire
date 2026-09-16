@@ -24,6 +24,16 @@ import {
  * once per resize.
  */
 
+/**
+ * What a deck of drawn art tells the card layer: how big one card is inside
+ * the sprite, and which group in it a given card is. See src/decks/sourced.ts.
+ */
+export interface DeckArt {
+  viewBox: string;
+  paper: string;
+  symbol: (card: Card) => string;
+}
+
 /** How a change of position should look. The catalogue is in docs/05. */
 export type Motion =
   "instant" | "move" | "deal" | "draw" | "drop" | "undo" | "recycle" | "peek";
@@ -109,6 +119,37 @@ export class CardLayer {
 
   get metrics(): Metrics | null {
     return this.#metrics;
+  }
+
+  /**
+   * Point the 52 faces at a sourced deck's sprite, or take them off it.
+   *
+   * This is the only thing a deck of drawn art changes: one `<use>` per card,
+   * written once when the deck changes, and a class that lets the CSS show
+   * the art and stand our own corner index on top of it. The elements are the
+   * same elements — a deck is not a reason to rebuild the card layer, and
+   * doing it from here rather than from Svelte is what keeps that true.
+   *
+   * `null` is the decks we draw ourselves, which have no art to point at.
+   */
+  setArt(art: DeckArt | null): void {
+    this.#layer.classList.toggle("has-art", art !== null);
+    // What our corner index is drawn on: the deck's own paper, not the
+    // table's card colour, or every card gets a square of the wrong white.
+    if (art === null) this.#layer.style.removeProperty("--art-paper");
+    else this.#layer.style.setProperty("--art-paper", art.paper);
+    for (let card = 0; card < DECK_SIZE; card++) {
+      const element = this.#elements[card] as HTMLElement;
+      const svg = element.querySelector(".card-art");
+      const use = svg?.firstElementChild;
+      if (svg == null || use == null) continue;
+      if (art === null) {
+        use.removeAttribute("href");
+        continue;
+      }
+      svg.setAttribute("viewBox", art.viewBox);
+      use.setAttribute("href", `#${art.symbol(card)}`);
+    }
   }
 
   /**

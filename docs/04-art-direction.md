@@ -107,7 +107,8 @@ screen made after 1998.
 - **Accent**: warm brass `#C89B3C`.
 - **Type**: a humanist serif for the clock and headings; the deck supplies the card
   faces.
-- **Default deck**: Classic.
+- **Default deck**: Minimal. (Classic was the intention; it is not a deck we
+  can ship — see the candidate table below.)
 
 ### 2. Minimal Scandinavian
 
@@ -165,7 +166,8 @@ because there's nothing else bright on screen.
   areas.
 - **Type**: geometric grotesque, slightly wider tracking. The clock glows very
   faintly.
-- **Default deck**: Minimal or High-contrast.
+- **Default deck**: Minimal. High-contrast is a tap away for anyone who wants
+  the indices bigger, and is not a decision to make on their behalf.
 - **Caveat**: dark themes and light card faces mean the *cards* become the brightest
   thing on screen — which is correct — but card backs must be dark enough not to
   blaze. The dark theme ships a dedicated back.
@@ -190,9 +192,9 @@ Selection criteria, in order:
 
 | Deck | Source | Licence | Notes |
 | ---- | ------ | ------- | ----- |
-| **Classic** | [Byron Knoll's vector playing cards](http://byronknoll.blogspot.com/2011/03/vector-playing-cards.html), mirrored on [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:Playing_cards_set_by_Byron_Knoll) and [notpeter/Vector-Playing-Cards](https://github.com/notpeter/Vector-Playing-Cards) | **Public domain** | The safe default. No attribution *required* — we credit anyway. Clean, traditional, unfussy courts. |
-| **Traditional** | [Vectorized Playing Cards 3.2](https://totalnonsense.com/open-source-vector-playing-cards/), Chris Aguilar | **LGPL 3.0** | The most handsome open deck. Requires a specific attribution string displayed on a publicly accessible page — see below. |
-| **French** | [SVG-cards](https://svg-cards.sourceforge.net/), David Bellot | **LGPL** | The GNOME/Aisleriot deck. Distinctive French court design; instantly familiar to Linux users. |
+| **Classic** ✗ | [Byron Knoll's vector playing cards](http://byronknoll.blogspot.com/2011/03/vector-playing-cards.html), mirrored on [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:Playing_cards_set_by_Byron_Knoll) and [notpeter/Vector-Playing-Cards](https://github.com/notpeter/Vector-Playing-Cards) | **Public domain** | Was the safe default, until it was measured. **Rejected:** the courts are traced bitmaps — `KC.svg` alone is 1.1MB and the 52 come to **8MB**, about 2MB gzipped. Sixty times the sprite budget, whatever the licence says. |
+| **Traditional** ⏸ | [Vectorized Playing Cards 3.2](https://totalnonsense.com/open-source-vector-playing-cards/), Chris Aguilar | **LGPL 3.0** | The most handsome open deck, and **not shipped yet**: the canonical download is behind a download manager and the GitHub copies are exports of an export. Its licence demands an exact attribution string, and taking such a deck from a source we cannot verify is the wrong way to honour it. |
+| **French** ✓ | [SVG-cards 4.0.2](https://svg-cards.sourceforge.net/), David Bellot and Huub de Beer | **LGPL 2.1+** | **Shipped.** The GNOME/Aisleriot deck. Genuinely vector, already a single sprite of 52 groups, and from a source we can name. 962KB, 339KB over the wire. |
 | **Minimal** | Ours | — | The one thing we *do* draw — and it turns out we don't draw it at all. No court illustration: rank + suit glyph, large, centred, set in the theme's typeface, which makes it *typography* rather than art. Trivial to produce, the most legible deck at phone size by a distance, and it is the deck the board shipped with in milestone 1. |
 | **High contrast** | Ours | — | Minimal's geometry taken as far as it goes: a pure white card, black ink, oversized indices, maximum weight. An accessibility feature, not a skin — see [08](08-accessibility.md). |
 | **Four-colour** | Variant of Minimal | — | ♠ black, ♥ red, ♦ blue, ♣ green. The standard colour-vision accommodation and also just genuinely easier to scan. |
@@ -236,7 +238,11 @@ and it is what "any deck works on any table" means in practice.
 This matters enough to get right before any asset lands in the repo.
 
 - **The site's own code is MIT.** Bundled third-party art keeps its own licence.
-  `public/decks/<name>/LICENSE` ships alongside every deck, verbatim.
+  `public/decks/<name>/LICENSE.txt` ships alongside every deck, verbatim —
+  `.txt` rather than a bare `LICENSE` so that a browser is served it as text
+  instead of a download or a 404, since a licence nobody can open is not a
+  licence being honoured. `test/decks/sourced.test.ts` refuses a deck that
+  arrives without one.
 - **LGPL decks are used unmodified**, as separate files the page references — not
   inlined into the JS bundle, not recoloured. That keeps us squarely in "using the
   library", which is the arrangement LGPL is designed for. If a deck needs
@@ -257,12 +263,28 @@ This matters enough to get right before any asset lands in the repo.
 ### Delivery
 
 Drawn card faces are **one SVG sprite per deck**, referenced with
-`<use href="#c7h">`. 52 separate network requests is not acceptable on 4G; one
-~120KB sprite that gzips to ~30KB is. The sprite is fetched once and cached;
-switching decks fetches the new one with a crossfade.
+`<use href="#club_7">`. 52 separate network requests is not acceptable on 4G;
+one sprite is. The sprite is fetched once and cached, and the switch to it is a
+crossfade.
 
 Drawn faces must **not** be inlined into the HTML — that's 52 cards of markup on
 every page load, and it would also inline LGPL art into our bundle.
+
+Two things this section got wrong, both found by shipping a deck:
+
+- **The sprite is fetched and then injected into the document**, and the
+  `<use>` reference is to a `#id` in the same document rather than across
+  files. `<use href="/decks/french/deck.svg#club_7">` — the obvious way, and
+  what this doc described — **is not supported in Safari**, which is most of
+  the phones this game is played on. Injecting a fetched file into the DOM is
+  not inlining it into the bundle: it is still one cacheable file, arriving
+  over the network, unmodified, and only when somebody asks for that deck.
+- **~120KB gzipping to ~30KB was wishful.** Real traditional card art is an
+  order of magnitude more than that: the deck we ship is 962KB, 339KB gzipped,
+  and the one this doc picked first is twenty times *that*. The number was
+  written on the assumption that a sourced deck would be the phone default. It
+  is not — ours is, the sourced one is fetched on a deliberate choice, and
+  nothing about a first load touches it. See [07](07-architecture.md).
 
 **Minimal and its variants are the exception, and not really an exception**:
 they have no art to deliver. A Minimal face is two text nodes and a colour
@@ -305,6 +327,12 @@ Regardless of deck:
   ~28% of each card's height is visible. The rank and suit must be fully legible in
   that strip, at 48px card width, for the deck to be acceptable. Any sourced deck
   that fails this gets a CSS-overlaid index drawn by us on top of it.
+
+  The French deck fails it — its index is drawn about five pixels tall at a 46px
+  card — so the overlay is not hypothetical: it ships. Our index sits in the
+  top-left corner on a patch of the deck's own paper colour, covering that
+  deck's index and only that. The courts, the pips and the bottom-right index
+  are the deck's own. The corner we take is the one a fanned column shows.
 - **Face-down cards** show the back, full bleed to the card edge, with the same
   radius and border as a face.
 

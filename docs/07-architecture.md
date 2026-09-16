@@ -83,6 +83,7 @@ src/
     cascade.ts         the cascade as arithmetic — pure, no DOM
     Trails.ts          the canvas comet tails
     Audio.ts           WebAudio graph, sample-free synthesis
+    DeckArt.ts         fetches a sourced sprite, once, into the document
     settings.ts        the chosen look, as data → three attributes on <html>
     Persist.ts         localStorage schema + migration
     chrome/
@@ -93,17 +94,18 @@ src/
     warm.css  minimal.css  dark.css
   decks/               our own decks, as token sets like the themes
     minimal.css  high-contrast.css  four-colour.css  backs.css
+    sourced.ts         the decks we did not draw: sprite, mapping, licence
   layouts/Layout.astro
   pages/
     index.astro        the game
     how-to-play.astro  static, no island
     credits.astro      static — licence attributions, see 04
   styles/
-    base.css  board.css  motion.css  win.css
+    base.css  board.css  motion.css  win.css  page.css
 
 public/
-  decks/<name>/deck.svg + LICENSE     sourced card art, unmodified
-                                      (our own decks and backs are CSS — see 04)
+  decks/french/deck.svg + LICENSE.txt   sourced card art, unmodified
+                                        (our own decks and backs are CSS — see 04)
 
 scripts/
   generate-winnable.ts   the build-time solver run — see 03
@@ -121,7 +123,7 @@ The `test/` vs `e2e/` suffix split and the three-file canonical-host rule from
 | ---- | ------ | ----- |
 | `/` | `Game.svelte`, `client:load` | The only interactive page |
 | `/how-to-play` | none | Static HTML |
-| `/credits` | none | Static HTML; licence attributions live here |
+| `/credits` | none | Static HTML, generated from `src/decks/sourced.ts` so a deck cannot ship without being credited |
 
 Three pages. There is no router, no SPA shell, no view transitions between them.
 
@@ -132,9 +134,10 @@ card moved on 4G**. That budget:
 
 - The table, empty slots and chrome are **server-rendered by Astro** and visible
   before any JS runs. The page is never blank.
-- The island hydrates and deals. The deal animation (~700ms) covers the card-sprite
-  fetch, so the sprite is never a visible delay.
-- The card sprite is `<link rel="preload" as="image">` in the head.
+- The island hydrates and deals. **Nothing is fetched to do it**: the default
+  deck is one of ours, which is CSS rather than art, so the first load has no
+  sprite in it at all. This is a change from what this section assumed — see
+  below.
 - The winnable-seed `.bin` is fetched **in parallel with hydration**, not awaited
   before it — a first deal can come from the URL, a resumed save, or (if the pool
   hasn't landed yet) an unfiltered random seed, with the pool applied from the
@@ -142,7 +145,17 @@ card moved on 4G**. That budget:
 - Fonts are **self-hosted, subset, `font-display: swap`**. No third-party origin,
   per the brief's zero-outbound-requests rule.
 
-Budget: **< 40KB JS gzipped**, **< 15KB CSS**, one ~30KB sprite.
+Budget: **< 40KB JS gzipped**, **< 15KB CSS**, and **no sprite on first load**.
+
+That last figure used to read "one ~30KB sprite", written when a sourced deck
+was expected to be the phone default. Real traditional card art is nowhere near
+30KB — the deck we ship is 339KB gzipped, and the deck this project first
+picked is twenty times that — so the budget is kept by moving the art rather
+than by shrinking it. A sourced deck is fetched **when it is chosen**, once,
+and injected into the document for `<use>` to reach (Safari does not support
+cross-file `<use>`). Until then it does not exist as far as the page is
+concerned, and if the fetch fails the typographic deck simply stays. See
+[04](04-art-direction.md) and `src/decks/sourced.ts`.
 
 ## Persistence
 

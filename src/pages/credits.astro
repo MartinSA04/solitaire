@@ -1,0 +1,94 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { OURS, SOURCED } from "../decks/sourced.ts";
+import "../themes/tokens.css";
+import "../themes/warm.css";
+import "../themes/minimal.css";
+import "../themes/dark.css";
+import "../styles/page.css";
+
+/**
+ * Where every licence obligation is honoured, and a few that aren't
+ * obligations at all.
+ *
+ * Static, no island, and generated from the same registry the card layer loads
+ * decks out of — src/decks/sourced.ts — so a deck cannot ship without turning
+ * up here. That is the whole reason the credit lives beside the sprite path
+ * rather than in this file.
+ */
+const sourced = SOURCED.map((deck) => deck.credit);
+---
+
+<Layout
+  title="Credits — Solitaire"
+  description="Where the card art comes from, and the licences it is used under."
+>
+  <main class="page">
+    <p class="page-back"><a href="/">← Back to the game</a></p>
+
+    <h1>Credits</h1>
+
+    <p>
+      This site's own code and art are <a
+        href="https://github.com/MartinSA04/solitaire/blob/main/LICENSE"
+        >MIT-licensed</a
+      >. The card art it did not draw itself keeps its own licence and is used
+      unmodified.
+    </p>
+
+    <h2>Card art</h2>
+
+    <dl class="credits">
+      {
+        sourced.map((credit) => (
+          <div class="credit">
+            <dt>{credit.name}</dt>
+            <dd>
+              <p>{credit.authors.join(" · ")}</p>
+              <p>
+                {credit.licence}
+                {credit.licenceUrl && (
+                  <>
+                    {" — "}
+                    <a href={credit.licenceUrl}>the text we ship it under</a>
+                  </>
+                )}
+              </p>
+              {credit.note && <p class="credit-note">{credit.note}</p>}
+              {credit.required && (
+                <p class="credit-required">{credit.required}</p>
+              )}
+              <p>
+                <a href={credit.source}>{credit.source}</a>
+              </p>
+            </dd>
+          </div>
+        ))
+      }
+    </dl>
+
+    <h2>Decks we drew</h2>
+
+    <dl class="credits">
+      {
+        OURS.map((credit) => (
+          <div class="credit">
+            <dt>{credit.name}</dt>
+            <dd>
+              <p>{credit.licence}</p>
+              {credit.note && <p class="credit-note">{credit.note}</p>}
+            </dd>
+          </div>
+        ))
+      }
+    </dl>
+
+    <h2>Everything else</h2>
+
+    <p>
+      The tables, the card backs, the sounds and the motion are ours, under the
+      same MIT licence as the code. There are no third-party fonts, no
+      analytics, and nothing on this site fetches from another origin.
+    </p>
+  </main>
+</Layout>

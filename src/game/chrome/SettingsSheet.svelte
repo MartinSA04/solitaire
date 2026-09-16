@@ -43,6 +43,9 @@
     { value: "minimal", label: "Minimal" },
     { value: "high-contrast", label: "High contrast" },
     { value: "four-colour", label: "Four colour" },
+    // The one deck that is a download. It is last because it is the one that
+    // costs something, and it says so on /credits rather than in a warning.
+    { value: "french", label: "French" },
   ] as const;
 
   const BACKS = [
@@ -246,6 +249,14 @@
         <span class="choice-label">Show the clock</span>
       </label>
     </div>
+
+    <!--
+      Two taps from the game, which is what docs/04 asks of it: every deck's
+      source and licence, including the ones whose licence asks for nothing.
+    -->
+    <p class="sheet-foot">
+      <a href="/credits/">Credits and licences</a>
+    </p>
   </div>
 </dialog>
 
@@ -464,6 +475,18 @@
   }
 
   .confirm-text {
+    color: var(--chrome-fg-dim);
+  }
+
+  .sheet-foot {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .sheet-foot a {
+    display: inline-block;
+    min-height: 44px;
+    line-height: 44px;
     color: var(--chrome-fg-dim);
   }
 

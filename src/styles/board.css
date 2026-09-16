@@ -215,6 +215,48 @@ body {
 }
 
 /*
+ * A deck we did not draw: one `<use>` into a sprite that CardLayer fetched and
+ * put in the document. `has-art` goes on the layer only once the sprite is
+ * actually there, so a deck that fails to arrive leaves the typographic face
+ * exactly as it was rather than a blank card.
+ *
+ * Opacity is the crossfade docs/04 asks for when a deck is switched, and it is
+ * also the only property besides `transform` that is allowed to animate on a
+ * card.
+ */
+.card-art {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--t-slow) var(--e-out);
+}
+
+.card-layer.has-art .card-art {
+  opacity: 1;
+}
+
+/*
+ * The corner index is the one thing we do not hand over with the rest of the
+ * face. docs/04 requires the rank to be legible at a 46px card, where a
+ * traditional deck's own index is about five pixels tall, and it says what to
+ * do about that: draw ours over it. So the sourced deck keeps its courts, its
+ * pips and its bottom-right index, and loses the top-left corner to a patch of
+ * card-coloured background with our index on it — which is also the corner
+ * that is visible in a fanned column, and the only one that has to be read.
+ */
+.card-layer.has-art .card-pip {
+  display: none;
+}
+
+.card-layer.has-art .card-index {
+  top: 0;
+  left: 0;
+  padding: 3% 4% 4% 7%;
+  border-radius: var(--card-radius) 0 40% 0;
+  background: var(--art-paper, var(--card-bg));
+}
+
+/*
  * The face of a deck we draw ourselves: no court illustration at all, rank and
  * suit set in the theme's typeface. Which colours and how big are the deck's —
  * see src/decks/ — and there is nothing else to a Minimal, High-contrast or
