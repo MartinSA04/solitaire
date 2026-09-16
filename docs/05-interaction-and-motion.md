@@ -85,8 +85,13 @@ chrome arrangement to build, test and keep working, for the one orientation
 this section opens by saying nobody uses. One bar gets most of the height back
 for none of that, and it is a layout the product already had.
 
-So the chrome collapses on `(min-width: 48rem) or (max-height: 34rem)` — wide,
-*or short*. Everything else about landscape is what the engine was already
+So the chrome collapses on `(min-width: 48rem)`, or on `(min-width: 34rem) and
+(max-height: 34rem)` — wide, *or short and still reasonably wide*. The second
+half of that second condition is browser zoom: at 200% a 390px phone presents a
+195×422 viewport, which is short without being wide, and one bar holding a
+clock, a counter and three controls in 195px is three controls sitting on top
+of a clock. Short and wide is a phone on its side; short and narrow is somebody
+who has zoomed in. Everything else about landscape is what the engine was already
 doing. Supported, not optimised.
 
 ### Tablet and desktop

@@ -642,7 +642,14 @@ body {
  * control at the bottom of a 900px window is further from the game than one at
  * the top. The second condition is the landscape phone: there the scarce
  * dimension is height, and two bars cost a hundred pixels of table for no
- * reason. Which is also why there is no third layout — docs/05 pencilled a
+ * reason.
+ *
+ * That second condition asks for a minimum width as well, and the reason is
+ * browser zoom. At 200% a 390px phone presents a 195×422 viewport — short, but
+ * not remotely wide — and one bar holding the clock, the counter and three
+ * controls in 195px is three controls sitting on top of a clock. Short *and*
+ * wide is a phone on its side; short and narrow is somebody who has zoomed in,
+ * and they want the layout they already had, only bigger. Which is also why there is no third layout — docs/05 pencilled a
  * narrow left rail for landscape, and a rail would give slightly bigger cards
  * than this does, at the price of a whole chrome arrangement that exists for
  * the one orientation the same doc says nobody plays in.
@@ -658,7 +665,7 @@ body {
  * should meet the board before the buttons that act on it, and nobody presses
  * Tab on a phone.
  */
-@media (min-width: 48rem), (max-height: 34rem) {
+@media (min-width: 48rem), (min-width: 34rem) and (max-height: 34rem) {
   .top-bar {
     height: 56px;
     /* The clock and the counter group at the left; the right is the controls'. */
@@ -823,7 +830,7 @@ body {
 }
 
 /* The bar it clears is at the top on a desktop, so there is nothing to clear. */
-@media (min-width: 48rem), (max-height: 34rem) {
+@media (min-width: 48rem), (min-width: 34rem) and (max-height: 34rem) {
   .pager {
     bottom: 12px;
   }

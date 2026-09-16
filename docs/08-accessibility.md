@@ -303,7 +303,20 @@ the board is inert.
 
 - All UI text at ≥ 16px, with a system-font stack fallback so OS-level font scaling
   applies.
-- Respects browser zoom to 200% without layout breaking. The board scales with it.
+- Respects browser zoom to 200% without layout breaking, which
+  `e2e/desktop.pw.ts` holds. The board does not scale *with* zoom, and that is
+  worth being clear about: every measurement on it is a multiple of a card
+  width computed from the viewport, so at 200% the viewport halves in CSS
+  pixels, the cards halve with it, and they come out exactly the same physical
+  size. Zoom cannot make a card bigger. That is why the Large card setting
+  exists at all.
+
+  What zoom does change is the chrome, which is in fixed pixels, and the
+  *shape* of the window: 200% on a 390px phone is a 195×422 viewport, short
+  without being remotely wide. That is why the chrome collapses to one bar on
+  "short **and** wide" rather than on short — short and wide is a phone on its
+  side, short and narrow is somebody who has zoomed in, and they want the
+  layout they already had, only bigger.
 - `lang="en"` on the document. No i18n in v1 — but all UI strings live in one
   module rather than being inlined in components, so adding it later is mechanical.
   Card names, in particular, will need per-language forms.

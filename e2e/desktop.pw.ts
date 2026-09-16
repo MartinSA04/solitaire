@@ -196,3 +196,74 @@ test.describe("where what you are carrying can go", () => {
     await expect(page.locator(".slot.is-legal")).toHaveCount(0);
   });
 });
+
+/**
+ * Browser zoom, which docs/08 asks to survive to 200%.
+ *
+ * Zoom does not make the *board* bigger — every measurement on it is a
+ * multiple of a card width computed from the viewport, so the cards stay the
+ * same physical size and the layout is unchanged. That is exactly why there is
+ * a Large card setting as well. What zoom does change is the chrome, which is
+ * in fixed pixels, and the shape of the viewport it has to fit in: 200% on a
+ * 390px phone is a 195×422 window, which is short without being remotely wide.
+ */
+test.describe("at 200% zoom", () => {
+  const ZOOMED = { width: 195, height: 422 };
+  test.use({ viewport: ZOOMED });
+
+  test("nothing overflows and the whole board is still there", async ({
+    page,
+  }) => {
+    await page.goto(DEAL);
+    await dealt(page);
+
+    const overflow = await page.evaluate(() => ({
+      x: document.documentElement.scrollWidth - window.innerWidth,
+      y: document.documentElement.scrollHeight - window.innerHeight,
+    }));
+    expect(overflow.x).toBeLessThanOrEqual(0);
+    expect(overflow.y).toBeLessThanOrEqual(0);
+
+    // Every card inside the board, which is what "the board never scrolls"
+    // means at any zoom level.
+    const board = await page.locator(".board").boundingBox();
+    const lowest = await page
+      .locator(".card")
+      .evaluateAll((nodes) =>
+        Math.max(...nodes.map((n) => n.getBoundingClientRect().bottom)),
+      );
+    expect(lowest).toBeLessThanOrEqual(board!.y + board!.height + 1);
+  });
+
+  test("keeps both bars, because short is not the same as landscape", async ({
+    page,
+  }) => {
+    await page.goto(DEAL);
+    await dealt(page);
+
+    // The collapse is for a phone on its side — short *and* wide. Short and
+    // narrow is somebody who has zoomed in, and one bar holding a clock, a
+    // counter and three controls in 195px is three controls on top of a clock.
+    expect(await controlsAreOnTop(page)).toBe(false);
+
+    const clock = await page.locator(".clock").boundingBox();
+    const undo = await page.getByRole("button", { name: /Undo/ }).boundingBox();
+    expect(undo!.y).toBeGreaterThan(clock!.y + clock!.height);
+  });
+
+  test("and the menu is still a sheet you can use", async ({ page }) => {
+    await page.goto(DEAL);
+    await dealt(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+
+    const sheet = page.getByRole("dialog", { name: "Menu" });
+    await expect(sheet).toBeVisible();
+    const box = await sheet.boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(-1);
+    expect(box!.width).toBeLessThanOrEqual(ZOOMED.width + 1);
+    // It scrolls rather than spilling: `max-height: 86dvh` on the sheet and
+    // `overflow-y: auto` on its body.
+    expect(box!.height).toBeLessThanOrEqual(ZOOMED.height);
+    await expect(page.getByRole("group", { name: "Card size" })).toBeAttached();
+  });
+});
