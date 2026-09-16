@@ -1,0 +1,30 @@
+/*
+ * The High-contrast deck — Minimal's geometry, taken as far as it goes: a pure
+ * white card, black ink, oversized indices, maximum weight.
+ *
+ * docs/08-accessibility.md calls this an accessibility feature rather than a
+ * skin, and lists it beside the four-colour deck as one of three
+ * accommodations. It is *not* the colour-vision one, which matters here: a
+ * deck that could not tell red from black would be a deck Klondike cannot be
+ * played with, because every tableau build in the game is an
+ * alternating-colour rule. So the red stays red — as dark a red as still reads
+ * as red, which is what 7:1 on a pure white card costs — and the suit glyph in
+ * the corner grows nearly to the size of the rank, so suit is legible by
+ * silhouette as well as by hue.
+ *
+ * It overrides the table's card surface, which no other deck does. That is the
+ * point of it: on any of the three tables, this deck is the same deck.
+ */
+[data-deck="high-contrast"] {
+  --card-bg: #ffffff;
+  --card-fg: #000000;
+  --suit-clubs: #000000;
+  --suit-spades: #000000;
+  --suit-hearts: #b00010;
+  --suit-diamonds: #b00010;
+
+  --index-size: 0.44;
+  --index-weight: 800;
+  --index-suit-scale: 0.95;
+  --pip-size: 0.58;
+}

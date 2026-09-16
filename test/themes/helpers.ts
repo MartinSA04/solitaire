@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 /**
@@ -80,6 +81,101 @@ function declarationsOf(body: string): Map<string, string> {
     }
   }
   return declarations;
+}
+
+// -------------------------------------------------- themes and decks
+
+/**
+ * One selectable look, and where it is written down. A theme and a deck are
+ * the same shape of thing — a set of custom properties behind one attribute —
+ * which is why they share this.
+ */
+export interface Variant {
+  name: string;
+  file: string;
+  /** The `[data-theme="..."]` or `[data-deck="..."]` it is selected by. */
+  attribute: string;
+  /** Which `@media` blocks in the file belong to this variant. */
+  media?: (query: string) => boolean;
+  /** A variant that only overrides another, and so defines a subset. */
+  override?: true;
+}
+
+export const THEMES: Variant[] = [
+  {
+    name: "warm",
+    file: "src/themes/warm.css",
+    attribute: '[data-theme="warm"]',
+  },
+  {
+    name: "minimal (light)",
+    file: "src/themes/minimal.css",
+    attribute: '[data-theme="minimal"]',
+  },
+  {
+    // The one theme that respects the OS: the other two *are* a light choice.
+    name: "minimal (dark)",
+    file: "src/themes/minimal.css",
+    attribute: '[data-theme="minimal"]',
+    media: (query) => query.includes("prefers-color-scheme: dark"),
+    override: true,
+  },
+  {
+    name: "dark",
+    file: "src/themes/dark.css",
+    attribute: '[data-theme="dark"]',
+  },
+];
+
+/**
+ * The decks we draw ourselves. Minimal takes the table's own ink and so
+ * declares no colour at all, which is what makes it the theme's typography
+ * rather than a deck laid on top of it.
+ */
+export const DECKS: Variant[] = [
+  {
+    name: "minimal",
+    file: "src/decks/minimal.css",
+    attribute: '[data-deck="minimal"]',
+  },
+  {
+    name: "high-contrast",
+    file: "src/decks/high-contrast.css",
+    attribute: '[data-deck="high-contrast"]',
+  },
+  {
+    name: "four-colour",
+    file: "src/decks/four-colour.css",
+    attribute: '[data-deck="four-colour"]',
+  },
+];
+
+/** Every token the file itself sets for this variant, in file order. */
+export function declaredIn(variant: Variant): Map<string, string> {
+  const tokens = new Map<string, string>();
+  for (const block of blocksOf(read(variant.file))) {
+    if (!block.selector.includes(variant.attribute)) continue;
+    if (block.media !== null && variant.media?.(block.media) !== true) continue;
+    for (const [name, value] of block.declarations) tokens.set(name, value);
+  }
+  return tokens;
+}
+
+/**
+ * What the browser would resolve, in the cascade order src/pages/index.astro
+ * imports these in: the neutral fallbacks, then the table, then the deck.
+ */
+export function tokensFor(theme: Variant, deck?: Variant): Map<string, string> {
+  const tokens = new Map<string, string>();
+  for (const block of blocksOf(read("src/themes/tokens.css"))) {
+    if (block.selector !== ":root") continue;
+    for (const [name, value] of block.declarations) tokens.set(name, value);
+  }
+  const layers = [theme, ...(deck === undefined ? [] : [deck])];
+  for (const layer of layers) {
+    for (const [name, value] of declaredIn(layer)) tokens.set(name, value);
+  }
+  return tokens;
 }
 
 // ------------------------------------------------------------- colour
@@ -188,4 +284,67 @@ export function contrast(a: Rgba, b: Rgba): number {
 /** Rounded the way a report would print it, so failures read in the message. */
 export function ratio(a: Rgba, b: Rgba): number {
   return Math.round(contrast(a, b) * 100) / 100;
+}
+
+/**
+ * Hue in degrees and HSL saturation. Contrast cannot tell navy from forest
+ * green — they are a hair apart in luminance — and a four-colour deck's whole
+ * claim is about hue, so that claim gets measured in the terms it is made in.
+ */
+export function hue({ r, g, b }: Rgba): number {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max === min) return 0;
+  const span = max - min;
+  const degrees =
+    max === r
+      ? ((g - b) / span) % 6
+      : max === g
+        ? (b - r) / span + 2
+        : (r - g) / span + 4;
+  return (degrees * 60 + 360) % 360;
+}
+
+export function saturation({ r, g, b }: Rgba): number {
+  const max = Math.max(r, g, b) / 255;
+  const min = Math.min(r, g, b) / 255;
+  const lightness = (max + min) / 2;
+  if (max === min) return 0;
+  return (max - min) / (1 - Math.abs(2 * lightness - 1));
+}
+
+// ------------------------------------------------------- the assertions
+
+/** One token, which must resolve to exactly one colour. */
+export function colorOf(tokens: Map<string, string>, name: string): Rgba {
+  const value = tokens.get(name);
+  assert.ok(value !== undefined, `${name} is not defined`);
+  const parsed = parseColor(value);
+  assert.ok(parsed !== null, `${name}: ${value} is not a single colour`);
+  return parsed;
+}
+
+/**
+ * The backdrops the table offers — a gradient's stops, or a flat colour's one
+ * colour. Everything on the table has to survive the worst of them.
+ */
+export function tableStops(tokens: Map<string, string>): Rgba[] {
+  const value = tokens.get("--table-bg");
+  assert.ok(value !== undefined, "--table-bg is not defined");
+  const found = colorsIn(value);
+  assert.ok(found.length > 0, `--table-bg: ${value} holds no colour`);
+  return found;
+}
+
+/** A contrast floor, phrased so a failure says what missed it and by how much. */
+export function atLeast(
+  observed: number,
+  required: number,
+  what: string,
+  where: string,
+): void {
+  assert.ok(
+    observed >= required,
+    `${where}: ${what} is ${observed}:1, needs ${required}:1`,
+  );
 }

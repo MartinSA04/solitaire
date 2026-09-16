@@ -5,6 +5,16 @@ import "../themes/tokens.css";
 import "../themes/warm.css";
 import "../themes/minimal.css";
 import "../themes/dark.css";
+/*
+ * Decks after themes, and the order is load-bearing: a deck and a table are
+ * selected by attributes of equal specificity, so where both set a token — the
+ * High-contrast deck's white card, say, over the warm table's cream one — the
+ * later file wins. That is the whole of "any deck works on any table".
+ */
+import "../decks/minimal.css";
+import "../decks/high-contrast.css";
+import "../decks/four-colour.css";
+import "../decks/backs.css";
 import "../styles/motion.css";
 import "../styles/board.css";
 import "../styles/win.css";

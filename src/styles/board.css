@@ -183,21 +183,12 @@ body {
   box-shadow: inset 0 0 0 var(--card-stroke-width) var(--card-stroke);
 }
 
+/* The pattern and its colours are both tokens: see src/decks/backs.css. */
 .card-back {
   opacity: 0;
   background-color: var(--back-bg);
-  /* Lattice: a fine diagonal weave, two colours from the theme. */
-  background-image:
-    repeating-linear-gradient(
-      45deg,
-      var(--back-ink) 0 1px,
-      transparent 1px 6px
-    ),
-    repeating-linear-gradient(
-      -45deg,
-      var(--back-ink) 0 1px,
-      transparent 1px 6px
-    );
+  background-image: var(--back-pattern);
+  background-size: var(--back-pattern-size, auto);
   box-shadow: inset 0 0 0 var(--card-stroke-width) var(--back-edge);
   transform: rotateY(180deg);
 }
@@ -224,9 +215,10 @@ body {
 }
 
 /*
- * The Minimal deck: no court illustration at all, rank and suit set in the
- * theme's typeface. It is the most legible deck at phone size by a distance,
- * and being typography rather than art it costs no bytes and no licence.
+ * The face of a deck we draw ourselves: no court illustration at all, rank and
+ * suit set in the theme's typeface. Which colours and how big are the deck's —
+ * see src/decks/ — and there is nothing else to a Minimal, High-contrast or
+ * Four-colour card than the four tokens below.
  *
  * The corner index is the critical element — in a fanned column only the top
  * ~30% of a card is visible, and the rank has to be fully readable in that
@@ -239,14 +231,14 @@ body {
   display: flex;
   align-items: baseline;
   gap: 0.1em;
-  font-size: calc(var(--card-w) * 0.36);
-  font-weight: 650;
+  font-size: calc(var(--card-w) * var(--index-size));
+  font-weight: var(--index-weight);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
 .card-index .card-index-suit {
-  font-size: 0.8em;
+  font-size: calc(1em * var(--index-suit-scale));
 }
 
 .card-pip {
@@ -255,7 +247,7 @@ body {
   display: grid;
   place-items: center;
   padding-top: calc(var(--card-w) * 0.18);
-  font-size: calc(var(--card-w) * 0.52);
+  font-size: calc(var(--card-w) * var(--pip-size));
   line-height: 1;
   opacity: 0.85;
 }

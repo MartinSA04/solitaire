@@ -1,0 +1,23 @@
+/*
+ * The Four-colour deck — Minimal's geometry with ♠ black, ♥ red, ♦ blue,
+ * ♣ green.
+ *
+ * The standard poker accommodation for deuteranopia and protanopia, which
+ * together affect roughly one man in twelve, and — as docs/08-accessibility.md
+ * insists — offered as a deck anyone can pick rather than as something behind
+ * an accessibility label. It is genuinely faster to scan whatever your colour
+ * vision, because a Klondike tableau is a column of alternating *colours* and
+ * four of them are easier to alternate than two.
+ *
+ * Every ink here clears 7:1 against the lightest card surface any theme
+ * offers, which is what makes the blue navy and the green a forest green
+ * rather than the primaries a printed four-colour deck uses. Dark blue and
+ * dark green also stay distinguishable from black by hue *and* by being
+ * plainly not-black at a glance, which a mid-tone of either would not.
+ */
+[data-deck="four-colour"] {
+  --suit-spades: #16181c;
+  --suit-hearts: #9c1218;
+  --suit-diamonds: #0b3e8c;
+  --suit-clubs: #0e5624;
+}

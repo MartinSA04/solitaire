@@ -1,0 +1,30 @@
+/*
+ * The Minimal deck — ours, the default, and the one docs/04-art-direction.md
+ * says we don't actually draw: rank and suit set in the theme's typeface, no
+ * court illustration at all. It is the most legible deck at phone size by a
+ * distance, it costs no request and no licence, and it restyles with the table
+ * for free.
+ *
+ * A deck, in this codebase, is a set of custom properties exactly as a theme
+ * is. It owns the *ink*: which colours the four suits take, and how big and
+ * heavy the index is. Minimal owns only the second half — it takes whatever
+ * colours the table offers, which is what makes it the theme's own
+ * typography rather than a deck laid on top of it.
+ *
+ * Deck files are imported after theme files, so where the two set the same
+ * token the deck wins. That ordering is the whole of "any deck works on any
+ * table"; see src/pages/index.astro.
+ */
+:root,
+[data-deck="minimal"] {
+  /*
+   * The corner index is the critical element. In a fanned tableau column only
+   * the top ~28% of a card is visible, so the rank has to be fully readable in
+   * that strip at a 46px card — which is the worst case, a 360px phone in
+   * portrait with seven columns.
+   */
+  --index-size: 0.36; /* × the card's width */
+  --index-weight: 650;
+  --index-suit-scale: 0.8; /* × the rank beside it */
+  --pip-size: 0.52; /* × the card's width */
+}

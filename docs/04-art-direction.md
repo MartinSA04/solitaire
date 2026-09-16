@@ -194,13 +194,42 @@ Selection criteria, in order:
 | **Traditional** | [Vectorized Playing Cards 3.2](https://totalnonsense.com/open-source-vector-playing-cards/), Chris Aguilar | **LGPL 3.0** | The most handsome open deck. Requires a specific attribution string displayed on a publicly accessible page — see below. |
 | **French** | [SVG-cards](https://svg-cards.sourceforge.net/), David Bellot | **LGPL** | The GNOME/Aisleriot deck. Distinctive French court design; instantly familiar to Linux users. |
 | **Minimal** | Ours | — | The one thing we *do* draw — and it turns out we don't draw it at all. No court illustration: rank + suit glyph, large, centred, set in the theme's typeface, which makes it *typography* rather than art. Trivial to produce, the most legible deck at phone size by a distance, and it is the deck the board shipped with in milestone 1. |
-| **High contrast** | Ours | — | Minimal's geometry, pure black/white/accent, oversized indices. An accessibility feature, not a skin — see [08](08-accessibility.md). |
+| **High contrast** | Ours | — | Minimal's geometry taken as far as it goes: a pure white card, black ink, oversized indices, maximum weight. An accessibility feature, not a skin — see [08](08-accessibility.md). |
 | **Four-colour** | Variant of Minimal | — | ♠ black, ♥ red, ♦ blue, ♣ green. The standard colour-vision accommodation and also just genuinely easier to scan. |
 
 "Minimal" being ours resolves the tension in the [product brief](01-product-brief.md)
 about sourced art limiting our identity: the *default look at phone size* can be
 ours and distinctive, while the rich traditional decks are there for people who want
 them.
+
+#### What our three decks are, mechanically
+
+A deck we draw is a **set of tokens**, exactly as a theme is, behind
+`[data-deck]`. It owns two things and nothing else: the **ink** — which colour
+each of the four suits takes — and the **type scale**: `--index-size`,
+`--index-weight`, `--index-suit-scale`, `--pip-size`. Everything else about the
+card is the table's.
+
+That makes each of the three a small statement rather than an asset:
+
+- **Minimal** declares no colour at all. It takes the table's ink, which is why
+  it reads as the theme's own typography rather than as a deck laid on top of
+  it, and why the Warm table's black is a warm near-black.
+- **Four-colour** replaces the four inks and nothing else.
+- **High contrast** additionally overrides `--card-bg`, the only deck that
+  touches the card's surface — deliberately, because the point of it is to be
+  the same deck on every table.
+
+Its red stays red, which is worth saying plainly because "pure black and white"
+was the original phrasing: **Klondike is built on alternating colours**, so a
+deck that cannot tell red from black is a deck the game cannot be played with.
+What "high contrast" means here is the darkest red that still reads as red
+(7:1 on white), the heaviest weight, the largest index, and a corner suit glyph
+grown nearly to the size of the rank so that suit is legible by silhouette.
+
+Deck stylesheets are imported **after** theme stylesheets. The two are selected
+by attributes of equal specificity, so that order is what decides a conflict,
+and it is what "any deck works on any table" means in practice.
 
 ### Licence handling
 
@@ -249,8 +278,20 @@ colours from the theme, a border.
 
 Three ship: **Lattice** (default, a fine diagonal weave), **Dot grid**, and
 **Solid** (flat, with just a border — for the Minimal theme and for anyone who
-finds patterns noisy). Each is a single SVG pattern, recoloured per theme by CSS
-variable.
+finds patterns noisy).
+
+Each is **a gradient**, not the SVG file this doc first specified, and the
+reason is in the specification itself: it asked for one asset *recoloured per
+theme by a CSS variable*, and neither an external SVG nor a data URI can read a
+custom property. A gradient reads `--back-bg` and `--back-ink` directly and
+costs no request at all. Three geometric patterns are well within what
+gradients express; a fourth back that needed real drawing would ship as a file
+and hard-code its own colours. Every measurement in one is a percentage of the
+card rather than a pixel, so the weave is the same weave on a phone and on a
+desktop.
+
+Like a deck, a back is a **token** — `--back-pattern` — so switching one is an
+attribute on `<html>` and the card element never learns there is more than one.
 
 ## Card anatomy
 

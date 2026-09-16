@@ -90,7 +90,8 @@ src/
   themes/
     tokens.css         the contract from 04
     warm.css  minimal.css  dark.css
-  decks/               our own decks (Minimal, High-contrast, Four-colour)
+  decks/               our own decks, as token sets like the themes
+    minimal.css  high-contrast.css  four-colour.css  backs.css
   layouts/Layout.astro
   pages/
     index.astro        the game
@@ -101,7 +102,7 @@ src/
 
 public/
   decks/<name>/deck.svg + LICENSE     sourced card art, unmodified
-  backs/<name>.svg
+                                      (our own decks and backs are CSS — see 04)
 
 scripts/
   generate-winnable.ts   the build-time solver run — see 03

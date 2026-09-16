@@ -1,0 +1,46 @@
+/*
+ * Card backs. Ours, always — docs/04-art-direction.md's reasoning is that the
+ * back is the most-seen surface in the game (twenty-eight of them on screen at
+ * deal time) and the cheapest thing in it to draw.
+ *
+ * Three ship: Lattice (the default, a fine diagonal weave), Dot grid, and
+ * Solid — flat with just its border, for the Minimal table and for anyone who
+ * finds a pattern noisy.
+ *
+ * docs/04 specified these as one SVG pattern each, recoloured per theme by a
+ * CSS variable. They are gradients instead, for the reason that sentence
+ * itself contains: an external SVG cannot read a custom property and a data
+ * URI cannot either, so "an SVG file" and "recoloured per theme" are mutually
+ * exclusive. A gradient reads `--back-bg` and `--back-ink` directly, costs no
+ * request at all, and is expressive enough for three geometric patterns. A
+ * fourth back that needs real drawing would ship as a file and hard-code its
+ * own colours.
+ *
+ * Each back is a token rather than a rule, so the whole of the switch is one
+ * attribute on <html>, and `.card-back` in board.css stays unaware that there
+ * is more than one.
+ *
+ * Every measurement here is a percentage of the card, never a pixel. A pattern
+ * pinned to pixels is a coarse weave on a phone and a fine one on a desktop,
+ * which makes one back look like two. (Percentages are the only way to say
+ * that here: a custom property holding `var(--card-w)` would resolve it
+ * against :root, where the board's measurements do not reach.)
+ */
+:root,
+[data-back="lattice"] {
+  --back-pattern:
+    repeating-linear-gradient(45deg, var(--back-ink) 0 1px, transparent 1px 5%),
+    repeating-linear-gradient(-45deg, var(--back-ink) 0 1px, transparent 1px 5%);
+  --back-pattern-size: auto;
+}
+
+[data-back="dots"] {
+  --back-pattern: radial-gradient(var(--back-ink) 0 22%, transparent 24% 100%);
+  /* 16% of the width and the same length down: 2.5 : 3.5 makes that 11.4%. */
+  --back-pattern-size: 16% 11.4%;
+}
+
+[data-back="solid"] {
+  --back-pattern: none;
+  --back-pattern-size: auto;
+}
