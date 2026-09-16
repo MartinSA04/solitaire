@@ -1,10 +1,19 @@
 ---
+import Game from "../game/Game.svelte";
 import Layout from "../layouts/Layout.astro";
+import "../themes/tokens.css";
+import "../themes/warm.css";
+import "../styles/motion.css";
+import "../styles/board.css";
 ---
 
-<Layout title="Solitaire" description="A solitaire collection.">
-  <main>
-    <h1>Solitaire</h1>
-    <p>Nothing here yet.</p>
-  </main>
+<Layout
+  title="Solitaire"
+  description="Klondike solitaire. No ads, no accounts, no nonsense."
+>
+  <!--
+    The only interactive page, and the only island. The table, the empty slots
+    and the bars are server-rendered inside it; hydration deals the cards.
+  -->
+  <Game client:load />
 </Layout>

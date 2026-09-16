@@ -3,8 +3,9 @@
 A solitaire website. Astro 6 static site, pnpm, deployed to GitHub Pages at
 <https://solitaire.martinsundal.no>.
 
-Scaffolding only so far — toolchain, CI and deploy are wired up; there is no
-product yet.
+The engine and a playable board are built (milestones 0 and 1 of
+`docs/09-roadmap.md`). Everything is designed in `docs/` before it is written;
+a change that contradicts a doc changes the doc in the same commit.
 
 ## Invariants
 
@@ -24,6 +25,18 @@ product yet.
 - **`src/engine/` is pure**: it imports nothing outside itself and touches no
   browser API, `Math.random` or `Date`. `test/engine/purity.test.ts` reads the
   source to enforce it.
+- **The card layer is not reactive.** Svelte renders the 52 card elements once
+  per deal, inside `{#key gameId}`, and never touches them again;
+  `src/game/CardLayer.ts` writes `transform` and `z-index` directly. Svelte
+  state may call into it, never re-render it. A move is a changed transform —
+  no reparenting, no FLIP, no measuring. See `docs/07-architecture.md`.
+- **`src/game/Layout.ts` is the only source of board geometry**, and it is
+  pure: an area in, numbers out. It writes its measurements onto `.board` as
+  custom properties and the CSS consumes them, so the slot grid and the card
+  transforms cannot drift apart. CSS works nothing out for itself except a
+  pre-hydration estimate. `test/game/layout.test.ts` pins the numbers.
+- **Only `transform` and `opacity` animate on a card**, and `will-change` goes
+  on only for the length of a move.
 
 ## Commands
 

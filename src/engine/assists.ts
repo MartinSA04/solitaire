@@ -131,8 +131,13 @@ function hasKingReady(state: GameState): boolean {
  * card is safe once both opposite-colour cards one rank below it are already
  * on the foundations — nothing can ever want to be played onto it again.
  * Aces and twos are unconditionally safe.
+ *
+ * Exported because tap-to-auto-move asks the same question before it sends a
+ * card up (docs/05-interaction-and-motion.md). The *policy* — when to prefer a
+ * foundation — is the interface's and lives in `src/game/`; this fact about the
+ * position belongs to the rules, and there should only be one of it.
  */
-function isSafeToSendHome(state: GameState, card: Card): boolean {
+export function isSafeToSendHome(state: GameState, card: Card): boolean {
   const rank = rankOf(card);
   if (rank <= 1) return true;
   const [a, b] = oppositeSuits(suitOf(card));

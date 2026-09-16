@@ -97,7 +97,10 @@ a user can reach in two taps.
 ## M5 — Deals, persistence, stats
 
 - The build-time solver and the generated winnable pools.
-- Winnable-only setting, deal numbers, `?deal=` URLs, share.
+- Winnable-only setting, deal numbers, `?deal=` URLs, share. (Reading
+  `?deal=` landed in M1 — it is three lines on top of `fromSeedUrl`, and
+  without it every interaction test is a coin toss. The share button, the
+  winnable pool and the daily are still here.)
 - The daily deal and its streak.
 - `localStorage`: settings, resume-in-progress, lifetime stats, per-deal records.
 - Stats sheet. Result panel wired to real records.

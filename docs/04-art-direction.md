@@ -166,7 +166,7 @@ Selection criteria, in order:
 | **Classic** | [Byron Knoll's vector playing cards](http://byronknoll.blogspot.com/2011/03/vector-playing-cards.html), mirrored on [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:Playing_cards_set_by_Byron_Knoll) and [notpeter/Vector-Playing-Cards](https://github.com/notpeter/Vector-Playing-Cards) | **Public domain** | The safe default. No attribution *required* — we credit anyway. Clean, traditional, unfussy courts. |
 | **Traditional** | [Vectorized Playing Cards 3.2](https://totalnonsense.com/open-source-vector-playing-cards/), Chris Aguilar | **LGPL 3.0** | The most handsome open deck. Requires a specific attribution string displayed on a publicly accessible page — see below. |
 | **French** | [SVG-cards](https://svg-cards.sourceforge.net/), David Bellot | **LGPL** | The GNOME/Aisleriot deck. Distinctive French court design; instantly familiar to Linux users. |
-| **Minimal** | Ours | — | The one thing we *do* draw: no court illustration at all. Rank + suit glyph, large, centred, set in the theme's typeface. Trivial to produce, and the most legible deck at phone size by a distance. |
+| **Minimal** | Ours | — | The one thing we *do* draw — and it turns out we don't draw it at all. No court illustration: rank + suit glyph, large, centred, set in the theme's typeface, which makes it *typography* rather than art. Trivial to produce, the most legible deck at phone size by a distance, and it is the deck the board shipped with in milestone 1. |
 | **High contrast** | Ours | — | Minimal's geometry, pure black/white/accent, oversized indices. An accessibility feature, not a skin — see [08](08-accessibility.md). |
 | **Four-colour** | Variant of Minimal | — | ♠ black, ♥ red, ♦ blue, ♣ green. The standard colour-vision accommodation and also just genuinely easier to scan. |
 
@@ -200,13 +200,19 @@ This matters enough to get right before any asset lands in the repo.
 
 ### Delivery
 
-Card faces are **one SVG sprite per deck**, referenced with `<use href="#c7h">`.
-52 separate network requests is not acceptable on 4G; one ~120KB sprite that gzips
-to ~30KB is. The sprite is fetched once and cached; switching decks fetches the new
-one with a crossfade.
+Drawn card faces are **one SVG sprite per deck**, referenced with
+`<use href="#c7h">`. 52 separate network requests is not acceptable on 4G; one
+~120KB sprite that gzips to ~30KB is. The sprite is fetched once and cached;
+switching decks fetches the new one with a crossfade.
 
-Faces must **not** be inlined into the HTML — that's 52 cards of markup on every
-page load, and it would also inline LGPL art into our bundle.
+Drawn faces must **not** be inlined into the HTML — that's 52 cards of markup on
+every page load, and it would also inline LGPL art into our bundle.
+
+**Minimal and its variants are the exception, and not really an exception**:
+they have no art to deliver. A Minimal face is two text nodes and a colour
+token inside the card element that already exists, so it costs no request, no
+sprite and no licence, and it restyles with the theme for free. The rule above
+is about *art*; typography is not art we have to ship.
 
 ## Card backs
 

@@ -1,0 +1,52 @@
+/*
+ * Warm modern classic — the default table from docs/04-art-direction.md.
+ *
+ * What people picture when they picture solitaire, redrawn by someone who has
+ * seen a screen made after 1998: deep desaturated felt, a single soft key light
+ * from above-left, real offset shadows, warm brass for emphasis.
+ *
+ * Selected by `[data-theme="warm"]` as well as `:root` so that the settings
+ * sheet in milestone 4 can switch themes without this file changing.
+ */
+:root,
+[data-theme="warm"] {
+  --table-bg: radial-gradient(
+    ellipse 120% 90% at 50% 18%,
+    #1e4636 0%,
+    #173528 100%
+  );
+  --table-texture: none;
+  --table-vignette: radial-gradient(
+    ellipse 90% 70% at 50% 45%,
+    transparent 55%,
+    rgb(0 0 0 / 28%) 100%
+  );
+
+  --slot-stroke: rgb(255 255 255 / 20%);
+  --slot-fill: rgb(0 0 0 / 12%);
+
+  --card-shadow-rest: 0 1px 2px rgb(9 26 19 / 55%);
+  --card-shadow-lift: 0 12px 28px rgb(9 26 19 / 55%);
+  --card-stroke: rgb(23 53 40 / 22%);
+
+  --accent: #c89b3c;
+  --accent-contrast: #1a1205;
+
+  --chrome-bg: #142a20;
+  --chrome-fg: #f3ede1;
+  --chrome-fg-dim: rgb(243 237 225 / 60%);
+  --sheet-bg: #1b3428;
+
+  --win-bloom: #f0c469;
+
+  --card-bg: #fbf8f1;
+  --card-fg: #1c1a16;
+  --suit-clubs: #1c1a16;
+  --suit-spades: #1c1a16;
+  --suit-hearts: #a8232a;
+  --suit-diamonds: #a8232a;
+
+  --back-bg: #7d4a2e;
+  --back-ink: rgb(255 226 190 / 20%);
+  --back-edge: rgb(255 226 190 / 40%);
+}

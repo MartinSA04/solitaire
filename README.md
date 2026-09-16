@@ -3,9 +3,11 @@
 A solitaire website. Live at
 [solitaire.martinsundal.no](https://solitaire.martinsundal.no/).
 
-> **Status: the engine.** [Milestone 0](docs/09-roadmap.md) is built —
+> **Status: playable.** [Milestones 0 and 1](docs/09-roadmap.md) are built —
 > [`src/engine/`](src/engine/) is the complete Klondike rules as a pure
-> TypeScript library, tested. There is nothing to look at yet.
+> TypeScript library, and [`src/game/`](src/game/) is a board you can deal,
+> drag, tap and win on a phone. It is not pretty yet: one theme, one deck, no
+> win sequence, nothing saved between visits.
 
 ## Design
 
@@ -23,8 +25,9 @@ Playwright, [mise](https://mise.jdx.dev/) for the toolchain — the same setup a
 [StudyCompanion](https://github.com/MartinSA04/StudyCompanion) and
 [martinsundal.no](https://github.com/MartinSA04/martinsundal.no).
 
-The game itself will be a single Svelte island on an otherwise static page —
-the reasoning is in [docs/07](docs/07-architecture.md).
+The game is a single Svelte island on an otherwise static page, with the card
+layer held outside reactivity — the reasoning is in
+[docs/07](docs/07-architecture.md).
 
 ## Getting started
 

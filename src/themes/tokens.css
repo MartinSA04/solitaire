@@ -1,0 +1,59 @@
+/*
+ * The theme token contract from docs/04-art-direction.md.
+ *
+ * A theme is nothing but a set of these. Neither the layout nor the engine
+ * knows which one is active, and a theme that leaves one of them out is
+ * incomplete. The values here are a plain, neutral fallback so a missing or
+ * half-written theme still renders something legible — they are not a theme.
+ *
+ * Two hard constraints on any theme: a face-up card reaches 4.5:1 against the
+ * table, and the legal-drop highlight is distinguishable without relying on
+ * hue. See docs/08-accessibility.md.
+ */
+:root {
+  /* The table surface. */
+  --table-bg: #2c2f33;
+  --table-texture: none;
+  --table-vignette: none;
+
+  /* Empty piles. */
+  --slot-stroke: rgb(255 255 255 / 18%);
+  --slot-fill: rgb(255 255 255 / 4%);
+
+  /* Cards. --card-radius is overwritten per resize by Layout.ts. */
+  --card-radius: 6px;
+  --card-shadow-rest: 0 1px 2px rgb(0 0 0 / 35%);
+  --card-shadow-lift: 0 12px 28px rgb(0 0 0 / 40%);
+  --card-stroke: rgb(0 0 0 / 20%);
+
+  /* Emphasis. */
+  --accent: #6f9ceb;
+  --accent-contrast: #06121f;
+
+  /* Chrome and panels. */
+  --chrome-bg: #22252a;
+  --chrome-fg: #f2f2f2;
+  --chrome-fg-dim: rgb(242 242 242 / 62%);
+  --sheet-bg: #2a2d33;
+
+  /* What the win sequence explodes in. See docs/06-win-sequence.md. */
+  --win-bloom: #ffd479;
+
+  /*
+   * Deck surface. Not part of doc 04's *theme* contract — that describes the
+   * table — but the decks we draw ourselves need somewhere to read their
+   * colours from, and keeping the four suits separate is what makes the
+   * four-colour deck a token swap rather than a second deck.
+   */
+  --card-bg: #fbfaf7;
+  --card-fg: #16181c;
+  --suit-clubs: #16181c;
+  --suit-spades: #16181c;
+  --suit-hearts: #b3242b;
+  --suit-diamonds: #b3242b;
+
+  /* Card backs — a tiling pattern in two colours, per docs/04. */
+  --back-bg: #3a5f8a;
+  --back-ink: rgb(255 255 255 / 22%);
+  --back-edge: rgb(255 255 255 / 45%);
+}

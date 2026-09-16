@@ -64,7 +64,7 @@ export {
   turnsOverCard,
 } from "./enumerate.ts";
 export { type History } from "./history.ts";
-export { autoCompleteSequence, hint } from "./assists.ts";
+export { autoCompleteSequence, hint, isSafeToSendHome } from "./assists.ts";
 
 import { autoCompleteSequence, hint } from "./assists.ts";
 import { deal, isSeed } from "./deal.ts";

@@ -1,5 +1,6 @@
 // @ts-check
 import sitemap from "@astrojs/sitemap";
+import svelte from "@astrojs/svelte";
 import { defineConfig } from "astro/config";
 
 export default defineConfig({
@@ -17,7 +18,9 @@ export default defineConfig({
     inlineStylesheets: "never",
   },
   // Emits /sitemap-index.xml, which public/robots.txt points crawlers at.
-  integrations: [sitemap()],
+  // Svelte backs the single game island — see docs/07-architecture.md for why
+  // there is a framework at all, and where its boundary is.
+  integrations: [sitemap(), svelte()],
   vite: {
     build: { cssCodeSplit: true },
   },

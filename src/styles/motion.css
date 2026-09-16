@@ -1,0 +1,29 @@
+/*
+ * The timing and easing scales from docs/05-interaction-and-motion.md. Four
+ * durations and three curves; everything in the product uses one of each, and
+ * anything that needs a fifth is a design decision, not a CSS decision.
+ */
+:root {
+  --t-instant: 90ms; /* feedback that must feel immediate */
+  --t-quick: 180ms; /* a card moving between piles — the workhorse */
+  --t-settle: 280ms; /* drop settle, sheet open, undo */
+  --t-slow: 480ms; /* theme crossfade, stats card */
+
+  --e-out: cubic-bezier(0.22, 0.61, 0.36, 1); /* things arriving */
+  --e-inout: cubic-bezier(0.65, 0, 0.35, 1); /* things moving between states */
+  --e-spring: cubic-bezier(0.34, 1.32, 0.48, 1); /* one small overshoot */
+}
+
+/*
+ * Reduced motion does not mean no feedback — cards still move, they just
+ * arrive immediately, and the illegal-move shake becomes a border flash rather
+ * than disappearing. See docs/08-accessibility.md.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-instant: 1ms;
+    --t-quick: 1ms;
+    --t-settle: 1ms;
+    --t-slow: 1ms;
+  }
+}

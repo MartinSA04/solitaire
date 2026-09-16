@@ -1,0 +1,347 @@
+/*
+ * The board: the table, the empty slots, and the 52 card elements.
+ *
+ * Geometry is *given* to this file, never worked out in it. `Layout.ts`
+ * computes every measurement once per resize and writes it onto `.board` as a
+ * custom property; the slot grid and the card transforms therefore cannot
+ * drift apart. The declarations on `.board` below are only a pre-hydration
+ * estimate of the width rule so the server-rendered table is in the right
+ * place in the first frame — see docs/07-architecture.md on first paint.
+ *
+ * Only `transform` and `opacity` ever animate on a card.
+ */
+
+html,
+body {
+  height: 100%;
+  /* A solitaire game you have to scroll is a broken solitaire game. */
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.game {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--table-bg);
+  color: var(--chrome-fg);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.game::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--table-vignette);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- board */
+
+.board {
+  /*
+   * Pre-hydration only. 7.87 is Layout.ts's width divisor (seven columns, six
+   * gaps and two gutters, all as multiples of the card); the real values —
+   * which also account for the available height — replace these inline on
+   * mount.
+   */
+  --card-w: min(110px, calc(100vw / 7.87));
+  --card-h: calc(var(--card-w) * 1.4);
+  --gap: calc(var(--card-w) * 0.087);
+  --gutter: calc(var(--card-w) * 0.174);
+  --row-gap: calc(var(--card-h) * 0.25);
+  --card-radius: calc(var(--card-w) * 0.0727);
+
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  /* The browser never steals a drag to scroll. */
+  touch-action: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(7, var(--card-w));
+  gap: var(--gap);
+  justify-content: center;
+  align-items: start;
+}
+
+.row-top {
+  height: var(--card-h);
+  margin-bottom: var(--row-gap);
+}
+
+.slot {
+  aspect-ratio: 2.5 / 3.5;
+  border: 1px solid var(--slot-stroke);
+  border-radius: var(--card-radius);
+  background: var(--slot-fill);
+  display: grid;
+  place-items: center;
+}
+
+/* Column 2 of the top row is the space between the waste and the foundations. */
+.slot-spacer {
+  visibility: hidden;
+}
+
+/*
+ * A foundation shows which suit it is before any Ace lands on it, and the
+ * stock shows the one icon in the game that teaches a rule: what an empty
+ * stock does when you tap it. Both sit under the cards and are only visible
+ * while the pile is empty.
+ */
+.slot-mark {
+  font-size: calc(var(--card-w) * 0.5);
+  line-height: 1;
+  color: var(--slot-stroke);
+}
+
+/* ------------------------------------------------------------ the cards */
+
+.card-layer {
+  position: absolute;
+  inset: 0;
+  /* Hit-testing is arithmetic in Layout.ts; the cards are never event targets. */
+  pointer-events: none;
+}
+
+.card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow-rest);
+  /*
+   * No transition by default. A card animates because a motion class was put
+   * on it for exactly one move, which is also what keeps `will-change` off the
+   * other 51 elements.
+   */
+  transition: none;
+}
+
+.card-face,
+.card-back {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.card-face {
+  background: var(--card-bg);
+  color: var(--suit);
+  box-shadow: inset 0 0 0 1px var(--card-stroke);
+}
+
+.card-back {
+  opacity: 0;
+  background-color: var(--back-bg);
+  /* Lattice: a fine diagonal weave, two colours from the theme. */
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      var(--back-ink) 0 1px,
+      transparent 1px 6px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      var(--back-ink) 0 1px,
+      transparent 1px 6px
+    );
+  box-shadow: inset 0 0 0 1px var(--back-edge);
+}
+
+.card.is-face-down .card-face {
+  opacity: 0;
+}
+
+.card.is-face-down .card-back {
+  opacity: 1;
+}
+
+.card[data-suit="0"] {
+  --suit: var(--suit-clubs);
+}
+.card[data-suit="1"] {
+  --suit: var(--suit-diamonds);
+}
+.card[data-suit="2"] {
+  --suit: var(--suit-hearts);
+}
+.card[data-suit="3"] {
+  --suit: var(--suit-spades);
+}
+
+/*
+ * The Minimal deck: no court illustration at all, rank and suit set in the
+ * theme's typeface. It is the most legible deck at phone size by a distance,
+ * and being typography rather than art it costs no bytes and no licence.
+ *
+ * The corner index is the critical element — in a fanned column only the top
+ * ~30% of a card is visible, and the rank has to be fully readable in that
+ * strip at a 46px card.
+ */
+.card-index {
+  position: absolute;
+  top: 3%;
+  left: 7%;
+  display: flex;
+  align-items: baseline;
+  gap: 0.1em;
+  font-size: calc(var(--card-w) * 0.36);
+  font-weight: 650;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.card-index .card-index-suit {
+  font-size: 0.8em;
+}
+
+.card-pip {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-top: calc(var(--card-w) * 0.18);
+  font-size: calc(var(--card-w) * 0.52);
+  line-height: 1;
+  opacity: 0.85;
+}
+
+/* ----------------------------------------------------------- the motion */
+
+.card.is-moving {
+  transition: transform var(--t-quick) var(--e-out);
+  will-change: transform;
+}
+
+.card.is-settling {
+  transition: transform var(--t-settle) var(--e-spring);
+  will-change: transform;
+}
+
+.card.is-undoing {
+  transition: transform var(--t-settle) var(--e-inout);
+  will-change: transform;
+}
+
+.card.is-returning {
+  /* An illegal drop does not snap (that feels like a bug) and does not stay. */
+  transition: transform 220ms var(--e-spring);
+  will-change: transform;
+}
+
+.card.is-dragging {
+  /* Zero smoothing on the follow. Any lag reads as the game being slow. */
+  transition: none;
+  box-shadow: var(--card-shadow-lift);
+  will-change: transform;
+}
+
+.card.is-shaking {
+  /* `translate` composes with the transform that positions the card. */
+  animation: card-shake 300ms var(--e-inout);
+}
+
+@keyframes card-shake {
+  0%,
+  100% {
+    translate: 0;
+  }
+  20% {
+    translate: -3px;
+  }
+  40% {
+    translate: 3px;
+  }
+  60% {
+    translate: -2px;
+  }
+  80% {
+    translate: 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card.is-shaking {
+    animation: none;
+    box-shadow:
+      var(--card-shadow-rest),
+      0 0 0 2px var(--accent);
+  }
+}
+
+/* ----------------------------------------------------------- the chrome */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  background: var(--chrome-bg);
+  padding-inline: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.top-bar {
+  height: 44px;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+  color: var(--chrome-fg-dim);
+  font-size: 15px;
+}
+
+/*
+ * Controls live at the bottom, under your thumb. Undo is the most-pressed
+ * button in the game and the top bar is the hardest place on a phone to reach.
+ */
+.bottom-bar {
+  min-height: 56px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  justify-content: space-around;
+}
+
+.control {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--chrome-fg);
+  font: inherit;
+  font-size: 15px;
+  /* WCAG 2.2 target size. Every chrome control, no exceptions. */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.control:disabled {
+  color: var(--chrome-fg-dim);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
