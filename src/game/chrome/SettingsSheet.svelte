@@ -363,7 +363,8 @@
   <!--
     Two taps from the game, which is what docs/04 asks of the credits: every
     deck's source and licence, including the ones whose licence asks for
-    nothing.
+    nothing. How to play is here for the same reason — the rules have to be
+    somewhere a player can find them without leaving the site to look.
   -->
   <p class="sheet-foot">
     <button
@@ -376,6 +377,7 @@
     >
       Statistics
     </button>
+    <a href="/how-to-play/">How to play</a>
     <a href="/credits/">Credits and licences</a>
   </p>
 </Sheet>
@@ -530,7 +532,9 @@
 
   .sheet-foot {
     display: flex;
-    gap: 20px;
+    flex-wrap: wrap;
+    /* Three links at fourteen pixels do not always fit a 360px phone in a row. */
+    gap: 4px 20px;
     margin: 0;
     font-size: 14px;
   }

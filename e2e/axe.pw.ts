@@ -137,6 +137,12 @@ test("the shortcut list has none", async ({ page }) => {
   expect(describe(results), describe(results)).toBe("");
 });
 
+test("how to play has none", async ({ page }) => {
+  await page.goto("/how-to-play/");
+  const results = await audit(page);
+  expect(describe(results), describe(results)).toBe("");
+});
+
 test("the credits have none", async ({ page }) => {
   // Not a surface docs/08 listed, because it did not exist when the list was
   // written. It is a page a licence obligation is honoured on and a player can

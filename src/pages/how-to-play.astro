@@ -1,0 +1,236 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { SHORTCUTS } from "../game/strings.ts";
+import "../themes/tokens.css";
+import "../themes/warm.css";
+import "../themes/minimal.css";
+import "../themes/dark.css";
+import "../styles/page.css";
+
+/**
+ * The rules, and how this particular table works.
+ *
+ * Static, no island. It is written for somebody who has never played Klondike
+ * as well as for somebody who has played it for forty years and wants to know
+ * what the middle button does — the second reader is much the more likely, so
+ * the rules are short and the part about *this* game is long.
+ *
+ * The shortcut table is the one in `src/game/strings.ts`, the same list the
+ * `?` overlay renders and `test/game/keyboard.test.ts` presses every key in.
+ * A page promising a key the game does not honour is worse than no page.
+ */
+---
+
+<Layout
+  title="How to play — Solitaire"
+  description="The rules of Klondike solitaire, and how this one works."
+>
+  <main class="page">
+    <p class="page-back"><a href="/">← Back to the game</a></p>
+
+    <h1>How to play</h1>
+
+    <p>
+      Klondike. Get all fifty-two cards onto the four foundations, each one
+      built up from its ace to its king in a single suit. That is the whole of
+      winning.
+    </p>
+
+    <h2>The table</h2>
+
+    <p>
+      Seven <strong>columns</strong> across the bottom, dealt one card deeper each:
+      one card in the first, seven in the last, and only the bottom card of each face
+      up. Above them, the <strong>stock</strong> on the left with the rest of the
+      deck face down, the <strong>waste</strong> beside it where drawn cards land,
+      and the four <strong>foundations</strong> on the right, one per suit.
+    </p>
+
+    <h2>The moves</h2>
+
+    <ul>
+      <li>
+        <strong>Onto a column</strong>: a card goes on one of the next rank up
+        and the opposite colour. A red six goes on a black seven. A run already
+        built that way moves as a block.
+      </li>
+      <li>
+        <strong>Onto a foundation</strong>: an ace starts it, and after that the
+        next rank of the same suit, one card at a time. A card can come back off
+        a foundation if a column needs it.
+      </li>
+      <li>
+        <strong>Into an empty column</strong>: kings only, and a king already
+        sitting alone in one has nowhere useful to go.
+      </li>
+      <li>
+        <strong>Turning a card</strong>: uncovering a face-down card in a column
+        turns it over, always, immediately. It is part of the move rather than a
+        decision.
+      </li>
+      <li>
+        <strong>The stock</strong>: tap it to draw. When it runs out, tap the
+        empty space to turn the waste back over and go round again — as often as
+        you like.
+      </li>
+    </ul>
+
+    <h2>Playing it here</h2>
+
+    <ul>
+      <li>
+        <strong>Tap a card</strong> and it goes where it most obviously wants to go:
+        to its foundation if that is safe, otherwise to the best column that will
+        have it. This is the quickest way to play and the one to learn first — on
+        a card this size, tapping beats dragging.
+      </li>
+      <li>
+        <strong>Drag</strong> if you would rather choose the destination yourself.
+        The card follows your finger exactly, and springs back if you let go somewhere
+        it cannot land.
+      </li>
+      <li>
+        <strong>Press and hold a column</strong> to fan it right out and read the
+        cards buried in it. Let go and it closes; nothing has moved.
+      </li>
+      <li>
+        <strong>Undo</strong> as far back as you like, as many times as you like.
+        There is no penalty and no score, so nothing is at stake in trying something.
+      </li>
+      <li>
+        <strong>Hint</strong> points at one move worth making. If there are none at
+        all it says so — that is a fact about the position, not a loss. Nothing here
+        ever tells you that you have lost: you decide when a deal is over.
+      </li>
+      <li>
+        <strong>Finish</strong> replaces Hint once every card is face up and the stock
+        is spent. At that point the deal is already won, and this plays it out rather
+        than making you tap fifty times.
+      </li>
+    </ul>
+
+    <h2>Draw one, or draw three</h2>
+
+    <p>
+      Draw one turns a single card at a time and most deals can be won. Draw
+      three turns three and you may only play the top of them, which is the
+      harder, more traditional game. Both are in the menu, and changing it
+      starts a new deal, because the same cards make a genuinely different game
+      under each rule.
+    </p>
+
+    <h2>Deal numbers</h2>
+
+    <p>
+      Every deal has a number, and that number means the same deal on every
+      device, forever. Share one from the panel at the end of a game, or put it
+      in the address as <code>?deal=24</code>. Replaying a deal you have won
+      races you against your own best time.
+    </p>
+
+    <p>
+      By default deals come from a pool that has been solved in advance, so the
+      one you are given can be won. That is a setting, and turning it off deals
+      from the whole deck of possibilities — which is the honest version of the
+      game, and sometimes an unwinnable one.
+    </p>
+
+    <p>
+      There is also a <strong>daily deal</strong>: the same one for everybody,
+      changing at midnight, with a streak if you keep coming back.
+    </p>
+
+    <h2>With a keyboard</h2>
+
+    <p>
+      The whole game plays from the keyboard, with no pointer at all. The arrow
+      keys move between the thirteen piles — the board is one thing to move
+      around in, not fifty-two things to tab through — and space picks up and
+      puts down.
+    </p>
+
+    <dl class="shortcuts">
+      {
+        SHORTCUTS.map(({ keys, what }) => (
+          <div class="shortcut">
+            <dt>
+              {keys.map((key) => (
+                <kbd>{key}</kbd>
+              ))}
+            </dt>
+            <dd>{what}</dd>
+          </div>
+        ))
+      }
+    </dl>
+
+    <p>Pressing <kbd>?</kbd> in the game shows this list without leaving it.</p>
+
+    <h2>Reading the cards</h2>
+
+    <p>
+      If the cards are hard to read, the menu has three things worth trying
+      before anything else: the <strong>High-contrast</strong> deck, with much larger
+      indices; the <strong>Four-colour</strong> deck, which gives every suit its own
+      colour so red and black never have to be told apart; and the three tables, one
+      of which will suit your screen and your light better than the others.
+    </p>
+
+    <p>
+      The game is also usable with a screen reader. Each pile describes itself
+      in full — how many cards it holds, how many are face down, and what is on
+      top — and every move is announced as it happens.
+    </p>
+
+    <p class="page-back"><a href="/credits/">Credits and licences</a></p>
+  </main>
+</Layout>
+
+<style>
+  .page ul {
+    margin: 0 0 12px;
+    padding-left: 22px;
+  }
+
+  .page li {
+    margin-bottom: 10px;
+  }
+
+  .shortcuts {
+    margin: 0 0 16px;
+  }
+
+  .shortcut {
+    display: grid;
+    grid-template-columns: 7.5rem 1fr;
+    gap: 12px;
+    align-items: baseline;
+    padding: 6px 0;
+  }
+
+  .shortcut dt {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .shortcut dd {
+    margin: 0;
+  }
+
+  kbd {
+    font: inherit;
+    font-size: 13px;
+    line-height: 1;
+    padding: 5px 7px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--chrome-fg) 8%, transparent);
+    box-shadow: inset 0 0 0 1px var(--slot-stroke);
+    white-space: nowrap;
+  }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.92em;
+  }
+</style>

@@ -33,3 +33,36 @@ describe("canonical host", () => {
     );
   });
 });
+
+/**
+ * `/how-to-play` renders the shortcut table out of `src/game/strings.ts`, which
+ * is the same list `?` shows and `test/game/keyboard.test.ts` presses every key
+ * in. This is what stops somebody writing the keys out by hand into the page
+ * later: a page that promises a key the game does not honour is worse than no
+ * page, and a second copy of the list is how that happens.
+ */
+describe("the pages that are not the game", () => {
+  it("takes the shortcut list from the module the game answers to", () => {
+    const page = read("src/pages/how-to-play.astro");
+    assert.match(page, /import \{ SHORTCUTS \} from "\.\.\/game\/strings\.ts"/);
+    assert.match(page, /SHORTCUTS\.map/);
+    // Every key the page shows is one the list gave it, not one typed here.
+    for (const key of ["Space", "Undo", "New deal"]) {
+      assert.equal(
+        page.includes(`<kbd>${key}</kbd>`),
+        false,
+        `${key} is written into the page by hand`,
+      );
+    }
+  });
+
+  it("is reachable from the game and from the other page", () => {
+    assert.match(
+      read("src/game/chrome/SettingsSheet.svelte"),
+      /href="\/how-to-play\/"/,
+    );
+    assert.match(read("src/pages/credits.astro"), /href="\/how-to-play\/"/);
+    assert.match(read("src/pages/how-to-play.astro"), /href="\/credits\/"/);
+    assert.match(read("src/pages/how-to-play.astro"), /href="\/"/);
+  });
+});
