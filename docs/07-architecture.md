@@ -287,6 +287,11 @@ silently become a *different* game. That's the second reason it's frozen.
   dialog.
 - **The game is fully playable with storage unavailable.** Nothing is awaited on it;
   it is a nicety, not a dependency.
+- **A resumed game is not dealt.** The deal animation is a *deal* — twenty-eight
+  cards leaving the stock a row at a time — and a board mid-play has no rows to
+  leave in: half its columns are the wrong length and some of its cards are on
+  the foundations. A save comes back the way it went away, in the frame the
+  island mounts in.
 - **Migration**: the `v1` in the key is the schema version. A future `v2` reads `v1`
   if present, writes `v2`, and deletes `v1`. Never a silent in-place reinterpretation.
 - **Records are capped** at 500 deals, evicted least-recently-finished first.

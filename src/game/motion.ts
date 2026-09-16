@@ -27,9 +27,11 @@ import { type PileRef } from "./Layout.ts";
  * off the finished board, and it is what the deal stagger runs along — a
  * stagger in any other order reads as cards being *drawn*, not dealt.
  *
- * Only meaningful on a freshly dealt board. On a played one it returns
- * whatever happens to be sitting in those positions, which is harmless: it is
- * only ever asked at the moment a deal is put on screen.
+ * Only meaningful on a freshly dealt board, and only asked on one: it is the
+ * order the deal staggers along, and a deal only ever runs on a deal. On a
+ * played board it returns whatever happens to be sitting in those positions,
+ * which is *fewer cards than the tableau holds* — a triangle's worth. Nothing
+ * may reconstruct a board out of it. See {@link predealt}, which did.
  */
 export function dealOrder(state: GameState): Card[] {
   const order: Card[] = [];
@@ -51,12 +53,21 @@ export function dealOrder(state: GameState): Card[] {
  * fly from the stock because that is genuinely where they were a frame ago,
  * with no flying layer and nothing to measure. The same trick as `?win`'s
  * staged board, pointed the other way.
+ *
+ * It gathers up the board itself rather than asking {@link dealOrder} what was
+ * dealt, and that is the whole of what keeps it honest: the deal order only
+ * describes a tableau that is still the triangle it was dealt as, and a card
+ * that has landed on a shorter column sits below the row the triangle has for
+ * it. Built from the deal order, an undealt board could come out fifty-one
+ * cards — and the card layer, asked for fifty-two, stops at the hole with the
+ * rest of the deck still unwritten. The stock's order is not a look: all
+ * fifty-two are face down at one point.
  */
 export function predealt(state: GameState): GameState {
   return {
     ...state,
     stock: [
-      ...dealOrder(state),
+      ...state.tableau.flatMap((column) => column.cards),
       ...state.waste,
       ...state.foundations.flat(),
       ...state.stock,

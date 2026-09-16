@@ -16,6 +16,9 @@ const PHONE = { width: 390, height: 844 };
 
 test.use({ viewport: PHONE, hasTouch: true });
 
+/** Suit × 13 + rank, rank 0 = Ace. See src/engine/card.ts. */
+const SIX_OF_SPADES = 3 * 13 + 5;
+
 const SETTINGS = "sol:v1:settings";
 const GAME = "sol:v1:game";
 const STATS = "sol:v1:stats";
@@ -46,6 +49,51 @@ async function draw(page: Page, times = 1): Promise<void> {
   for (let at = 0; at < times; at++) await page.locator(".slot-stock").tap();
 }
 
+/**
+ * A tap on a card. The card layer takes no pointer events — hit-testing is
+ * arithmetic against the board — so a card is pressed where it is rather than
+ * clicked. See e2e/board.pw.ts, which does this for a living.
+ */
+async function tapCard(page: Page, id: number): Promise<void> {
+  const box = await page.locator(`.card[data-card="${id}"]`).boundingBox();
+  if (box === null) throw new Error("card has no box");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.up();
+}
+
+/**
+ * Wait out the deal. The cards fly from the stock a row at a time, so a card
+ * pressed before it lands is pressed where it started — which is the stock.
+ */
+async function dealt(page: Page): Promise<void> {
+  await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(7);
+  await expect(page.locator(".card.is-moving")).toHaveCount(0);
+}
+
+/** Where all fifty-two cards are, which is the whole of what a board looks like. */
+function transforms(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".card")].map(
+      (card) => card.style.transform,
+    ),
+  );
+}
+
+/** The same, once nothing is moving any more, so it can be compared with. */
+async function settled(page: Page): Promise<string[]> {
+  let previous: string[] = [];
+  await expect
+    .poll(async () => {
+      const now = await transforms(page);
+      const stable = now.join("|") === previous.join("|");
+      previous = now;
+      return stable;
+    })
+    .toBe(true);
+  return previous;
+}
+
 test("a game in progress survives a refresh, undo stack and all", async ({
   page,
 }) => {
@@ -53,11 +101,7 @@ test("a game in progress survives a refresh, undo stack and all", async ({
   await draw(page, 3);
   await expect(page.locator(".top-bar")).toContainText("3 moves");
 
-  const before = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>(".card")].map(
-      (card) => card.style.transform,
-    ),
-  );
+  const before = await settled(page);
   expect(await savedGame(page)).toMatchObject({
     seed: 24,
     draw: 1,
@@ -70,13 +114,7 @@ test("a game in progress survives a refresh, undo stack and all", async ({
   await page.goto("/");
   await expect(page.locator(".top-bar")).toContainText("3 moves");
   await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(faceUp);
-  expect(
-    await page.evaluate(() =>
-      [...document.querySelectorAll<HTMLElement>(".card")].map(
-        (card) => card.style.transform,
-      ),
-    ),
-  ).toEqual(before);
+  expect(await transforms(page)).toEqual(before);
 
   // The undo stack came back with it, because the save is the move list and
   // replaying it rebuilds the history for free.
@@ -84,6 +122,41 @@ test("a game in progress survives a refresh, undo stack and all", async ({
   await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(
     faceUp - 1,
   );
+});
+
+/**
+ * The test above only ever draws, which leaves the tableau exactly as it was
+ * dealt — and a tableau that is still a triangle is the one shape the undealt
+ * board can be rebuilt from. A card that lands on a *shorter* column sits below
+ * the row the triangle has for it, and `predealt` could not account for it: the
+ * card layer was then asked to place fifty-two cards having been given
+ * fifty-one, which is a blank table and a TypeError.
+ *
+ * A resumed game is also not dealt again. The deal is twenty-eight cards
+ * leaving the stock a row at a time; a board mid-play has no rows to leave in,
+ * and coming back to a game means finding it where you left it.
+ */
+test("a game whose columns have changed shape comes back too", async ({
+  page,
+}) => {
+  const broke: string[] = [];
+  page.on("pageerror", (error) => broke.push(error.message));
+
+  await page.goto("/?deal=24");
+  await dealt(page);
+  // 6♠ off the sixth column onto the 7♥ at the head of the first, which is a
+  // one-card column taking a second card.
+  await tapCard(page, SIX_OF_SPADES);
+  await expect(page.locator(".top-bar")).toContainText("1 move");
+  const before = await settled(page);
+
+  await page.goto("/");
+  await expect(page.locator(".top-bar")).toContainText("1 move");
+  // Read without waiting for anything to settle: the resumed board is placed
+  // in the frame the island mounts in, so this is also what says it was put
+  // back rather than dealt out again.
+  expect(await transforms(page)).toEqual(before);
+  expect(broke).toEqual([]);
 });
 
 test("the clock comes back with the game, and paused", async ({ page }) => {

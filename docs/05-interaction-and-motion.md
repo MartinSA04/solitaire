@@ -301,7 +301,7 @@ highest-value bit of polish in the non-win parts of the game.
 
 | Motion | Duration | Easing | Detail |
 | ------ | -------- | ------ | ------ |
-| Deal | 22ms stagger × 28 | `--e-out` | Cards fly from the stock position. ~700ms total. The stagger is what makes it feel dealt rather than drawn. |
+| Deal | 22ms stagger × 28 | `--e-out` | Cards fly from the stock position. ~700ms total. The stagger is what makes it feel dealt rather than drawn. A fresh deal only — a resumed game is already a board, and is put back rather than dealt out again |
 | Card to pile (tap) | `--t-quick` | `--e-out` | |
 | Card to pile (drop) | `--t-settle` | `--e-spring` | Shorter distance, so more time is affordable |
 | Flip face-up | `--t-instant` ×2 | `--e-inout` | `rotateY` 0→90° swapping the face at the midpoint, 90°→180°. A real flip, not a crossfade. |

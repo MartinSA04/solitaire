@@ -10,6 +10,7 @@ import {
   TABLEAU_COLUMNS,
   applyMove,
   deal,
+  hint,
   shuffledDeck,
 } from "../../src/engine/index.ts";
 import {
@@ -74,11 +75,30 @@ describe("predealt", () => {
   });
 
   it("holds the whole deck whatever board it is given", () => {
-    // It is only ever called on a fresh deal, but a board missing cards would
-    // leave holes in the placements and take the card layer down with it.
-    const played = applyMove(deal(SEED, 3), { kind: "draw" });
-    const state = applyMove(played, { kind: "draw" });
-    assert.equal(predealt(state).stock.length, DECK_SIZE);
+    // A resumed game is a board mid-play, and one missing cards leaves holes in
+    // the placements and takes the card layer down with it.
+    //
+    // Drawing is not enough to catch that, and neither is sending a card home:
+    // both leave the tableau a triangle, which is the one shape the deal order
+    // can rebuild on its own. A card landing on a *shorter* column is what
+    // breaks it — it sits below the row the triangle has for that column, and
+    // the undealt board is then fifty-one cards. So this plays a real game.
+    // Hints alone will draw round the stock forever once the real moves run
+    // out, so this is a hundred moves of a game rather than a whole one.
+    let state = deal(SEED, 1);
+    for (let played = 0; played < 100; played++) {
+      const move = hint(state);
+      if (move === null) break;
+      state = applyMove(state, move);
+      const before = predealt(state);
+      assert.equal(before.stock.length, DECK_SIZE);
+      assert.equal(new Set(before.stock).size, DECK_SIZE);
+    }
+    // And the columns did change shape, or the loop above proved nothing.
+    assert.notDeepEqual(
+      state.tableau.map((column) => column.cards.length),
+      [1, 2, 3, 4, 5, 6, 7],
+    );
   });
 
   it("is the same deal, only undealt", () => {

@@ -33,6 +33,15 @@ in the same commit.
   `src/game/CardLayer.ts` writes `transform` and `z-index` directly. Svelte
   state may call into it, never re-render it. A move is a changed transform —
   no reparenting, no FLIP, no measuring. See `docs/07-architecture.md`.
+- **A board handed to the card layer accounts for all fifty-two cards.** The
+  display states — the undealt board the deal flies out of, `?win`'s won one —
+  are built in `src/game/motion.ts` and `Game.svelte` rather than by the engine,
+  and `placeAll` keys its placements by card number: a card in none of the piles
+  is a hole, and `render()` stops at it with the rest of the deck left wherever
+  it last was. That is a blank table, and it is what a resumed game came back to
+  for as long as the undealt board was rebuilt from the *deal order* — which
+  only describes a tableau that is still the triangle it was dealt as. A resumed
+  board is not dealt out again either; see `docs/07`.
 - **`src/game/Layout.ts` is the only source of board geometry**, and it is
   pure: an area in, numbers out. It writes its measurements onto `.board` as
   custom properties and the CSS consumes them, so the slot grid and the card

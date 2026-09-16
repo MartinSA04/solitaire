@@ -215,6 +215,16 @@
 
   /** The clock a resumed game brings with it, read during openingGame(). */
   let resumedMs = 0;
+  /**
+   * Whether what is on the table is a game being picked up rather than a deal.
+   *
+   * A resumed board is not dealt out again. The deal is twenty-eight cards
+   * leaving the stock a row at a time — see docs/05 — and a board mid-play has
+   * no rows to leave in: half its columns are the wrong length and some of its
+   * cards are on the foundations. Coming back to a game means finding it where
+   * you left it, in the frame the island mounts in.
+   */
+  let resumed = false;
 
   // Not reactive: the engine's Game is mutated in place, and every read of it
   // is driven by an explicit sync() rather than by Svelte watching it.
@@ -372,10 +382,11 @@
 
     const saved = persist.savedGame();
     if (saved !== null) {
-      const resumed = deserialise(saved.game);
-      if (resumed !== null) {
+      const inProgress = deserialise(saved.game);
+      if (inProgress !== null) {
         resumedMs = saved.elapsedMs;
-        return resumed;
+        resumed = true;
+        return inProgress;
       }
     }
 
@@ -897,8 +908,11 @@
    * undealt board until the deal runs, and the won one under `?win`. Not
    * reactive, for the same reason `game` is not — every read of it is driven
    * by an explicit render.
+   *
+   * `null` from the start for a resumed game, which is also how the deal knows
+   * not to run: there is nothing staged in front of it to fly out of.
    */
-  let staged: GameState | null = predealt(game.state);
+  let staged: GameState | null = resumed ? null : predealt(game.state);
 
   function displayed(): GameState {
     return staged ?? game.state;
@@ -1101,7 +1115,7 @@
         render("instant");
         celebrate();
       });
-    } else {
+    } else if (staged !== null) {
       dealFrame = dealOut();
     }
 
