@@ -78,22 +78,6 @@ export function clearDeckArt(): void {
   attached = null;
 }
 
-/**
- * Is this deck already on the device? Asked of the cache rather than of a
- * record we keep, so the answer cannot drift from the truth — a browser that
- * evicted the file says no, which is the right answer.
- */
-export async function deckDownloaded(deck: SourcedDeck): Promise<boolean> {
-  if (attempts.has(deck.id)) return (await attempts.get(deck.id)) !== null;
-  try {
-    if (typeof caches === "undefined") return false;
-    const cache = await caches.open(CACHE);
-    return (await cache.match(deck.sprite)) !== undefined;
-  } catch {
-    return false;
-  }
-}
-
 function attach(id: string, host: HTMLElement): void {
   if (attached?.id === id && host.isConnected) return;
   attached?.host.remove();

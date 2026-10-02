@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 
 import {
   type DealRecord,
-  NO_DAILY,
   NO_STATS,
   Persist,
   RECORD_CAP,
@@ -285,47 +284,6 @@ describe("per-deal records", () => {
   });
 });
 
-describe("the daily streak", () => {
-  it("starts at one", () => {
-    const { persist } = fresh();
-    assert.deepEqual(persist.daily(), NO_DAILY);
-    assert.deepEqual(persist.winDaily("2026-09-16", "2026-09-15"), {
-      lastWon: "2026-09-16",
-      current: 1,
-      longest: 1,
-    });
-  });
-
-  it("grows on consecutive days", () => {
-    const { persist } = fresh();
-    persist.winDaily("2026-09-15", "2026-09-14");
-    persist.winDaily("2026-09-16", "2026-09-15");
-    assert.deepEqual(persist.winDaily("2026-09-17", "2026-09-16"), {
-      lastWon: "2026-09-17",
-      current: 3,
-      longest: 3,
-    });
-  });
-
-  it("does not count the same day twice", () => {
-    const { persist } = fresh();
-    persist.winDaily("2026-09-16", "2026-09-15");
-    assert.equal(persist.winDaily("2026-09-16", "2026-09-15").current, 1);
-  });
-
-  /** Breaking a streak costs nothing, and the longest one is still yours. */
-  it("starts again after a missed day, keeping the longest", () => {
-    const { persist } = fresh();
-    persist.winDaily("2026-09-14", "2026-09-13");
-    persist.winDaily("2026-09-15", "2026-09-14");
-    assert.deepEqual(persist.winDaily("2026-09-20", "2026-09-19"), {
-      lastWon: "2026-09-20",
-      current: 1,
-      longest: 2,
-    });
-  });
-});
-
 describe("with nowhere to write", () => {
   /**
    * The whole of docs/notes.md's "the game is fully playable with storage
@@ -343,7 +301,6 @@ describe("with nowhere to write", () => {
       assert.equal(persist.savedGame(), null);
       assert.deepEqual(persist.stats(), { 1: NO_STATS, 3: NO_STATS });
       assert.deepEqual(persist.records(), []);
-      assert.deepEqual(persist.daily(), NO_DAILY);
 
       persist.saveSettings(DEFAULTS);
       persist.saveGame({ game: "x", elapsedMs: 1 });
@@ -351,7 +308,6 @@ describe("with nowhere to write", () => {
       persist.countPlayed(1);
       persist.countWon(1, 1000, 100);
       persist.saveRecord(1, 1, 1000, 100);
-      persist.winDaily("2026-09-16", "2026-09-15");
 
       assert.deepEqual(persist.stats(), { 1: NO_STATS, 3: NO_STATS });
     });

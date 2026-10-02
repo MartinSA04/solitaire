@@ -14,20 +14,9 @@
   interface Props {
     drawCount: DrawCount;
     winnableOnly: boolean;
-    /** The deal on the table, for the Replay tile. */
-    seed: number;
-    /** The draw mode of the deal on the table, which a replay keeps. */
-    seedDraw: DrawCount;
-    /** Moves made on the deal on the table, zero once it is won. */
-    movesAtRisk: number;
-    /** Today's daily, once the pool has arrived. `null` before that. */
-    dailySeed: number | null;
-    dailyDone: boolean;
-    streak: number;
     onDrawCount: (drawCount: DrawCount) => void;
     onWinnableOnly: (on: boolean) => void;
     onNewDeal: () => void;
-    onDaily: () => void;
     onReplay: () => void;
     onStats: () => void;
     onClose: () => void;
@@ -36,16 +25,9 @@
   const {
     drawCount,
     winnableOnly,
-    seed,
-    seedDraw,
-    movesAtRisk,
-    dailySeed,
-    dailyDone,
-    streak,
     onDrawCount,
     onWinnableOnly,
     onNewDeal,
-    onDaily,
     onReplay,
     onStats,
     onClose,
@@ -54,10 +36,10 @@
   let sheet: ReturnType<typeof Sheet> | undefined = $state();
 
   /**
-   * Everything about which game comes next, and nothing about how it looks —
-   * that is Settings. A tile deals and the sheet gets out of the way; the draw
-   * mode and the winnable pool are here because they describe the next deal,
-   * and changing them never touches the one on the table.
+   * Which game comes next, and nothing about how it looks — that is Settings.
+   * A button deals and the sheet gets out of the way. The draw mode and the
+   * winnable pool describe the next deal, so changing them never touches the
+   * one on the table.
    */
   function go(start: () => void): void {
     start();
@@ -65,61 +47,15 @@
   }
 
   const DRAWS = [1, 3] as const;
-
-  const dailyNote = $derived(
-    dailySeed === null
-      ? "Loading today's deal…"
-      : dailyDone
-        ? `Won today${streak > 1 ? ` · ${streak}-day streak` : ""}`
-        : streak > 0
-          ? `Keep your ${streak}-day streak going`
-          : "The same deal for everyone today",
-  );
 </script>
 
 <Sheet title="New game" {onClose} bind:this={sheet}>
-  {#if movesAtRisk > 0}
-    <p class="at-risk">
-      Your current game ({movesAtRisk}
-      {movesAtRisk === 1 ? "move" : "moves"}) ends when you start another.
-    </p>
-  {/if}
-
   <div class="tiles">
-    <button
-      class="tile is-primary"
-      type="button"
-      aria-describedby="tile-new"
-      onclick={() => go(onNewDeal)}
-    >
-      <span class="tile-title">New deal</span>
-      <span class="tile-note" id="tile-new">
-        {winnableOnly ? "A shuffle that can be won" : "Any shuffle at all"} · draw
-        {drawCount}
-      </span>
+    <button class="tile is-primary" type="button" onclick={() => go(onNewDeal)}>
+      New deal
     </button>
-
-    <button
-      class="tile"
-      type="button"
-      aria-describedby="tile-daily"
-      disabled={dailySeed === null}
-      onclick={() => go(onDaily)}
-    >
-      <span class="tile-title">Daily deal{dailyDone ? " ✓" : ""}</span>
-      <span class="tile-note" id="tile-daily">{dailyNote}</span>
-    </button>
-
-    <button
-      class="tile"
-      type="button"
-      aria-describedby="tile-replay"
-      onclick={() => go(onReplay)}
-    >
-      <span class="tile-title">Replay this deal</span>
-      <span class="tile-note" id="tile-replay">
-        Deal #{seed} · draw {seedDraw}, from the start
-      </span>
+    <button class="tile" type="button" onclick={() => go(onReplay)}>
+      Replay this deal
     </button>
   </div>
 
@@ -168,28 +104,16 @@
 </Sheet>
 
 <style>
-  .at-risk {
-    margin: 0 0 12px;
-    font-size: 14px;
-    color: var(--chrome-fg-dim);
-  }
-
   .tiles {
     display: grid;
     gap: 10px;
   }
 
-  /*
-   * A deal is chosen, not configured: three big targets, each saying in one
-   * line what it will put on the table. Mixed out of `--chrome-fg` so they
-   * read on the light table as well as the dark ones.
-   */
+  /* Mixed out of `--chrome-fg` so they read on the light table too. */
   .tile {
-    display: grid;
-    gap: 2px;
     width: 100%;
-    min-height: 64px;
-    padding: 12px 16px;
+    min-height: 56px;
+    padding: 0 16px;
     border: 0;
     border-radius: 14px;
     background: color-mix(in srgb, var(--chrome-fg) 8%, transparent);
@@ -197,7 +121,8 @@
       color-mix(in srgb, var(--chrome-fg) 14%, transparent);
     color: inherit;
     font: inherit;
-    text-align: left;
+    font-size: 17px;
+    font-weight: 600;
     cursor: pointer;
   }
 
@@ -223,16 +148,6 @@
   .tile:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-  }
-
-  .tile-title {
-    font-size: 17px;
-    font-weight: 600;
-  }
-
-  .tile-note {
-    font-size: 14px;
-    opacity: 0.8;
   }
 
   .options {

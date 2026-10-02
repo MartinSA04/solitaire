@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { CATALOGUE, wireSize } from "../../decks/catalogue.ts";
-  import { deckDownloaded } from "../DeckArt.ts";
+  import { CATALOGUE } from "../../decks/catalogue.ts";
   import { AUTO, type Deck, type Settings, resolve } from "../settings.ts";
   import Sheet from "./Sheet.svelte";
 
@@ -20,12 +19,8 @@
    * Every deck there is, to look at before choosing.
    *
    * **It is a library, not a shop.** Nothing here is locked, earned, bought or
-   * timed: docs/notes.md rules all four out and this is the surface
-   * where a product usually breaks that promise. The only thing that differs
-   * between one deck and another is how many bytes it takes to put it on the
-   * table, so that is the only thing a tile says beyond what the deck looks
-   * like — and the five we draw say "No download", which is not "0 KB" but
-   * "there is nothing to fetch".
+   * timed. A tile is a picture and a name, and says anything more only while
+   * its deck is downloading or failed to.
    *
    * It is its own sheet because twenty-one decks with pictures is not a row of
    * chips in a settings list. The menu keeps one line — the deck you are on,
@@ -36,36 +31,6 @@
    * grid of `aria-pressed` divs would be an imitation that reads worse in
    * every screen reader.
    */
-
-  let onDevice = $state<Set<string>>(new Set());
-
-  /**
-   * Which sprites are already on this device. Asked of the cache, not of us.
-   *
-   * `pending` and `failed` are read rather than used, and that read is the
-   * whole point: they are the only two things that change what the cache
-   * holds while this sheet is open, so touching them here is what re-runs the
-   * effect when a download settles. Without it the answer was taken once at
-   * mount, and a deck you had just watched arrive went on saying nothing until
-   * you closed the gallery and opened it again.
-   */
-  $effect(() => {
-    void pending;
-    void failed;
-    let live = true;
-    void (async () => {
-      const found = new Set<string>();
-      for (const entry of CATALOGUE) {
-        if (entry.sourced !== null && (await deckDownloaded(entry.sourced))) {
-          found.add(entry.id);
-        }
-      }
-      if (live) onDevice = found;
-    })();
-    return () => {
-      live = false;
-    };
-  });
 
   /** What the table would choose, for the tile that hands the choice back. */
   const auto = $derived(resolve({ ...settings, deck: AUTO }).deck);
@@ -79,30 +44,15 @@
     return resolve({ ...settings, deck }).back;
   }
 
-  /**
-   * What the tile says under the name. One line, and it changes only while
-   * something is actually happening: a deck that is coming says so, and a deck
-   * that did not arrive says that instead of failing silently — this is the
-   * one place in the product where a failed fetch is worth a word, because it
-   * is the one place somebody asked for a file and can see it did not come.
-   *
-   * Not called `state`. A local binding of that name shadows the `$state`
-   * rune, so `$state(...)` above compiles to a store subscription on *this
-   * function* and the component dies at mount with "`state` is not a store".
-   */
-  function status(id: string, bytes: number | null): string {
-    if (bytes === null) return "No download";
+  /** Said under a name only while something is happening to that deck. */
+  function status(id: string): string {
     if (pending === id) return "Downloading…";
-    if (failed === id) return "Didn't download — still on the last deck";
-    return onDevice.has(id)
-      ? `${wireSize(bytes)} · on this device`
-      : wireSize(bytes);
+    if (failed === id) return "Couldn't download";
+    return "";
   }
 </script>
 
 <Sheet title="Decks" {onClose}>
-  <p class="sheet-note">Decks with a size download when you pick them, once.</p>
-
   <div class="deck-grid" role="radiogroup" aria-label="Deck">
     <label class="deck-tile">
       <input
@@ -122,8 +72,6 @@
         <span class="swatch-card swatch-back"></span>
       </span>
       <span class="deck-name">Match the table</span>
-      <span class="deck-blurb">Whichever deck the table brings with it.</span>
-      <span class="deck-state">No download</span>
     </label>
 
     {#each CATALOGUE as entry (entry.id)}
@@ -174,8 +122,9 @@
           />
         {/if}
         <span class="deck-name">{entry.name}</span>
-        <span class="deck-blurb">{entry.blurb}</span>
-        <span class="deck-state">{status(entry.id, entry.bytes)}</span>
+        {#if status(entry.id) !== ""}
+          <span class="deck-state">{status(entry.id)}</span>
+        {/if}
       </label>
     {/each}
   </div>
@@ -194,31 +143,11 @@
         onChange({ ...settings, cardIndex: event.currentTarget.checked })}
     />
     <span class="track" aria-hidden="true"></span>
-    <span class="switch-label">
-      Large index over the art
-      <span class="switch-note">
-        Draws our own rank and suit in the corner of a deck we did not draw, for
-        the ones whose own index is small. It does nothing to the decks above
-        that have no artwork.
-      </span>
-    </span>
+    <span class="switch-label">Large corner index</span>
   </label>
-
-  <p class="sheet-note">
-    Every deck's source and licence is on the <a href="/credits/"
-      >credits page</a
-    >.
-  </p>
 </Sheet>
 
 <style>
-  .sheet-note {
-    margin: 0 0 16px;
-    color: color-mix(in srgb, var(--chrome-fg) 72%, transparent);
-    font-size: 0.85rem;
-    line-height: 1.45;
-  }
-
   /*
    * Two columns on a phone and as many as fit past that. A tile is the whole
    * control — the input inside it is moved out of the way visually and keeps
@@ -276,12 +205,6 @@
   .deck-name {
     font-weight: 600;
     font-size: 0.92rem;
-  }
-
-  .deck-blurb {
-    color: color-mix(in srgb, currentcolor 74%, transparent);
-    font-size: 0.78rem;
-    line-height: 1.35;
   }
 
   .deck-state {
@@ -450,13 +373,5 @@
 
   .switch-label {
     font-size: 0.92rem;
-  }
-
-  .switch-note {
-    display: block;
-    margin-top: 2px;
-    color: color-mix(in srgb, var(--chrome-fg) 70%, transparent);
-    font-size: 0.78rem;
-    line-height: 1.4;
   }
 </style>

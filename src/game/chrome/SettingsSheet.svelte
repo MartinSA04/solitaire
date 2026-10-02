@@ -290,8 +290,7 @@
     font-size: 14px;
   }
 
-  .sheet-foot a,
-  .sheet-foot .link {
+  .sheet-foot a {
     display: inline-block;
     /* Before `line-height`, which the shorthand would otherwise reset. */
     font: inherit;

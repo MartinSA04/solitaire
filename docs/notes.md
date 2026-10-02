@@ -31,8 +31,6 @@ except one anonymous pageview count, disclosed on `/credits`.
 - **Winnable only** (on by default) deals from `src/data/winnable-{1,3}.bin`.
   These are seeds a build-time solver has actually won, and the files are
   append-only.
-- The daily deal is `hash(YYYY-MM-DD)` into the first 4,096 entries of the
-  pool, one per draw mode. It needs no server.
 
 ## Architecture
 
@@ -59,8 +57,8 @@ One bar: **New game**, **Undo**, **Hint** (Finish when the deal is won), and
 **Settings**. On a phone it sits at the bottom under the thumb; elsewhere it is
 the right of the top bar. Two sheets, kept apart:
 
-- **New game** chooses which game is on the table: New deal, Daily deal or
-  Replay, each one tap. The draw mode and the winnable pool live here because
+- **New game** chooses which game is on the table: New deal or Replay,
+  each one tap. The draw mode and the winnable pool live here because
   they describe the next deal. Changing them never touches the current one.
   Statistics are here too.
 - **Settings** is how the game looks: the table, the deck, the card size and

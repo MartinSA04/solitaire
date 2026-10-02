@@ -63,11 +63,6 @@
   const shownTime = $derived(formatClock(elapsedMs * progress));
   const shownMoves = $derived(Math.round(moves * progress));
 
-  /** "4 811 209" — grouped with thin spaces, so a deal number can be read aloud. */
-  const dealNumber = $derived(
-    String(seed).replace(/\B(?=(\d{3})+(?!\d))/g, " "),
-  );
-
   const RECORD_LINES: Record<BeatenRecord, string> = {
     fastest: "Fastest game yet",
     "deal-time": "Best time on this deal",
@@ -157,10 +152,6 @@
   {#if record !== null}
     <p class="result-record">★ {RECORD_LINES[record]}</p>
   {/if}
-
-  <p class="result-deal">
-    Deal #{dealNumber} · Draw {drawCount}
-  </p>
 
   <div class="result-actions">
     <button class="control result-action" type="button" onclick={onReplay}>
@@ -263,13 +254,6 @@
     color: var(--accent);
     font-size: 14px;
     font-weight: 650;
-  }
-
-  .result-deal {
-    margin: 0 0 16px;
-    color: var(--chrome-fg-dim);
-    font-size: 14px;
-    font-variant-numeric: tabular-nums;
   }
 
   .result-actions {

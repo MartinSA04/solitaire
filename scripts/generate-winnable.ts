@@ -3,9 +3,8 @@
  *
  * Not part of `astro build`, and not part of `pnpm test` —
  * `node scripts/generate-winnable.ts --draw=1`, and it takes tens of minutes
- * across every core you have. Its output is committed, because the daily deal
- * depends on the pool not changing between builds. See docs/notes.md and
- * docs/notes.md.
+ * across every core you have. Its output is committed, so every build deals from
+ * the same pool. See docs/notes.md.
  *
  * It writes as it goes and picks up where it left off: a partially written
  * pool is a perfectly good pool, so an interrupted run is resumed rather than
@@ -17,13 +16,12 @@
  * seed from 0 is dealt and solved, and the ones the solver wins are kept in
  * seed order until there are `--count` of them. That single decision is what
  * makes the file **sorted and append-only at the same time** — extending the
- * pool means scanning further up, which appends, and the daily deal's frozen
- * prefix (the first 4,096 entries, see src/game/pool.ts) cannot move under it.
+ * pool means scanning further up, which appends, and nothing already in it moves.
  *
  * Append-only holds only while {@link BUDGET} is what it was, which is why the
  * budget is a frozen constant here rather than a flag: a bigger budget would
  * find *extra* winnable seeds inside the range already scanned, and they would
- * land in the middle of the file and shift everybody's daily. If the pool ever
+ * land in the middle of the file. If the pool ever
  * needs regenerating with a different budget, that is a new pool file and a
  * new name, exactly like a second RNG would be.
  *
@@ -157,7 +155,7 @@ async function main(): Promise<void> {
  * Scan upward from the frontier until the pool is `count` long, growing it in
  * seed order however the blocks come back — a block that took four seconds
  * must not land behind one that took four milliseconds, or the file stops
- * being sorted and the daily's frozen prefix stops being frozen.
+ * being sorted.
  */
 async function scan(options: {
   pool: number[];

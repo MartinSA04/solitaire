@@ -1,37 +1,24 @@
 import { type DrawCount, MAX_SEED } from "../engine/index.ts";
 
 /**
- * The winnable-deal pools: the build-time solver's output, and the whole of
- * what "winnable-only" and "the daily deal" are made of.
+ * The winnable-deal pools: the build-time solver's output, and what
+ * "winnable-only" deals from.
  *
  * `scripts/generate-winnable.ts` writes `src/data/winnable-{1,3}.bin` — the
  * winnable deal numbers from the bottom of the seed space upward, packed
  * little-endian, sorted and append-only. This module is the browser end of
- * that file: it fetches one, and answers the two questions the game asks of a
- * pool.
+ * that file: it fetches one and picks a deal out of it.
  *
  * Nothing waits on it. A first deal can come from the URL, from a resumed
  * save, or from an unfiltered random seed, with the pool applied from the next
  * deal onward. A pool that fails to load leaves a game that deals from the
  * whole 2³² space — a slightly harder game, not a broken one.
- *
- * Everything except {@link Pools} is a pure function of a pool you hand it,
- * which is what lets the daily's mapping be pinned by a test rather than
- * trusted.
  */
 
 /** Deal numbers, ascending. */
 export type Pool = Uint32Array;
 
 export const EMPTY_POOL: Pool = new Uint32Array(0);
-
-/**
- * The daily indexes into the first 4,096 entries only, and those entries never
- * move: the pool is generated from seed 0 upward, so extending it appends.
- * Eleven years of dailies, and the twelfth is one more run of the generator —
- * see the note there about what has to stay frozen for that to hold.
- */
-export const DAILY_POOL = 4096;
 
 /**
  * Written as two literal `new URL(…, import.meta.url)` expressions so that
@@ -107,52 +94,4 @@ export function newSeed(
 ): number {
   if (pool.length === 0) return Math.floor(random() * (MAX_SEED + 1));
   return pool[Math.floor(random() * pool.length)] as number;
-}
-
-/**
- * The deal everybody gets today. Same date, same draw mode, same deal, and no
- * server involved: the date is the input and the pool is a static file.
- *
- * `null` while the pool has not arrived. The daily is the one deal that cannot
- * fall back to an arbitrary seed, because a deal nobody else is playing is not
- * the daily.
- */
-export function dailySeed(pool: Pool, date: Date): number | null {
-  const usable = Math.min(pool.length, DAILY_POOL);
-  if (usable === 0) return null;
-  return pool[dayHash(dayKey(date)) % usable] as number;
-}
-
-/**
- * The player's local calendar day, `YYYY-MM-DD`. Local rather than UTC on
- * purpose: a global midnight is the right answer for a leaderboard, and there
- * is no leaderboard. It is also the key the streak is counted in — see
- * Persist.ts.
- */
-export function dayKey(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-/** Yesterday, for deciding whether a streak continues or starts again. */
-export function previousDayKey(date: Date): string {
-  const yesterday = new Date(date.getTime());
-  yesterday.setDate(yesterday.getDate() - 1);
-  return dayKey(yesterday);
-}
-
-/**
- * FNV-1a over the date string, frozen for the same reason the shuffle is: the
- * daily for a given date has to be the same deal next year as it is today, on
- * every device, or a streak means nothing and two people comparing times are
- * not playing the same game. test/game/pool.test.ts pins it.
- */
-export function dayHash(key: string): number {
-  let hash = 0x811c9dc5;
-  for (let at = 0; at < key.length; at++) {
-    hash ^= key.charCodeAt(at);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return hash >>> 0;
 }

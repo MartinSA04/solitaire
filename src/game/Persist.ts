@@ -17,7 +17,6 @@ import {
  * sol:v1:game       the game in progress: a seed, a move list, a clock
  * sol:v1:stats      lifetime counters, per draw mode
  * sol:v1:records    per-deal bests, capped at 500 and evicted least-recent-first
- * sol:v1:daily      the last daily completed, and the streak
  * ```
  *
  * Three rules, all of them from docs/notes.md, and all of them the
@@ -31,8 +30,7 @@ import {
  * 2. **The game is fully playable with storage unavailable.** Nothing is
  *    awaited on it and nothing branches on whether it worked. `Persist` with a
  *    `null` store is a complete, working object that remembers nothing.
- * 3. **Nothing written identifies the player.** No ids, no first-seen date, no
- *    timestamps beyond the local calendar day the streak is counted in.
+ * 3. **Nothing written identifies the player.** No ids and no timestamps.
  *
  * Migration, when there is a v2: read `v1` if present, write `v2`, delete
  * `v1`. Never a silent in-place reinterpretation of a key.
@@ -66,13 +64,6 @@ export interface DealRecord {
   drawCount: DrawCount;
   bestTimeMs: number;
   fewestMoves: number;
-}
-
-export interface Daily {
-  /** The last local day whose daily was won, `YYYY-MM-DD`. */
-  lastWon: string | null;
-  current: number;
-  longest: number;
 }
 
 export interface SavedGame {
@@ -112,12 +103,6 @@ export const NO_STATS: Stats = Object.freeze({
   won: 0,
   bestTimeMs: null,
   fewestMoves: null,
-});
-
-export const NO_DAILY: Daily = Object.freeze({
-  lastWon: null,
-  current: 0,
-  longest: 0,
 });
 
 /**
@@ -270,36 +255,6 @@ export class Persist {
       .slice(-RECORD_CAP);
     this.#write("records", { deals });
     return record;
-  }
-
-  // ── the daily streak ──────────────────────────────────────────────────
-
-  daily(): Daily {
-    const raw = this.#read("daily");
-    if (raw === null) return { ...NO_DAILY };
-    return {
-      lastWon: typeof raw.lastWon === "string" ? raw.lastWon : null,
-      current: count(raw.current, 0),
-      longest: count(raw.longest, 0),
-    };
-  }
-
-  /**
-   * Today's daily is done. The streak continues if yesterday's was too, and
-   * otherwise starts again at one — which costs nothing and is never
-   * commented on anywhere in the interface.
-   */
-  winDaily(today: string, yesterday: string): Daily {
-    const before = this.daily();
-    if (before.lastWon === today) return before;
-    const current = before.lastWon === yesterday ? before.current + 1 : 1;
-    const daily: Daily = {
-      lastWon: today,
-      current,
-      longest: Math.max(before.longest, current),
-    };
-    this.#write("daily", daily);
-    return daily;
   }
 
   // ── the wrapped store ─────────────────────────────────────────────────

@@ -73,8 +73,8 @@ the same commit.
 - **The winnable pools are generated, committed, and append-only.**
   `scripts/generate-winnable.ts` scans deal numbers upward from 0 at a **frozen
   node budget** and keeps the ones its solver wins, so `src/data/winnable-{1,3}.bin`
-  are sorted and append-only at the same time — which is what stops the daily
-  deal, an index into the frozen first 4,096 entries, moving under a later run.
+  are sorted and append-only at the same time, so a later run only ever adds
+  deals.
   A different budget produces a different *file*, not a different pool. Every
   seed's winning line is replayed through `applyMove` before it goes in;
   `--verify` re-runs that over a committed pool and `test/engine/solve.test.ts`
@@ -142,11 +142,9 @@ the same commit.
   shape when a sprite has actually landed — so the reshape happens inside the
   crossfade rather than a second ahead of it on a deck that may never arrive.
   `--card-aspect` is how the empty slots hear about it.
-- **The gallery is a library, not a shop.** `docs/notes.md` rules out anything locked,
-  earned, bought or timed, and `src/game/chrome/DecksSheet.svelte` is where a
-  product usually breaks that. The only thing a tile says beyond what the deck
-  looks like is what it costs to fetch — and the decks we draw say "No
-  download", which is not "0 KB".
+- **The gallery is a library, not a shop.** Nothing is locked, earned,
+  bought or timed. A deck tile is a picture and a name; it says more only
+  while that deck is downloading or failed to.
 - **The browser suite is small on purpose**: the page loads, a whole game is
   won by pointer and by keyboard, the win sequence runs and skips, a save comes
   back, and axe finds nothing on each table and both sheets. Add a browser test

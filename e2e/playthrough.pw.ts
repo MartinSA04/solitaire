@@ -165,7 +165,6 @@ test("a whole game, dealt to won, by pointer alone", async ({ page }) => {
   // rather than losing them to the board's pointer capture.
   const panel = page.getByRole("dialog", { name: "You won" });
   await expect(panel).toBeVisible();
-  await expect(panel).toContainText(`Deal #${SEED}`);
 
   // A first win on a deal beats nothing, so there is no record line — and no
   // line saying you missed one either, which would be a small punishment for

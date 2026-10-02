@@ -135,7 +135,7 @@ describe("the shipped winnable pools", () => {
         if (i > 0) {
           assert.ok(
             seed > (pool[i - 1] as number),
-            `entry ${i} is out of order — the daily's frozen prefix depends on this`,
+            `entry ${i} is out of order`,
           );
         }
       }

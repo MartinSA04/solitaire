@@ -37,14 +37,7 @@
   import { PULSE_GAP_MS, WinSequence, type WinStage } from "./WinSequence.ts";
   import { Stopwatch } from "./clock.ts";
   import { type BeatenRecord, Persist, beatenRecord } from "./Persist.ts";
-  import {
-    EMPTY_POOL,
-    Pools,
-    dailySeed,
-    dayKey,
-    newSeed,
-    previousDayKey,
-  } from "./pool.ts";
+  import { EMPTY_POOL, Pools, newSeed } from "./pool.ts";
   import {
     type SourcedDeck,
     cardBox,
@@ -334,15 +327,11 @@
   );
 
   let stats = $state(persist.stats());
-  let daily = $state(persist.daily());
   let statsOpen = $state(false);
   let decksOpen = $state(false);
   /** The `?` overlay. The keyboard model is the one part of the product that
    * has to be told to somebody, because no part of the board suggests it. */
   let helpOpen = $state(false);
-  /** Today's daily, once a pool has arrived. `null` until then. */
-  let dailyToday: number | null = $state(null);
-  const dailyDone = $derived(daily.lastWon === dayKey(new Date()));
 
   // A resumed game arrives with its clock and its moves already on it, so the
   // chrome starts from the game rather than from zero — and whatever is on the
@@ -445,8 +434,8 @@
   }
 
   /**
-   * A win, written down: the lifetime counters, this deal's record, and the
-   * daily streak if this was today's daily. Read *before* it is recorded,
+   * A win, written down: the lifetime counters and this deal's record. Read
+   * *before* it is recorded,
    * because "did this beat anything" is a question about the figures as they
    * were a moment ago.
    */
@@ -465,11 +454,6 @@
     );
     stats = persist.countWon(drawCount, elapsedMs, played);
     bestMs = persist.saveRecord(seed, drawCount, elapsedMs, played).bestTimeMs;
-
-    const today = new Date();
-    if (seed === dailySeed(pools.get(drawCount), today)) {
-      daily = persist.winDaily(dayKey(today), previousDayKey(today));
-    }
 
     // A finished game is not a game in progress.
     persist.clearGame();
@@ -534,19 +518,6 @@
 
   function newDeal(): void {
     redeal(settings.drawCount);
-  }
-
-  /**
-   * Today's deal, the same one everybody else gets today. Unavailable until a
-   * pool has arrived, because a deal nobody else is playing is not the daily —
-   * the button in the menu is disabled until then rather than dealing
-   * something else and calling it the daily.
-   */
-  function startDaily(): void {
-    const seed = dailyToday;
-    if (seed === null) return;
-    game = newGame(seed, settings.drawCount);
-    reset();
   }
 
   /**
@@ -1172,18 +1143,9 @@
     };
   });
 
-  /**
-   * The pool for the mode being played, fetched in parallel with hydration and
-   * awaited by nothing. Today's daily falls out of it when it lands; until
-   * then the menu's Daily button is disabled, because a deal nobody else is
-   * playing would not be the daily.
-   */
+  /** The pool for the next deal's mode, fetched early and awaited by nothing. */
   $effect(() => {
-    const drawCount = settings.drawCount;
-    void pools.load(drawCount).then((pool) => {
-      if (settings.drawCount !== drawCount) return;
-      dailyToday = dailySeed(pool, new Date());
-    });
+    void pools.load(settings.drawCount);
   });
 
   /** Every choice, remembered. A write that fails is not worth a word. */
@@ -1603,17 +1565,10 @@
     <NewGameSheet
       drawCount={settings.drawCount}
       winnableOnly={settings.winnableOnly}
-      seed={game.seed}
-      seedDraw={game.drawCount}
-      movesAtRisk={won ? 0 : moves}
-      dailySeed={dailyToday}
-      {dailyDone}
-      streak={daily.current}
       onDrawCount={(drawCount) => (settings = { ...settings, drawCount })}
       onWinnableOnly={(winnableOnly) =>
         (settings = { ...settings, winnableOnly })}
       onNewDeal={newDeal}
-      onDaily={startDaily}
       onReplay={replay}
       onStats={() => (statsOpen = true)}
       onClose={() => (newGameOpen = false)}
@@ -1634,7 +1589,7 @@
     while it is open, for the same reason the menu is.
   -->
   {#if statsOpen}
-    <StatsSheet {stats} {daily} onClose={() => (statsOpen = false)} />
+    <StatsSheet {stats} onClose={() => (statsOpen = false)} />
   {/if}
 
   <!--
