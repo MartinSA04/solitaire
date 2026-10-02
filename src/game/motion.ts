@@ -18,7 +18,7 @@ import { type PileRef } from "./Layout.ts";
  * Both are pure, and both are presentation rather than rules — a deal happens
  * atomically as far as `src/engine/` is concerned, and the fact that it is
  * shown as twenty-eight cards leaving a pile one after another is a decision
- * of docs/05-interaction-and-motion.md's, not of docs/03's.
+ * of docs/notes.md's, not of docs/notes.md's.
  */
 
 /**
@@ -103,7 +103,7 @@ export function drawnCards(before: GameState, after: GameState): Card[] {
  * mark. The board lights the slot in those cases and the top card in the
  * others, and the card layer is still told nothing about the slot grid — it is
  * given cards, and the thirteen slot elements are the chrome's, which is where
- * docs/07 already keeps them.
+ * docs/notes.md already keeps them.
  *
  * Asked of the position *before* the move, because that is where the cards
  * still are.

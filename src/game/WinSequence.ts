@@ -20,7 +20,7 @@ import {
 } from "./cascade.ts";
 
 /**
- * The win sequence: the reason to build this site. docs/06-win-sequence.md is
+ * The win sequence: the reason to build this site. docs/notes.md is
  * the specification and this file is the whole of the implementation of its
  * timeline — the visuals of Stages 1 and 3 are CSS (`src/styles/win.css`), the
  * physics is `cascade.ts`, the trails are `Trails.ts`, and Stage 4 is
@@ -105,7 +105,7 @@ const DEGRADE_WINDOW_MS = 500;
 const DEGRADE_THRESHOLD = 0.25;
 
 /**
- * The graceful-degradation ladder from docs/06, in order. It never goes below
+ * The graceful-degradation ladder from docs/notes.md, in order. It never goes below
  * "cards fall and bounce at 60fps", because that is the part that matters.
  */
 const DEGRADE_DPR = 1;
@@ -377,7 +377,7 @@ export class WinSequence {
   }
 
   /**
-   * The loop measures itself: docs/06's ladder, one rung per window that
+   * The loop measures itself: docs/notes.md's ladder, one rung per window that
    * misses budget. It only ever drops the trails and the launch rate, never
    * the physics, because cards falling at 60fps is the part that matters.
    */

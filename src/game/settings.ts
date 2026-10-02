@@ -90,18 +90,18 @@ export type Auto = typeof AUTO;
 export interface Settings {
   theme: Theme;
   deck: Deck | Auto;
-  /** The clock can be hidden entirely; time is still recorded. docs/02. */
+  /** The clock can be hidden entirely; time is still recorded. docs/notes.md. */
   timer: boolean;
   /**
    * How big the cards are. "Large" shows fewer columns at once and pages the
    * tableau sideways to reach the rest — see {@link CardSize}. The one place
-   * the no-scrolling rule bends, and docs/08 says why.
+   * the no-scrolling rule bends, and docs/notes.md says why.
    */
   cardSize: CardSize;
   /**
    * Draw our own corner index on top of a sourced deck's art.
    *
-   * Off, and this is the setting that used to be a rule. docs/04 requires a
+   * Off, and this is the setting that used to be a rule. docs/notes.md requires a
    * card's rank to be legible at a 46px card, because a fanned column shows
    * about a quarter of each card and that corner is the only part of it
    * anybody reads — and the French deck's own index is about five pixels tall
@@ -138,7 +138,7 @@ export const DEFAULTS: Settings = Object.freeze({
 
 /**
  * "theme = surface tokens + light model + type + a default deck", from
- * docs/04-art-direction.md. A table is a taste, and the deck that goes with it
+ * docs/notes.md. A table is a taste, and the deck that goes with it
  * is part of that taste.
  *
  * Choosing a deck explicitly replaces this for good — the point of the
@@ -219,7 +219,7 @@ export function resolve(settings: Settings): Resolved {
 /**
  * Write them onto the document element.
  *
- * Instantly, not as the crossfade docs/05 pencilled in against `--t-slow`.
+ * Instantly, not as the crossfade docs/notes.md pencilled in against `--t-slow`.
  * Two themes are two sets of custom properties, and CSS cannot interpolate
  * between most of what they hold — a gradient into a flat colour, a shadow
  * into `none`, a 1px hairline into 1.5px. What is possible is fading the

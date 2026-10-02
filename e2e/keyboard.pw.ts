@@ -143,7 +143,7 @@ test("wins a whole game with nothing but key presses", async ({ page }) => {
     "You won.",
   );
   // And Stage 0 is already on screen by the time the sentence has been said —
-  // "beat", 140ms of it, before a card has moved. See docs/06.
+  // "beat", 140ms of it, before a card has moved. See docs/notes.md.
   await expect(page.locator(".game")).toHaveAttribute(
     "data-win",
     /beat|ascend|cascade|clear|card/,

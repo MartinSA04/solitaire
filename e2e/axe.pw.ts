@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { type Page, expect, test } from "@playwright/test";
 
 /**
- * The gate from docs/08-accessibility.md: **zero axe violations**, on the game
+ * The gate from docs/notes.md: **zero axe violations**, on the game
  * page and on every surface the chrome can put in front of it.
  *
  * What this is and is not worth saying out loud, because an automated audit is
@@ -186,7 +186,7 @@ test("how to play has none", async ({ page }) => {
 });
 
 test("the credits have none", async ({ page }) => {
-  // Not a surface docs/08 listed, because it did not exist when the list was
+  // Not a surface docs/notes.md listed, because it did not exist when the list was
   // written. It is a page a licence obligation is honoured on and a player can
   // reach in two taps, which makes it as much a part of the product as the
   // board is.

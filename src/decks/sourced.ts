@@ -12,7 +12,7 @@ import { type Card, rankOf, suitOf } from "../engine/index.ts";
  *
  * ## Where these came from
  *
- * docs/04-art-direction.md used to record that a second sourced deck had been
+ * docs/notes.md used to record that a second sourced deck had been
  * looked for and not found. It had been looked for in the wrong place. The
  * search was through deck *projects* — Byron Knoll's, Chris Aguilar's,
  * saulspatz's, RevK's — and every one of them fails on size or on provenance:
@@ -44,7 +44,7 @@ import { type Card, rankOf, suitOf } from "../engine/index.ts";
  * - **Adler, Clubkarte, L & H, Mittelalter, Tragy, Tarot**: JPEG court cards,
  *   0.7 to 1.7MB. That is Byron Knoll's rejection again and it has not moved.
  * - **Classic** (Byron Knoll) and **Traditional** (Chris Aguilar), for the
- *   reasons docs/04 gives: 8MB of traced bitmap, and an exact attribution
+ *   reasons docs/notes.md gives: 8MB of traced bitmap, and an exact attribution
  *   string we would be honouring from a source we cannot verify.
  */
 
@@ -96,7 +96,7 @@ export interface SourcedDeck {
   /**
    * The back this deck is printed on, if we use it — every one of these
    * sprites carries one, and a deck arriving with the back it was printed on
-   * is what docs/04 means by a back belonging to its deck. `null` keeps one of
+   * is what docs/notes.md means by a back belonging to its deck. `null` keeps one of
    * ours, which is also what happens to any deck whose sprite fails to arrive.
    */
   back: Box | null;
@@ -180,7 +180,7 @@ export function viewBox(box: Box): string {
  * different shapes of card, and each of these was drawn at the shape its
  * pattern is printed at. The board takes this number from the deck and lays
  * the table out at it, so what a player sees is the proportion the artist
- * drew. See docs/04-art-direction.md.
+ * drew. See docs/notes.md.
  */
 export function deckAspect(deck: SourcedDeck): number {
   return deck.grid.h / deck.grid.w;
@@ -269,7 +269,7 @@ export const SOURCED: readonly SourcedDeck[] = [
     bytes: 5546,
     authors: ["Vincent Bermel", "Adrian Kennard"],
     licence: "GNU LGPL, version 3 or later",
-    note: "Index only, twice per card, out of Adrian Kennard's CC0 card generator — the deck docs/04 turned down when it was 52 separate files, arriving as one sheet somebody else published.",
+    note: "Index only, twice per card, out of Adrian Kennard's CC0 card generator — the deck docs/notes.md turned down when it was 52 separate files, arriving as one sheet somebody else published.",
   }),
   aisleriot({
     id: "tango-nuevo",

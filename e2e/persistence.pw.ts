@@ -310,7 +310,7 @@ test("games played and won are counted, and a win is recorded", async ({
 });
 
 /**
- * docs/07-architecture.md: "the game is fully playable with storage
+ * docs/notes.md: "the game is fully playable with storage
  * unavailable". Safari in private browsing used to hand out a store that
  * throws on write, and a browser with cookies blocked throws on the property
  * access itself.

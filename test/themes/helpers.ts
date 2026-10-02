@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
  * Enough CSS and enough colour science to check a theme without a browser.
  *
  * The themes are the one part of the product whose correctness is a number —
- * docs/08-accessibility.md gives a contrast table and docs/04-art-direction.md
+ * docs/notes.md gives a contrast table and docs/notes.md
  * a token contract — and both are checkable from the source text. Nothing here
  * tries to be a CSS engine: it reads declaration blocks, resolves the colour
  * values a theme is allowed to use, and composites alpha onto a backdrop.

@@ -33,7 +33,7 @@ import { makeState } from "../engine/helpers.ts";
 /**
  * Layout is the one part of the UI that is pure arithmetic, so it is the one
  * part that can be pinned without a browser. The golden viewports are the four
- * docs/07-architecture.md names, with the top and bottom bars already taken
+ * docs/notes.md names, with the top and bottom bars already taken
  * off the height — this module is given the board's area, not the window's.
  */
 
@@ -53,7 +53,7 @@ function round(value: number): number {
 }
 
 describe("board measurements", () => {
-  it("hits the phone sizing table in docs/05 on a 360px viewport", () => {
+  it("hits the phone sizing table in docs/notes.md on a 360px viewport", () => {
     const m = metricsFor(PHONE);
     // "Card width (100vw - 16 - 24) / 7 ≈ 46px — the binding constraint on
     // everything", and the gutter, gap and fans that follow from it.
@@ -277,7 +277,7 @@ describe("pile positions", () => {
   });
 
   it("puts the foundations in columns 3-6, spades first", () => {
-    // ♠ ♥ ♦ ♣, left to right, as docs/02-game-spec.md draws the board.
+    // ♠ ♥ ♦ ♣, left to right, as docs/notes.md draws the board.
     assert.deepEqual(FOUNDATION_ORDER, [SPADES, HEARTS, DIAMONDS, CLUBS]);
     FOUNDATION_ORDER.forEach((suit, slot) => {
       assert.deepEqual(pileOrigin(m, { pile: "foundation", suit }), {
@@ -464,7 +464,7 @@ function _typecheck(m: Metrics): number {
 void _typecheck;
 
 /**
- * The Large card size, from docs/08-accessibility.md: cards a third bigger,
+ * The Large card size, from docs/notes.md: cards a third bigger,
  * bought by showing fewer columns at once and paging sideways for the rest.
  *
  * Everything here is arithmetic, so all of it can be pinned without a browser

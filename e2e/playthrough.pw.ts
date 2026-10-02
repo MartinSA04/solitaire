@@ -198,7 +198,7 @@ test("a whole game, dealt to won, by pointer alone", async ({ page }) => {
  * The other way a game ends, and the one most games actually end with: play
  * until every card is face up and the stock is spent, at which point the deal
  * is already won and the player is owed the ceremony rather than another forty
- * taps. docs/02-game-spec.md calls that condition a proof, and this is it
+ * taps. docs/notes.md calls that condition a proof, and this is it
  * being taken at its word — the button appears exactly when it holds, and
  * pressing it sends the rest home and runs straight into the win sequence.
  */
@@ -251,7 +251,7 @@ test("Finish plays out a deal that is already won", async ({ page }) => {
 });
 
 /**
- * The other thing a hint has to be able to say. docs/02-game-spec.md is exact
+ * The other thing a hint has to be able to say. docs/notes.md is exact
  * about it: "No moves left — undo, or try a new deal", said plainly, rather
  * than a "you lose" screen — there isn't one of those, because with unlimited
  * undo and unlimited redeals the player decides when a deal is over.

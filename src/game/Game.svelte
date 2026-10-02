@@ -91,7 +91,7 @@
    * The island. It owns the game, the clock and the chrome; it does not own
    * the board.
    *
-   * The boundary from docs/07-architecture.md, restated because it is the one
+   * The boundary from docs/notes.md, restated because it is the one
    * rule that keeps this fast: **the card layer is not reactive.** Svelte
    * renders 52 card elements once per deal, inside the `{#key gameId}` block
    * below, and never touches them again. `CardLayer` holds the references and
@@ -125,7 +125,7 @@
   const TICK_MS = 250;
 
   /**
-   * The finishing cascade: ~40ms between cards, accelerating, per docs/02. It
+   * The finishing cascade: ~40ms between cards, accelerating, per docs/notes.md. It
    * runs straight into the win sequence without a break — the auto-complete
    * *is* the opening beat of the win, not a skip of it.
    */
@@ -148,7 +148,7 @@
   let elapsedMs = $state(0);
   let winStage: WinStage = $state("none");
   let dismissed = $state(false);
-  /** Every card face up and the stock spent: Finish replaces Hint. docs/02. */
+  /** Every card face up and the stock spent: Finish replaces Hint. docs/notes.md. */
   let canFinish = $state(false);
   /** Your best time on the deal you are playing, if you have won it before. */
   let bestMs: number | null = $state(null);
@@ -197,7 +197,7 @@
    * Everything that outlives a tab. `Persist` is defensive to the point of
    * tedium on purpose — storage throws in private browsing and holds whatever
    * anyone last pasted into it — and with none available it is a complete
-   * working object that remembers nothing, which is the whole of docs/07's
+   * working object that remembers nothing, which is the whole of docs/notes.md's
    * "the game is fully playable with storage unavailable".
    */
   const persist = new Persist();
@@ -216,7 +216,7 @@
    * Whether what is on the table is a game being picked up rather than a deal.
    *
    * A resumed board is not dealt out again. The deal is twenty-eight cards
-   * leaving the stock a row at a time — see docs/05 — and a board mid-play has
+   * leaving the stock a row at a time — see docs/notes.md — and a board mid-play has
    * no rows to leave in: half its columns are the wrong length and some of its
    * cards are on the foundations. Coming back to a game means finding it where
    * you left it, in the frame the island mounts in.
@@ -233,7 +233,7 @@
    * cards.
    *
    * This is reactive where `game` deliberately is not, and it does not
-   * contradict docs/07: the rule is that the card layer is never re-rendered
+   * contradict docs/notes.md: the rule is that the card layer is never re-rendered
    * by Svelte, and this re-renders no cards. It is thirteen `aria-label`
    * attributes, and they have to be right after every move because they are
    * the entire board as far as a screen reader is concerned.
@@ -431,7 +431,7 @@
     showSelection();
     if (game.isWon && !won) {
       won = true;
-      // The clock stops at Stage 0, before anything has moved — see docs/06.
+      // The clock stops at Stage 0, before anything has moved — see docs/notes.md.
       clock.pause();
       elapsedMs = clock.elapsed;
       // Assertive, and *here* rather than at the end of the cascade: nobody is
@@ -550,7 +550,7 @@
   /**
    * One move worth making, pulsing on the board — or, when there genuinely is
    * none, a sentence saying so. Not a loss screen: with unlimited undo and
-   * unlimited redeals the player decides when a deal is over, and docs/02 is
+   * unlimited redeals the player decides when a deal is over, and docs/notes.md is
    * specific that there is no such thing as losing.
    */
   function hint(): void {
@@ -607,7 +607,7 @@
 
   // ----------------------------------------------------------- the keyboard
   //
-  // docs/08-accessibility.md's model, wired up. `keyboard.ts` decides what a
+  // docs/notes.md's model, wired up. `keyboard.ts` decides what a
   // key *meant*; everything below is what happens next, and the split is what
   // lets a test play a whole game through the model with no browser in it.
 
@@ -858,7 +858,7 @@
   /**
    * A deal in a named draw mode. Changing the mode starts a new game rather
    * than reinterpreting this one, because draw-1 and draw-3 make genuinely
-   * different games out of the same seed — see docs/02-game-spec.md. It takes
+   * different games out of the same seed — see docs/notes.md. It takes
    * the count rather than reading it so it cannot race the settings update
    * that asked for it.
    */
@@ -973,7 +973,7 @@
   }
 
   /**
-   * Two query flags, and between them everything docs/07 asks for to make the
+   * Two query flags, and between them everything docs/notes.md asks for to make the
    * win sequence testable at all:
    *
    * - `?win` runs the whole thing on load without one having been won, which
@@ -1300,7 +1300,7 @@
     layer?.setOwnIndex(settings.cardIndex);
   });
 
-  /** The displayed clock. Pauses with the tab, per docs/02-game-spec.md. */
+  /** The displayed clock. Pauses with the tab, per docs/notes.md. */
   $effect(() => {
     const tick = setInterval(() => {
       if (clock.running) elapsedMs = clock.elapsed;
@@ -1352,7 +1352,7 @@
     The fifty-two cards stay decorative: a pile says everything about itself.
 
     `inert` while the cascade runs, because for those thirteen seconds the labels
-    would be describing a board the cards have left. docs/08 asks for the
+    would be describing a board the cards have left. docs/notes.md asks for the
     cascade to be hidden; `inert` hides it *and* takes the focus out of it, which
     `aria-hidden` on its own would only lie about.
   -->

@@ -4,7 +4,7 @@ import { Z_TRAILS } from "./Layout.ts";
 
 /**
  * The comet tails behind the falling cards — the thing the original couldn't
- * do, and the thing that makes the cascade read as ours. See docs/06.
+ * do, and the thing that makes the cascade read as ours. See docs/notes.md.
  *
  * The whole mechanism is two operations a frame:
  *
@@ -15,7 +15,7 @@ import { Z_TRAILS } from "./Layout.ts";
  * leaves a ~20-frame tail and costs exactly one full-canvas operation plus one
  * small fill per card. The fade is free, because it *is* the clear.
  *
- * docs/06 describes step 1 as filling the canvas with the table colour. This
+ * docs/notes.md describes step 1 as filling the canvas with the table colour. This
  * does it as `destination-out` instead, which subtracts alpha rather than
  * adding paint: the canvas is transparent over a table that is a gradient in
  * every theme we ship, so fading towards a single flat colour would leave a

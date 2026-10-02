@@ -1,7 +1,7 @@
 <script lang="ts">
   interface Props {
     canUndo: boolean;
-    /** Every card face up and the stock spent: the deal is already won. docs/02. */
+    /** Every card face up and the stock spent: the deal is already won. docs/notes.md. */
     canFinish: boolean;
     onUndo: () => void;
     onHint: () => void;
@@ -14,7 +14,7 @@
 </script>
 
 <!--
-  The thumb zone, and the three controls docs/05-interaction-and-motion.md
+  The thumb zone, and the three controls docs/notes.md
   draws: Undo is the most-pressed button in the game, the middle slot is the
   assist, and ⋯ is everything else — a new deal, the daily, the stats, the
   settings.

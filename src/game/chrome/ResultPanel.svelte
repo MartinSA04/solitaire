@@ -26,7 +26,7 @@
   }: Props = $props();
 
   /**
-   * Stage 4 of docs/06-win-sequence.md. The numbers count up from zero — the
+   * Stage 4 of docs/notes.md. The numbers count up from zero — the
    * only gratuitous flourish in the panel, and what makes them feel earned.
    *
    * The record line appears only when something was beaten, and the first win
@@ -39,7 +39,7 @@
   let progress = $state(0);
   let panel: HTMLElement | undefined = $state();
 
-  /** Focus follows the panel, per docs/08-accessibility.md. */
+  /** Focus follows the panel, per docs/notes.md. */
   $effect(() => {
     panel?.focus();
   });
@@ -332,7 +332,7 @@
   }
 
   /* Cross-fades in rather than rising, and the numbers arrive at their final
-     value — see the reduced-motion section of docs/06. */
+     value — see the reduced-motion section of docs/notes.md. */
   @media (prefers-reduced-motion: reduce) {
     /* A real duration, not `--t-slow`: reduced motion flattens that to 1ms,
        and a 1ms cross-fade is a cut. */

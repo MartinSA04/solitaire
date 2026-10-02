@@ -15,7 +15,7 @@ import {
  * Board geometry. Pure: an available area in, numbers out — no DOM, no reads,
  * no side effects. Everything the card layer, the hit-tester and the CSS agree
  * on is computed here exactly once per resize, which is what
- * docs/05-interaction-and-motion.md means by "no layout reads during
+ * docs/notes.md means by "no layout reads during
  * animation".
  *
  * This module is the single source of truth for the board's measurements. The
@@ -28,7 +28,7 @@ import {
 
 /**
  * Everything is a multiple of the card width, per
- * docs/05-interaction-and-motion.md — there are no breakpoints for the board,
+ * docs/notes.md — there are no breakpoints for the board,
  * only one computed `--card-w`.
  *
  * The ratios are the phone target read backwards: on a 360px viewport the spec
@@ -99,10 +99,10 @@ const WASTE_FANNED = 3;
  */
 const WORST_COLUMN = 19;
 
-/** Hit areas overrun the card by this much on every side — see docs/08-accessibility.md. */
+/** Hit areas overrun the card by this much on every side — see docs/notes.md. */
 export const HIT_PAD = 4;
 
-/** The four foundations, left to right, as docs/02-game-spec.md draws them. */
+/** The four foundations, left to right, as docs/notes.md draws them. */
 export const FOUNDATION_ORDER: readonly Suit[] = [
   SPADES,
   HEARTS,
@@ -116,7 +116,7 @@ const WASTE_COLUMN = 1;
 const FIRST_FOUNDATION_COLUMN = 3;
 
 /**
- * How big the cards are asked to be. docs/08-accessibility.md: "Comfortable"
+ * How big the cards are asked to be. docs/notes.md: "Comfortable"
  * is the game, and "Large" is for somebody who cannot read a 46px card.
  *
  * The only thing it changes is **how many columns are on screen at once**. A
@@ -164,7 +164,7 @@ export interface Metrics extends Area {
    * How many rows the stock, waste and foundations take: one, or two when the
    * cards are too big for six of them to stand side by side.
    *
-   * This is the half of the Large card size docs/08 did not foresee. The top
+   * This is the half of the Large card size docs/notes.md did not foresee. The top
    * row is as wide as the tableau — the same seven slots — so a card big
    * enough to need paging is a card too big for the top row as well, and the
    * stock and the last foundation simply fall off the side. They cannot page
@@ -324,7 +324,7 @@ export function pageShift(m: Metrics): number {
 /**
  * The top-left corner of a pile's slot, in card-layer coordinates.
  *
- * On one top row this is the board docs/02 draws: stock, waste, a gap, then
+ * On one top row this is the board docs/notes.md draws: stock, waste, a gap, then
  * the four foundations. On two, the stock and the waste keep the first row and
  * the four foundations take the second, from the left.
  *
@@ -380,7 +380,7 @@ const Z_FOUNDATION = Z_WASTE + Z_BAND;
  * *within* the band, so several cards moving at once keep their order, and it
  * is lifted clear of everything at rest so nothing it crosses cuts through it.
  * The lift is dropped once the card has landed, where it is invisible —
- * docs/05-interaction-and-motion.md's rule is that z never changes *during* a
+ * docs/notes.md's rule is that z never changes *during* a
  * move, not that it never changes.
  */
 export const Z_FLIGHT = 2000;
@@ -419,7 +419,7 @@ export interface Placement extends Point {
  *
  * Every card is placed on every render: the card layer holds 52 persistent
  * elements and a move is a changed transform, never a reparenting. See
- * docs/05-interaction-and-motion.md.
+ * docs/notes.md.
  *
  * `peek` is the column being long-pressed, which is fanned right out for as
  * long as the press lasts. It is a *position*, not a state: the game underneath
@@ -566,7 +566,7 @@ export interface Hit {
  *
  * In reading order, which is also the order the keyboard's roving focus walks
  * them in and the order the thirteen slot elements are rendered in — see
- * docs/08-accessibility.md. Hit-testing does not care about the order (it sorts
+ * docs/notes.md. Hit-testing does not care about the order (it sorts
  * by z itself) but everything else does, and one list is what stops three
  * copies of it disagreeing.
  */
@@ -665,7 +665,7 @@ export function pileCards(state: GameState, ref: PileRef): readonly Card[] {
  * Where a dragged card is being dropped. The target is the pile whose
  * rectangle the *card's top-left corner region* overlaps most — not the pointer
  * position. With a 46px card and a fingertip, pointer-based targeting is wrong
- * constantly; see docs/05-interaction-and-motion.md.
+ * constantly; see docs/notes.md.
  */
 export function dropTarget(
   m: Metrics,

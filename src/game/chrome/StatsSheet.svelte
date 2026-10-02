@@ -12,7 +12,7 @@
   const { stats, daily, onClose }: Props = $props();
 
   /**
-   * The numbers, and nothing else. docs/02-game-spec.md is exact about what is
+   * The numbers, and nothing else. docs/notes.md is exact about what is
    * not here: no losses column, no "you abandoned 14 games", no percentage
    * dressed up as a grade. Games played and games won are both facts; the
    * difference between them is not a number anybody needs looking at.

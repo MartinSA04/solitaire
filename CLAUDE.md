@@ -3,12 +3,9 @@
 A solitaire website. Astro 6 static site, pnpm, deployed to GitHub Pages at
 <https://solitaire.martinsundal.no>.
 
-The engine, a playable board, the win sequence, the motion catalogue, the themes
-and decks, the deals, persistence and statistics, and the keyboard, screen-reader
-and desktop work are built (milestones 0 to 6 of `docs/09-roadmap.md`); the parts
-of their bars that need hardware or people are noted there. Everything is designed
-in `docs/` before it is written; a change that contradicts a doc changes the doc
-in the same commit.
+`docs/notes.md` is the one design note: rules, deals, architecture, look,
+motion, accessibility. Keep it short. A change that contradicts it changes it in
+the same commit.
 
 ## Invariants
 
@@ -32,7 +29,7 @@ in the same commit.
   per deal, inside `{#key gameId}`, and never touches them again;
   `src/game/CardLayer.ts` writes `transform` and `z-index` directly. Svelte
   state may call into it, never re-render it. A move is a changed transform —
-  no reparenting, no FLIP, no measuring. See `docs/07-architecture.md`.
+  no reparenting, no FLIP, no measuring. See `docs/notes.md`.
 - **A board handed to the card layer accounts for all fifty-two cards.** The
   display states — the undealt board the deal flies out of, `?win`'s won one —
   are built in `src/game/motion.ts` and `Game.svelte` rather than by the engine,
@@ -41,7 +38,7 @@ in the same commit.
   it last was. That is a blank table, and it is what a resumed game came back to
   for as long as the undealt board was rebuilt from the *deal order* — which
   only describes a tableau that is still the triangle it was dealt as. A resumed
-  board is not dealt out again either; see `docs/07`.
+  board is not dealt out again either; see `docs/notes.md`.
 - **`src/game/Layout.ts` is the only source of board geometry**, and it is
   pure: an area in, numbers out. It writes its measurements onto `.board` as
   custom properties and the CSS consumes them, so the slot grid and the card
@@ -98,8 +95,8 @@ in the same commit.
   in `src/themes/` and `src/decks/` hang off those attributes and know nothing
   about each other. **Deck files are imported after theme files**, and that
   order is what decides a conflict between them, because the two selectors have
-  equal specificity. `test/themes/` asserts the token contract from `docs/04`
-  and the contrast table from `docs/08` by reading the stylesheets.
+  equal specificity. `test/themes/` asserts the token contract and the contrast
+  table by reading the stylesheets.
 - **Only two of those three are chosen.** A back belongs to its deck, the way it
   does in a real pack: `DECK_BACK` names one per deck and there is no control
   for it anywhere. The five decks we draw get one of our six patterns each, no
@@ -147,7 +144,7 @@ in the same commit.
   shape when a sprite has actually landed — so the reshape happens inside the
   crossfade rather than a second ahead of it on a deck that may never arrive.
   `--card-aspect` is how the empty slots hear about it.
-- **The gallery is a library, not a shop.** `docs/01` rules out anything locked,
+- **The gallery is a library, not a shop.** `docs/notes.md` rules out anything locked,
   earned, bought or timed, and `src/game/chrome/DecksSheet.svelte` is where a
   product usually breaks that. The only thing a tile says beyond what the deck
   looks like is what it costs to fetch — and the decks we draw say "No
@@ -206,13 +203,13 @@ in the same commit.
   the Playwright suite cannot report into the real account. What it collects is
   written out on `/credits`; `test/site.test.ts` holds that page to it. It is
   the site's **only** request to another origin, and the only exception to
-  `docs/01-product-brief.md`'s privacy principle.
+  `docs/notes.md`'s privacy principle.
 
 - **The win sequence owns the card layer once it starts.** `CardLayer.surrender()`
   hands the 52 elements to `WinSequence.ts`'s physics loop and makes `render()`
   a no-op, so a resize mid-cascade cannot put the cards back on their
   foundations. `?win` runs the whole thing without winning and `?winseed=N`
-  makes it deterministic; see `docs/06-win-sequence.md`.
+  makes it deterministic; see `docs/notes.md`.
 - **The trail canvas ends empty, on every path out of the sequence.** The
   wash-out clears it however it ends and `destroy()` clears it again, because
   subtracting 22% of the alpha thirty-six times leaves one or two units of it

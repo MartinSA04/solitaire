@@ -8,7 +8,7 @@ import { makeState, parseCard } from "../engine/helpers.ts";
 
 /**
  * Tap-to-auto-move is the most important interaction in the game and the one
- * docs/07-architecture.md flags as most likely to need tuning. These tests pin
+ * docs/notes.md flags as most likely to need tuning. These tests pin
  * what it does *today*, so a tuning pass is a deliberate act rather than a
  * silent one.
  */

@@ -30,7 +30,7 @@
   --suit-spades: #16130f;
   /*
    * 9:1 on a pure white card, which is the lightest any table offers, so it
-   * clears docs/08's 7:1 on all three with room to spare. A printed card's
+   * clears docs/notes.md's 7:1 on all three with room to spare. A printed card's
    * pillarbox red is nowhere near it; this is that red taken down until it is.
    */
   --suit-hearts: #8c1f14;

@@ -1,5 +1,5 @@
 /*
- * Card backs. Ours, always — docs/04-art-direction.md's reasoning is that the
+ * Card backs. Ours, always — docs/notes.md's reasoning is that the
  * back is the most-seen surface in the game (twenty-eight of them on screen at
  * deal time) and the cheapest thing in it to draw.
  *
@@ -13,7 +13,7 @@
  * attribute is what lets one file hold six patterns that no deck file and no
  * theme file has to know about.
  *
- * docs/04 specified these as one SVG pattern each, recoloured per theme by a
+ * docs/notes.md specified these as one SVG pattern each, recoloured per theme by a
  * CSS variable. They are gradients instead, for the reason that sentence
  * itself contains: an external SVG cannot read a custom property and a data
  * URI cannot either, so "an SVG file" and "recoloured per theme" are mutually

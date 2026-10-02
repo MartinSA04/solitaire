@@ -20,15 +20,15 @@ import {
  * on everyone else's.
  *
  * So the two things the docs say about a theme are asserted here rather than
- * left to review: the token contract in docs/04-art-direction.md (a theme is
+ * left to review: the token contract in docs/notes.md (a theme is
  * nothing but this set, and one that leaves a token out is incomplete), and
- * the contrast table in docs/08-accessibility.md.
+ * the contrast table in docs/notes.md.
  */
 
 /**
  * The contract, minus `--card-radius`: that one is geometry, and geometry has
  * a single owner — Layout.ts writes it onto `.board` on every resize. The last
- * group is the card surface, which docs/04 describes as the deck's rather than
+ * group is the card surface, which docs/notes.md describes as the deck's rather than
  * the table's, but which has to have a default *somewhere*, and a warm table
  * wanting a warm white card is as much a decision about the table as its felt
  * is. A deck overrides what it disagrees with.
@@ -91,7 +91,7 @@ describe("theme token contract", () => {
 });
 
 /**
- * The table from docs/08-accessibility.md, one assertion per row. The ink on
+ * The table from docs/notes.md, one assertion per row. The ink on
  * the card is the deck's business and is checked in deck.test.ts, against
  * every table.
  *
@@ -100,7 +100,7 @@ describe("theme token contract", () => {
  * Minimal light theme cannot give at all — white on warm paper is 1.2:1, and
  * making it 4.5 would mean a mid-grey ground, which is not that theme. That is
  * what its hairline is for, so the check is 3:1 by the card's own background
- * *or* by the stroke at its edge. See docs/04-art-direction.md.
+ * *or* by the stroke at its edge. See docs/notes.md.
  */
 describe("theme contrast", () => {
   for (const theme of THEMES) {
@@ -144,7 +144,7 @@ describe("theme contrast", () => {
           "--chrome-fg on a sheet",
           where,
         );
-        // 4.5, not the 3 docs/08 first wrote. The clock and the move counter
+        // 4.5, not the 3 docs/notes.md first wrote. The clock and the move counter
         // are ordinary 15px text, and WCAG 2.2 AA asks 4.5 of ordinary text
         // whatever a designer meant by "deliberately dim" — which the axe gate
         // in e2e/axe.pw.ts pointed out the moment it was run against a light

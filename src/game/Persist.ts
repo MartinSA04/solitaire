@@ -20,7 +20,7 @@ import {
  * sol:v1:daily      the last daily completed, and the streak
  * ```
  *
- * Three rules, all of them from docs/07-architecture.md, and all of them the
+ * Three rules, all of them from docs/notes.md, and all of them the
  * reason this file is longer than it looks like it needs to be:
  *
  * 1. **Every read is defensive.** Storage throws in private browsing, returns

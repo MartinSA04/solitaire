@@ -1,9 +1,9 @@
 <script module lang="ts">
   /**
-   * Long enough to be a game worth keeping. docs/02-game-spec.md: a new deal
+   * Long enough to be a game worth keeping. docs/notes.md: a new deal
    * or a replay is one tap under about five moves and asks first over it —
    * which is a modal in direct response to something just pressed, and so the
-   * one kind docs/01 allows.
+   * one kind docs/notes.md allows.
    *
    * Exported because the keyboard asks the same question with a second press
    * of the same key — see Game.svelte. One number, two ways of putting it.
@@ -43,7 +43,7 @@
     onStats: () => void;
     /** The deck gallery, which is its own sheet. */
     onDecks: () => void;
-    /** Confirmed draw-mode change: a new deal, per docs/02-game-spec.md. */
+    /** Confirmed draw-mode change: a new deal, per docs/notes.md. */
     onRedeal: (drawCount: DrawCount) => void;
     onClose: () => void;
   }
@@ -67,7 +67,7 @@
    * Everything the bottom bar's three buttons don't have room for: the deals
    * you can start, the statistics, and every theme, deck and back — available
    * on first load, with nothing to unlock and nothing to buy.
-   * docs/04-art-direction.md is emphatic about that and it is the easiest
+   * docs/notes.md is emphatic about that and it is the easiest
    * promise in the product to keep, since a deck here is a set of custom
    * properties rather than a purchase.
    *
@@ -76,7 +76,7 @@
    * div-buttons with `aria-pressed` would be an imitation of them that reads
    * worse in every screen reader.
    *
-   * The reduced-motion override docs/07 lists in the settings schema is not
+   * The reduced-motion override docs/notes.md lists in the settings schema is not
    * here: the motion work it belongs to is milestone 6, and a switch that
    * overrides a preference the product has not finished honouring would be a
    * promise rather than a setting.
@@ -262,7 +262,7 @@
   <!--
     Geometry rather than a look, so it does not go near the three attributes.
     "Large" shows five columns instead of seven and pages the tableau sideways
-    for the rest — the one place the no-scrolling rule bends, and docs/08 says
+    for the rest — the one place the no-scrolling rule bends, and docs/notes.md says
     why. On a screen wide enough to hold all seven at 110px it changes nothing
     and there is nothing to page through, which is most tablets and every
     desktop; the setting is here for the phone it is for.
@@ -350,7 +350,7 @@
   </div>
 
   <!--
-    Two taps from the game, which is what docs/04 asks of the credits: every
+    Two taps from the game, which is what docs/notes.md asks of the credits: every
     deck's source and licence, including the ones whose licence asks for
     nothing. How to play is here for the same reason — the rules have to be
     somewhere a player can find them without leaving the site to look.
@@ -435,7 +435,7 @@
     cursor: pointer;
   }
 
-  /* Lightness and a border, never hue alone — docs/08-accessibility.md. */
+  /* Lightness and a border, never hue alone — docs/notes.md. */
   .choice:has(input:checked) {
     background: var(--accent);
     color: var(--accent-contrast);
@@ -504,7 +504,7 @@
   /*
    * A switch that still says what it is with the colour taken away: the knob
    * travels as well as the track filling. Lightness and position, never hue
-   * alone — the same rule as the legal-drop highlight, from docs/08.
+   * alone — the same rule as the legal-drop highlight, from docs/notes.md.
    */
   .track {
     position: relative;

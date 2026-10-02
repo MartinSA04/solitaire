@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { type Page, expect, test } from "@playwright/test";
 
 /**
- * The performance budget from docs/05 and docs/06, enforced.
+ * The performance budget from docs/notes.md and docs/notes.md, enforced.
  *
  * The cascade is 52 composited elements plus a full-screen canvas, and it is
  * the hardest thing in the product to keep at 60fps. Frame times are collected
@@ -19,7 +19,7 @@ import { type Page, expect, test } from "@playwright/test";
  *   back to a slideshow, and anything that doubles the per-frame cost pushes
  *   the median to 33ms and fails this.
  *
- * The 16.7ms bar docs/06 originally wrote for the throttled run is not
+ * The 16.7ms bar docs/notes.md originally wrote for the throttled run is not
  * reachable and never was: at 4× the measured 95th percentile is 50ms with the
  * degradation ladder engaged and 50ms with it disabled. See that doc's
  * performance section, which now records the numbers rather than the wish.
@@ -172,7 +172,7 @@ const FOUR_G = {
   latency: 150,
 };
 
-/** The whole point of the number. docs/01 and docs/07. */
+/** The whole point of the number. docs/notes.md and docs/notes.md. */
 const FIRST_MOVE_BUDGET_MS = 2000;
 
 async function timeToFirstMove(

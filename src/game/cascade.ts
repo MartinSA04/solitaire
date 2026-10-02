@@ -10,7 +10,7 @@ import { FOUNDATION_ORDER, MAX_CARD_W } from "./Layout.ts";
 
 /**
  * Stage 2 of the win sequence, as arithmetic: what leaves the foundations,
- * when, how fast, and when it is gone. See docs/06-win-sequence.md.
+ * when, how fast, and when it is gone. See docs/notes.md.
  *
  * Pure — no DOM, no timers, no `Math.random`. That is not fastidiousness: the
  * cascade is the one part of the product whose behaviour cannot be eyeballed
@@ -45,7 +45,7 @@ const LAUNCH_UP_MAX = 260;
  * Sideways launch speed, px/s **at a 110px card** — the one constant in this
  * file that scales with the board.
  *
- * docs/06 writes every velocity in absolute pixels, which is right for
+ * docs/notes.md writes every velocity in absolute pixels, which is right for
  * everything that falls: the drop is the height of a screen, and screens are
  * the same order of magnitude everywhere. It is wrong for everything that
  * travels sideways, because the board is *by construction* seven cards and six

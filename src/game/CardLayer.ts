@@ -17,8 +17,8 @@ import {
  * A move is a changed transform with a CSS transition on it — no FLIP, no
  * cloning into a flying layer, no measuring. That is what makes animations
  * interruptible for free and keeps the whole board on the compositor. See
- * docs/05-interaction-and-motion.md and the boundary rule in
- * docs/07-architecture.md.
+ * docs/notes.md and the boundary rule in
+ * docs/notes.md.
  *
  * Nothing here reads layout. Geometry arrives from {@link Metrics}, computed
  * once per resize.
@@ -63,7 +63,7 @@ function point(
   use.setAttribute("href", href);
 }
 
-/** How a change of position should look. The catalogue is in docs/05. */
+/** How a change of position should look. The catalogue is in docs/notes.md. */
 export type Motion =
   "instant" | "move" | "deal" | "draw" | "drop" | "undo" | "recycle" | "peek";
 
@@ -451,7 +451,7 @@ export class CardLayer {
   /**
    * The move a hint is pointing at: the card to move, and the card it would
    * be moved onto, pulsing together. Scale and an outline rather than a
-   * colour wash, per docs/08-accessibility.md — and under reduced motion the
+   * colour wash, per docs/notes.md — and under reduced motion the
    * CSS turns the two pulses into an outline that stays until it is cleared.
    *
    * It survives a re-render, because the class is on the element and nothing
@@ -532,7 +532,7 @@ export class CardLayer {
   }
 
   /**
-   * What is under the cursor, lifted 2px — docs/05's one desktop affordance.
+   * What is under the cursor, lifted 2px — docs/notes.md's one desktop affordance.
    *
    * The cards it lifts are the cards a click would *move*, not the one pixel
    * the pointer happens to be over: on a fanned column the visible strip of a
@@ -583,7 +583,7 @@ export class CardLayer {
 
   // ------------------------------------------------- the win sequence
   //
-  // docs/06 is built on the 52 elements already being here: nothing is created
+  // docs/notes.md is built on the 52 elements already being here: nothing is created
   // at win time, and the physics loop writes transforms to elements the
   // compositor has been holding all game. These four methods are the whole of
   // the handover — see WinSequence.ts for what drives them.

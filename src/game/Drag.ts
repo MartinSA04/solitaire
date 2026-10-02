@@ -16,7 +16,7 @@ import { type Grab, dropMove, grab } from "./pickup.ts";
  *
  * All the geometry and all the rules live elsewhere — this file only decides
  * whether a gesture was a tap or a drag, and where the pointer is. See
- * docs/05-interaction-and-motion.md.
+ * docs/notes.md.
  */
 
 /** Movement below this is a tap. Nothing visual happens first, so a tap never flickers. */
@@ -47,7 +47,7 @@ export interface DragHost {
   /** Fan a column out under a long press, or let it back down with `null`. */
   peek(column: number | null): void;
   /**
-   * The cards a click here would move, for the 2px lift docs/05 gives a
+   * The cards a click here would move, for the 2px lift docs/notes.md gives a
    * desktop. Never called on a device without a hovering pointer.
    */
   hover(cards: readonly Card[]): void;

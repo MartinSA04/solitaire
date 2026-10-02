@@ -3,7 +3,7 @@
  *
  * Not part of any build or any test run — `node scripts/audit-automove.ts
  * [seeds]`, and it takes a minute or two. It exists because
- * docs/07-architecture.md flags the auto-move heuristic as the thing most
+ * docs/notes.md flags the auto-move heuristic as the thing most
  * likely to need tuning and says it can only be judged by playing, which is
  * true of the half that is taste and not of the half that is arithmetic. This
  * is the arithmetic half.

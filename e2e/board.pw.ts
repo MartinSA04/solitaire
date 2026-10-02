@@ -263,7 +263,7 @@ test("the clock starts at the first move, not at the deal", async ({
   const clock = page.locator(".clock");
   await expect(clock).toHaveText("0:00");
   // A game left open in a tab while you make coffee does not start at four
-  // minutes — see docs/02-game-spec.md.
+  // minutes — see docs/notes.md.
   await page.waitForTimeout(1_400);
   await expect(clock).toHaveText("0:00");
 
@@ -296,7 +296,7 @@ test("the same deal number deals the same game", async ({ page }) => {
  * exactly the destinations a hint is most useful about, and none of them has a
  * card on it to ring. A ring and a lightened slot, never a colour wash, so it
  * reads the same to somebody who cannot separate the wash from the table —
- * docs/08-accessibility.md.
+ * docs/notes.md.
  */
 test("a hint points at the card and at the space it can go", async ({
   page,
@@ -331,7 +331,7 @@ test("a hint points at the card and at the space it can go", async ({
 });
 
 /**
- * docs/08-accessibility.md: under reduced motion the two pulses become a
+ * docs/notes.md: under reduced motion the two pulses become a
  * persistent outline. An animation that is simply switched off would leave a
  * hint that points at nothing, which is the failure mode that doc exists to
  * prevent — the alternative is designed, not absent.
@@ -391,7 +391,7 @@ test("a whole run shakes when it is the whole run that is refused", async ({
  * A refused drop springs home, and **drops out of the drag band when it lands**.
  * Left there — which is what shipped — the card sits above every pile on the
  * table until some unrelated render happens to rewrite it, and that render can
- * be several moves away. See the z-index note in docs/05-interaction-and-motion.md.
+ * be several moves away. See the z-index note in docs/notes.md.
  */
 test("a card that springs back stops being the card in front", async ({
   page,
@@ -449,7 +449,7 @@ test("a new deal starts over", async ({ page }) => {
   await expect(page.locator(".top-bar")).toContainText("1 move");
 
   // A new deal lives in the menu now: the bottom bar's middle slot is the
-  // assist, per the sketch in docs/05-interaction-and-motion.md.
+  // assist, per the sketch in docs/notes.md.
   await page.getByRole("button", { name: "Menu" }).click();
   await page.getByRole("button", { name: "New deal" }).click();
 

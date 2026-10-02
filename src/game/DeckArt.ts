@@ -5,13 +5,13 @@ import type { SourcedDeck } from "../decks/sourced.ts";
  * can reach it.
  *
  * The sprite is **fetched, not bundled**: it stays its own file, byte for byte
- * as its authors published it, which is both what docs/04-art-direction.md's
+ * as its authors published it, which is both what docs/notes.md's
  * licence policy requires and what keeps somebody else's card art out of a
  * first load that does not want it.
  *
  * It is then injected into the document rather than referenced across files,
  * because `<use href="/decks/french/deck.svg#club_7">` — the obvious way to do
- * this, and the way docs/04 described — is not supported in Safari, which is
+ * this, and the way docs/notes.md described — is not supported in Safari, which is
  * most of the phones this game is played on. A same-document `#id` reference
  * works everywhere. Injecting a fetched file into the DOM is not inlining it
  * into the bundle: it is still one cacheable file that arrives over the
@@ -38,7 +38,7 @@ import type { SourcedDeck } from "../decks/sourced.ts";
  * lets the gallery say "downloaded" and mean it: on this device, across
  * reloads, with no connection. It is **not** a service worker and does not
  * become one — nothing is intercepted, there is no lifecycle and no
- * cache-invalidation liability, which is the thing docs/09 deliberately put
+ * cache-invalidation liability, which is the thing docs/notes.md deliberately put
  * off. It is a box this module puts files in and takes them out of again.
  *
  * Every call into it is wrapped, and a cache that is missing, full, disabled

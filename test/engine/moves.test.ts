@@ -15,7 +15,7 @@ import { topOf } from "../../src/engine/state.ts";
 import { makeState, parseCard, showCards, showColumn } from "./helpers.ts";
 
 /**
- * Every rule in docs/02-game-spec.md, positively and negatively. The spec is
+ * Every rule in docs/notes.md, positively and negatively. The spec is
  * the contract; this file is where it is enforced.
  */
 

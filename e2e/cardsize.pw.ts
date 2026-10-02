@@ -3,7 +3,7 @@ import { type Page, expect, test } from "@playwright/test";
 import { TABLEAU_COLUMNS } from "../src/engine/index.ts";
 
 /**
- * The Large card size from docs/08-accessibility.md, wired up.
+ * The Large card size from docs/notes.md, wired up.
  *
  * `test/game/layout.test.ts` pins the arithmetic — how big the cards get, how
  * many columns are on screen, where the pages start and stop. This is the rest
@@ -102,7 +102,7 @@ test("pages the tableau and leaves the top row alone", async ({ page }) => {
 test("all six piles of the top row stay on screen", async ({ page }) => {
   await large(page);
 
-  // The half docs/08 did not foresee: a card too big for seven columns is too
+  // The half docs/notes.md did not foresee: a card too big for seven columns is too
   // big for the six piles above them, so they wrap rather than falling off.
   for (const slot of [".slot-stock", ".slot-waste"]) {
     const box = await page.locator(slot).boundingBox();

@@ -4,7 +4,7 @@ import { type Page, expect, test } from "@playwright/test";
  * A screenshot of every table crossed with every deck, plus each table at the
  * three sizes the layout is designed against.
  *
- * This is the suite docs/07-architecture.md asks for and the only one that can
+ * This is the suite docs/notes.md asks for and the only one that can
  * catch what it catches. `test/themes/` proves the tokens clear their contrast
  * ratios, which is arithmetic; it cannot notice that a card back went missing,
  * that a deck's index is sitting on top of its own pip, or that the felt
@@ -104,7 +104,7 @@ const SIZES = [
   { name: "tablet", width: 768, height: 1024 },
   { name: "desktop", width: 1440, height: 900 },
   // Supported, not optimised — and the one shape where the chrome collapses
-  // for a reason other than width. See docs/05.
+  // for a reason other than width. See docs/notes.md.
   { name: "landscape", width: 844, height: 390 },
 ] as const;
 

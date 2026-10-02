@@ -1,7 +1,7 @@
 import { type Page, expect, test } from "@playwright/test";
 
 /**
- * What a desktop adds, from docs/05-interaction-and-motion.md: the controls
+ * What a desktop adds, from docs/notes.md: the controls
  * move into the top bar because there is no thumb zone, a card under the
  * cursor lifts, and the piles that would take what you are carrying say so.
  *
@@ -156,7 +156,7 @@ test.describe("what the cursor is over", () => {
     // And the pair casts **one** shadow. The lift shadow is 12px down with
     // 28px of blur and the run overlaps by about nineteen, so a shadow on
     // every card drops a dark band across the card below it. Only the foot of
-    // the run wears it; see docs/05-interaction-and-motion.md.
+    // the run wears it; see docs/notes.md.
     await expect(page.locator(".card.is-hovered.is-lift-foot")).toHaveCount(1);
     await expect(
       page.locator(`.card[data-card="${CARD.sixOfSpades}"]`),
@@ -287,7 +287,7 @@ test.describe("where what you are carrying can go", () => {
 });
 
 /**
- * Browser zoom, which docs/08 asks to survive to 200%.
+ * Browser zoom, which docs/notes.md asks to survive to 200%.
  *
  * Zoom does not make the *board* bigger — every measurement on it is a
  * multiple of a card width computed from the viewport, so the cards stay the

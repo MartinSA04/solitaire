@@ -31,7 +31,7 @@ import { makeState, playGreedily } from "../engine/helpers.ts";
 /**
  * Everything the board says out loud.
  *
- * These are the sentences from docs/08-accessibility.md, asserted as
+ * These are the sentences from docs/notes.md, asserted as
  * sentences. A live region is the one part of the interface that cannot be
  * looked at to see whether it is right, and "Q♣" read aloud as nothing at all
  * is a bug nobody sighted will ever notice.
@@ -73,7 +73,7 @@ describe("spelling things out", () => {
 });
 
 describe("what a pile calls itself", () => {
-  it("describes each kind exactly as docs/08 writes it", () => {
+  it("describes each kind exactly as docs/notes.md writes it", () => {
     const state = makeState({
       stock: "2♣ 3♣ 4♣ 5♣ 6♣ 7♣ 8♣ 9♣ T♣ J♣ Q♣",
       waste: "K♣",
@@ -201,7 +201,7 @@ describe("what a move sounds like", () => {
     );
   });
 
-  it("says the win the way docs/08 writes it", () => {
+  it("says the win the way docs/notes.md writes it", () => {
     assert.equal(
       announceWin(134_000, 128),
       "You won. Two minutes fourteen seconds, one hundred and twenty-eight moves.",

@@ -4,7 +4,7 @@ import { type Page, expect, test } from "@playwright/test";
  * Milestone 2's bar, as far as automation can carry it: all five stages run,
  * in order, on a real build; the sequence is always skippable; it never blocks
  * the next game; and the reduced-motion path is a designed alternative rather
- * than an absence. See docs/06-win-sequence.md.
+ * than an absence. See docs/notes.md.
  *
  * Every test here uses the debug trigger — `?win` runs the whole sequence
  * without a game having been won — and `?winseed`, which seeds the physics and

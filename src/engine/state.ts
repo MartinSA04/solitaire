@@ -32,7 +32,7 @@ export type GameState = {
    * How many moves produced this state. Undo restores the state and therefore
    * this number; the player-facing move *count* is monotonic and lives on
    * `Game.movesPlayed`, because undo is forgiveness, not a way to cheat the
-   * counter down. See docs/02-game-spec.md.
+   * counter down. See docs/notes.md.
    */
   moves: number;
 };

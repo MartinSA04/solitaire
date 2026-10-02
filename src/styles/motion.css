@@ -1,5 +1,5 @@
 /*
- * The timing and easing scales from docs/05-interaction-and-motion.md. Four
+ * The timing and easing scales from docs/notes.md. Four
  * durations and three curves; everything in the product uses one of each, and
  * anything that needs a fifth is a design decision, not a CSS decision.
  */
@@ -17,7 +17,7 @@
 /*
  * Reduced motion does not mean no feedback — cards still move, they just
  * arrive immediately, and the illegal-move shake becomes a border flash rather
- * than disappearing. See docs/08-accessibility.md.
+ * than disappearing. See docs/notes.md.
  */
 @media (prefers-reduced-motion: reduce) {
   :root {

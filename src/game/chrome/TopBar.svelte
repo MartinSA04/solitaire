@@ -4,7 +4,7 @@
   interface Props {
     elapsedMs: number;
     moves: number;
-    /** The clock is hideable, for people who find one stressful. docs/02. */
+    /** The clock is hideable, for people who find one stressful. docs/notes.md. */
     showClock: boolean;
     /** Your best time on this deal, if you have beaten it before. */
     bestMs: number | null;
@@ -15,14 +15,14 @@
 
 <!--
   Information only. Every control is in the bottom bar, where a thumb can
-  reach it — see docs/05-interaction-and-motion.md.
+  reach it — see docs/notes.md.
 
   A hidden clock is hidden, not stopped: the time is still recorded, which is
   what makes it safe to hide. The slot stays so the move counter does not walk
   across the bar when it goes.
 
   The best line is the whole of "replay this deal and race yourself" from
-  docs/02: a deal you have won before opens with the time to beat next to the
+  docs/notes.md: a deal you have won before opens with the time to beat next to the
   clock. It goes with the clock rather than the moves because it is the number
   people actually race, and it is hidden with the clock for the same reason
   the clock can be hidden at all.

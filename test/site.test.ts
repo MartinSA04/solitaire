@@ -42,7 +42,7 @@ describe("canonical host", () => {
  * different account, or how a page quietly stops reporting at all.
  *
  * The other half is the promise on `/credits`. A counter the player is not
- * told about is the thing docs/01 says this site does not do, and that page is
+ * told about is the thing docs/notes.md says this site does not do, and that page is
  * where it gets said — so it has to still say it.
  */
 describe("the pageview counter", () => {

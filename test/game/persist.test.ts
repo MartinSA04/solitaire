@@ -328,7 +328,7 @@ describe("the daily streak", () => {
 
 describe("with nowhere to write", () => {
   /**
-   * The whole of docs/07's "the game is fully playable with storage
+   * The whole of docs/notes.md's "the game is fully playable with storage
    * unavailable": nothing below throws, nothing returns something the caller
    * has to check, and the game that uses it cannot tell the difference.
    */
@@ -359,7 +359,7 @@ describe("with nowhere to write", () => {
 });
 
 /**
- * The one line on the result panel, and the reason it is often absent. docs/06
+ * The one line on the result panel, and the reason it is often absent. docs/notes.md
  * asks for a record line "only if a record was set" — the absence is the
  * design: "you didn't beat your record" is a small punishment for winning.
  */

@@ -30,7 +30,7 @@ import {
  * The cascade is the one part of the UI that cannot be judged from a
  * screenshot: it is eleven seconds of continuous motion that is different
  * every time. All of it that is arithmetic lives in `cascade.ts` and is pinned
- * here, against docs/06-win-sequence.md.
+ * here, against docs/notes.md.
  *
  * The properties that matter are not the constants — those are taste — but the
  * guarantees: the sequence always ends, the screen always clears, and the same
@@ -233,7 +233,7 @@ describe("a whole cascade", () => {
         bodies.every((body) => !body.alive),
         `seed ${seed} left cards on screen`,
       );
-      // Stage 2 is ~11s in docs/06; the last launch is at ~6.2s and nothing
+      // Stage 2 is ~11s in docs/notes.md; the last launch is at ~6.2s and nothing
       // outlives it by more than the six-second cap.
       assert.ok(
         seconds > 7 && seconds < 13,

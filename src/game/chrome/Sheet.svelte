@@ -12,7 +12,7 @@
   /**
    * The shell every sheet wears: a bottom sheet on a phone, a centred dialog
    * past 48rem — the one chrome breakpoint in the product, per
-   * docs/05-interaction-and-motion.md.
+   * docs/notes.md.
    *
    * It is a component rather than a copied block because the menu, the deck
    * gallery and the statistics are the same object as far as the player is

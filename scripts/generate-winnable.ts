@@ -4,8 +4,8 @@
  * Not part of `astro build`, and not part of `pnpm test` —
  * `node scripts/generate-winnable.ts --draw=1`, and it takes tens of minutes
  * across every core you have. Its output is committed, because the daily deal
- * depends on the pool not changing between builds. See docs/03-engine.md and
- * docs/07-architecture.md.
+ * depends on the pool not changing between builds. See docs/notes.md and
+ * docs/notes.md.
  *
  * It writes as it goes and picks up where it left off: a partially written
  * pool is a perfectly good pool, so an interrupted run is resumed rather than

@@ -250,7 +250,7 @@ function withFoundation(
 /**
  * A move as a short token, for saved games and debugging. A 300-move game is
  * about 1.5KB of these, which is what makes "seed plus move list" a viable
- * save format — see docs/07-architecture.md.
+ * save format — see docs/notes.md.
  */
 export function encodeMove(move: Move): string {
   switch (move.kind) {

@@ -1,5 +1,5 @@
 /*
- * Minimal Scandinavian — the second table from docs/04-art-direction.md.
+ * Minimal Scandinavian — the second table from docs/notes.md.
  *
  * For people who find the green felt kitsch. Cards as typographic objects on a
  * flat ground: no texture, no vignette, and — the decision the whole theme
@@ -53,7 +53,7 @@
   --suit-hearts: #9c1218;
   --suit-diamonds: #9c1218;
 
-  /* Solid: flat, with just a border. The theme's own back, per docs/04. */
+  /* Solid: flat, with just a border. The theme's own back, per docs/notes.md. */
   --back-bg: #7e7669;
   --back-ink: rgb(255 255 255 / 14%);
   --back-edge: rgb(26 28 30 / 45%);

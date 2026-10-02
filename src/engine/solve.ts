@@ -13,7 +13,7 @@ import { isSafeToSendHome } from "./assists.ts";
  * from index.ts: nothing on the public surface should drag a search into a
  * phone's JS bundle.
  *
- * A depth-first search with the four things docs/03-engine.md names as what
+ * A depth-first search with the four things docs/notes.md names as what
  * makes Klondike tractable: a transposition table, forced-move collapse, move
  * ordering, and a node budget. The budget is the honest part. A search that
  * runs out is `"unknown"`, never `"unsolvable"` — a pool of known-good deals

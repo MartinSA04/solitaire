@@ -17,7 +17,7 @@ import { autoMove } from "./automove.ts";
 import { type Grab, dropMove, grab } from "./pickup.ts";
 
 /**
- * The keyboard model from docs/08-accessibility.md, as pure data.
+ * The keyboard model from docs/notes.md, as pure data.
  *
  * A **roving focus** over the thirteen piles, with its own arrow-key grammar —
  * not fifty-two tab stops. `Tab` never enters the board; the board is one

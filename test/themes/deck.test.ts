@@ -18,10 +18,10 @@ import {
 /**
  * The decks we draw ourselves, checked the way the themes are: every deck on
  * every table, because "any deck works on any table" is a claim in
- * docs/04-art-direction.md and twelve combinations is not something anyone is
+ * docs/notes.md and twelve combinations is not something anyone is
  * going to look at by hand.
  *
- * The rule that matters is 7:1 for the ink on the card — docs/08's strictest
+ * The rule that matters is 7:1 for the ink on the card — docs/notes.md's strictest
  * row, and the one that decides whether a rank can be read at arm's length
  * with reading glasses off. It is why the reds in this product are darker than
  * a printed card's, and why the four-colour deck's blue is navy.

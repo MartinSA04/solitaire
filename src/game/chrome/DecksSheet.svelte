@@ -20,7 +20,7 @@
    * Every deck there is, to look at before choosing.
    *
    * **It is a library, not a shop.** Nothing here is locked, earned, bought or
-   * timed: docs/01-product-brief.md rules all four out and this is the surface
+   * timed: docs/notes.md rules all four out and this is the surface
    * where a product usually breaks that promise. The only thing that differs
    * between one deck and another is how many bytes it takes to put it on the
    * table, so that is the only thing a tile says beyond what the deck looks
@@ -183,7 +183,7 @@
   <!--
     The index overlay. It lives here rather than in the menu because it is a
     fact about the deck you are looking at, and it is the answer to the one
-    thing docs/04 requires of a deck and some of these do not give: a rank you
+    thing docs/notes.md requires of a deck and some of these do not give: a rank you
     can read in a fanned column at a 46px card.
   -->
   <label class="switch">
@@ -252,7 +252,7 @@
     pointer-events: none;
   }
 
-  /* Lightness and a border, never hue alone — docs/08-accessibility.md. */
+  /* Lightness and a border, never hue alone — docs/notes.md. */
   .deck-tile:has(input:checked) {
     background: var(--accent);
     color: var(--accent-contrast);

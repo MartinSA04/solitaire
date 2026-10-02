@@ -9,7 +9,7 @@
  *
  * Time is not modelled here. The clock is the UI's problem.
  *
- * Two functions docs/03-engine.md once put on this surface are deliberately not
+ * Two functions docs/notes.md once put on this surface are deliberately not
  * here: `dailySeed` needs `Date` and `randomWinnableSeed` needs a pool that
  * arrives over `fetch`, and purity.test.ts refuses to find either word in this
  * directory. They live in src/game/pool.ts as pure functions of a pool handed
@@ -129,7 +129,7 @@ export interface Game {
   restart(): void;
   hint(): Move | null;
   autoCompleteSequence(): Move[];
-  /** Seed plus move list, for localStorage. See docs/07-architecture.md. */
+  /** Seed plus move list, for localStorage. See docs/notes.md. */
   serialise(): string;
 }
 

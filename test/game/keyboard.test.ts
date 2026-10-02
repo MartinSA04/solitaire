@@ -31,7 +31,7 @@ import { playGreedily, showCards } from "../engine/helpers.ts";
  *
  * `e2e/keyboard.pw.ts` proves the wiring in a real browser. This proves the
  * model: that every move a winning line is made of can be expressed as key
- * presses, that the presses mean what docs/08-accessibility.md says they mean,
+ * presses, that the presses mean what docs/notes.md says they mean,
  * and that nothing in between needs a pointer.
  */
 
@@ -188,7 +188,7 @@ function typeMove(player: Player, move: Move): void {
 }
 
 describe("the thirteen positions", () => {
-  it("is the order docs/08 gives, which is reading order on the board", () => {
+  it("is the order docs/notes.md gives, which is reading order on the board", () => {
     assert.equal(
       PILE_ORDER.length,
       2 + FOUNDATION_ORDER.length + TABLEAU_COLUMNS,

@@ -1,5 +1,5 @@
 /*
- * The theme token contract from docs/04-art-direction.md.
+ * The theme token contract from docs/notes.md.
  *
  * A theme is nothing but a set of these. Neither the layout nor the engine
  * knows which one is active, and a theme that leaves one of them out is
@@ -11,7 +11,7 @@
  * every resize. The value below is only there for anything outside the board.
  *
  * Every theme is checked against the contrast table in
- * docs/08-accessibility.md by test/themes/theme.test.ts, which is what notices
+ * docs/notes.md by test/themes/theme.test.ts, which is what notices
  * when a nudged colour makes the empty slots vanish.
  */
 :root {
@@ -48,7 +48,7 @@
   --chrome-fg-dim: rgb(242 242 242 / 62%);
   --sheet-bg: #2a2d33;
 
-  /* What the win sequence explodes in. See docs/06-win-sequence.md. */
+  /* What the win sequence explodes in. See docs/notes.md. */
   --win-bloom: #ffd479;
   /*
    * How the cascade's trails composite. A dark table sets this to `lighter`,
@@ -63,7 +63,7 @@
    * colours from, and keeping the four suits separate is what makes the
    * four-colour deck a token swap rather than a second deck.
    *
-   * The reds are deeper than a printed card's, because docs/08 asks for 7:1
+   * The reds are deeper than a printed card's, because docs/notes.md asks for 7:1
    * against the card and the traditional pillarbox red is nowhere near it.
    */
   --card-bg: #fbfaf7;
@@ -73,7 +73,7 @@
   --suit-hearts: #96131b;
   --suit-diamonds: #96131b;
 
-  /* Card backs — a tiling pattern in two colours, per docs/04. */
+  /* Card backs — a tiling pattern in two colours, per docs/notes.md. */
   --back-bg: #35587f;
   --back-ink: rgb(255 255 255 / 22%);
   --back-edge: rgb(255 255 255 / 52%);

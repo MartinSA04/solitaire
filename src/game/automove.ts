@@ -18,10 +18,10 @@ import { type Hit } from "./Layout.ts";
  * This is the most important interaction in the game — on a 46px card,
  * dragging is fiddly and tapping is not — and it is *policy*, not rules. It
  * lives here rather than in the engine because it is a guess about what a
- * player wanted, and docs/07-architecture.md flags it as the thing most likely
+ * player wanted, and docs/notes.md flags it as the thing most likely
  * to need tuning once there are fifty games behind it.
  *
- * The ranking is docs/05-interaction-and-motion.md's:
+ * The ranking is docs/notes.md's:
  *
  * 1. A foundation, if legal.
  * 2. A tableau column that turns over a face-down card.

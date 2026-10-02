@@ -52,7 +52,7 @@ describe("sourced decks", () => {
       });
 
       it("ships the licence it arrived under", () => {
-        // The obligation docs/04 will not let a deck into the repo without.
+        // The obligation docs/notes.md will not let a deck into the repo without.
         const licence = `public/decks/${deck.id}/LICENSE.txt`;
         assert.ok(exists(licence), `${licence} is missing`);
         const text = read(licence);
@@ -165,7 +165,7 @@ describe("sourced decks", () => {
   });
 
   it("credits the decks we drew as well as the ones we didn't", () => {
-    // docs/04: every deck gets an entry whether its licence demands one or not.
+    // docs/notes.md: every deck gets an entry whether its licence demands one or not.
     const named = OURS.map((credit) => credit.name).join(" ");
     for (const deck of ["Minimal", "High contrast", "Four colour"]) {
       assert.ok(named.includes(deck), `${deck} is not credited`);

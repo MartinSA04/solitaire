@@ -11,11 +11,11 @@
 
 <!--
   What `?` opens. A keyboard model nobody can find is a keyboard model nobody
-  has, and docs/01-product-brief.md's secondary player is specifically
+  has, and docs/notes.md's secondary player is specifically
   "someone on a desktop who will discover the keyboard shortcuts" — this is
   where they discover them.
 
-  The table is the one in docs/08-accessibility.md, read out of strings.ts so
+  The table is the one in docs/notes.md, read out of strings.ts so
   that the keys the overlay promises and the keys `keyboard.ts` honours are
   one list. `test/game/keyboard.test.ts` is what holds them together.
 -->

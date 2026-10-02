@@ -21,7 +21,7 @@ import { type Column, type GameState, faceUpCount, topOf } from "./state.ts";
  * so both are unlimited, free, and never held back.
  */
 
-/** The ranking from docs/02-game-spec.md, as numbers so ties break by enumeration order. */
+/** The ranking from docs/notes.md, as numbers so ties break by enumeration order. */
 const TURNS_A_CARD = 100;
 const EMPTIES_A_COLUMN = 90;
 const WASTE_TO_TABLEAU = 80;
@@ -133,7 +133,7 @@ function hasKingReady(state: GameState): boolean {
  * Aces and twos are unconditionally safe.
  *
  * Exported because tap-to-auto-move asks the same question before it sends a
- * card up (docs/05-interaction-and-motion.md). The *policy* — when to prefer a
+ * card up (docs/notes.md). The *policy* — when to prefer a
  * foundation — is the interface's and lives in `src/game/`; this fact about the
  * position belongs to the rules, and there should only be one of it.
  */
@@ -160,7 +160,7 @@ export function isSafeToSendHome(state: GameState, card: Card): boolean {
  * is a win.
  *
  * It is the opening beat of the win sequence, not a skip of it — see
- * docs/06-win-sequence.md.
+ * docs/notes.md.
  *
  * Called on a position that doesn't qualify it still returns only legal moves,
  * but it will stop as soon as nothing more can go home. It turns no cards and

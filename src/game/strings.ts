@@ -17,7 +17,7 @@ import { type PileRef } from "./Layout.ts";
  * puts words on the screen.
  *
  * One module rather than strings inlined in components, per
- * docs/08-accessibility.md: there is no i18n in v1, but card names in
+ * docs/notes.md: there is no i18n in v1, but card names in
  * particular need per-language forms and nobody should have to go looking for
  * them. It is pure, which is the point — what the board announces after a move
  * is a unit test over two states and a move, not a browser with a screen
@@ -238,7 +238,7 @@ export const PUT_BACK = "Put back.";
 
 /**
  * The one sentence the game ever puts *on screen*, and it is a fact about the
- * position rather than a loss screen — docs/02-game-spec.md is specific that
+ * position rather than a loss screen — docs/notes.md is specific that
  * there is no losing. It is rendered in a `role="status"` element, so it is
  * its own announcement and never goes through the live region twice.
  */
@@ -254,7 +254,7 @@ export const CONFIRM_NEW = "Press N again for a new deal.";
 export const CONFIRM_REPLAY = "Press R again to replay this deal.";
 
 /**
- * The shortcut overlay's table, which is docs/08-accessibility.md's table.
+ * The shortcut overlay's table, which is docs/notes.md's table.
  *
  * It lives here rather than in the component because it is the one written
  * description of what `keyboard.ts` does, and a promise about a key is worth

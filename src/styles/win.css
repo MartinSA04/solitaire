@@ -1,5 +1,5 @@
 /*
- * The win sequence's visuals, everything except the physics. docs/06 is the
+ * The win sequence's visuals, everything except the physics. docs/notes.md is the
  * specification; `src/game/WinSequence.ts` runs the clock and puts one stage
  * name on `.game`, and every rule below is keyed off that name.
  *

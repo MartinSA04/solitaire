@@ -10,7 +10,7 @@ const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 
-/** `m:ss`, or `h:mm:ss` past an hour. Per docs/02-game-spec.md. */
+/** `m:ss`, or `h:mm:ss` past an hour. Per docs/notes.md. */
 export function formatClock(ms: number): string {
   const total = Math.max(0, Math.floor(ms));
   const seconds = Math.floor(total / SECOND) % 60;

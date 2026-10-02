@@ -182,7 +182,7 @@ describe("where a pickup could go", () => {
 
   it("is every column that would take the card, and no others", () => {
     // A black six goes on either red seven — not on the eight, and not into
-    // the empty column, which only a King may have. docs/02.
+    // the empty column, which only a King may have. docs/notes.md.
     const state = makeState({
       waste: "6♠",
       tableau: ["7♥", "", "7♦", "8♠"],

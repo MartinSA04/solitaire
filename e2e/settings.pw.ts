@@ -78,7 +78,7 @@ test("a table brings its own deck with it, and the deck brings its back", async 
     });
 
   // A table changes the deck's *colours*, not which deck it is, so the back
-  // does not move either. See docs/04-art-direction.md.
+  // does not move either. See docs/notes.md.
   await choose(page, "Table", "Minimal");
   await expect
     .poll(() => look(page))
@@ -233,7 +233,7 @@ test("changing the draw mode mid-game asks first", async ({ page }) => {
   await choose(page, "Draw", "3 cards");
 
   // Draw-1 and draw-3 make different games out of the same seed, so this
-  // cannot be applied to the game on the table — docs/02-game-spec.md.
+  // cannot be applied to the game on the table — docs/notes.md.
   const confirm = page
     .getByRole("group", { name: "Draw" })
     .getByRole("button", { name: "New deal" });
@@ -245,9 +245,9 @@ test("changing the draw mode mid-game asks first", async ({ page }) => {
 });
 
 /**
- * docs/02-game-spec.md: a new deal is one tap under about five moves and asks
+ * docs/notes.md: a new deal is one tap under about five moves and asks
  * first over it. The asking is a modal in direct response to a press, which is
- * the only kind docs/01 allows — and it is the difference between a stray tap
+ * the only kind docs/notes.md allows — and it is the difference between a stray tap
  * costing nothing and it costing the game you were in the middle of.
  */
 test("a new deal mid-game asks before it throws the game away", async ({
