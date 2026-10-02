@@ -81,7 +81,8 @@
   } from "./strings.ts";
   import BottomBar from "./chrome/BottomBar.svelte";
   import ResultPanel from "./chrome/ResultPanel.svelte";
-  import SettingsSheet, { CONFIRM_MOVES } from "./chrome/SettingsSheet.svelte";
+  import NewGameSheet, { CONFIRM_MOVES } from "./chrome/NewGameSheet.svelte";
+  import SettingsSheet from "./chrome/SettingsSheet.svelte";
   import ShortcutSheet from "./chrome/ShortcutSheet.svelte";
   import StatsSheet from "./chrome/StatsSheet.svelte";
   import DecksSheet from "./chrome/DecksSheet.svelte";
@@ -365,6 +366,7 @@
    */
   let settings: Settings = $state({ ...stored, drawCount: game.drawCount });
   let settingsOpen = $state(false);
+  let newGameOpen = $state(false);
 
   /**
    * A deal number for a new game: out of the pool when the player asked for
@@ -643,7 +645,9 @@
   function onKeyDown(event: KeyboardEvent): void {
     // A modal sheet owns every key while it is open, including Escape, which
     // is how it closes.
-    if (settingsOpen || statsOpen || decksOpen || helpOpen) return;
+    if (settingsOpen || newGameOpen || statsOpen || decksOpen || helpOpen) {
+      return;
+    }
     if (event.defaultPrevented) return;
 
     // Stages 1 to 3 are one gesture with one meaning, and the keyboard's
@@ -855,13 +859,7 @@
     }, NOTICE_MS);
   }
 
-  /**
-   * A deal in a named draw mode. Changing the mode starts a new game rather
-   * than reinterpreting this one, because draw-1 and draw-3 make genuinely
-   * different games out of the same seed — see docs/notes.md. It takes
-   * the count rather than reading it so it cannot race the settings update
-   * that asked for it.
-   */
+  /** A deal in a named draw mode, out of the pool if the player asked for one. */
   function redeal(drawCount: DrawCount): void {
     game = newGame(dealNumber(drawCount, settings.winnableOnly), drawCount);
     reset();
@@ -1542,7 +1540,8 @@
     onUndo={undo}
     onHint={hint}
     onFinish={finish}
-    onMenu={() => (settingsOpen = true)}
+    onNewGame={() => (newGameOpen = true)}
+    onSettings={() => (settingsOpen = true)}
   />
 
   <!--
@@ -1593,24 +1592,39 @@
   {/if}
 
   <!--
-    The deals you can start, the statistics, and every theme, deck and back —
-    all available on first load. Mounted only while it is open, because a
-    <dialog> that is in the document but closed is still a dozen controls in
-    the accessibility tree.
+    Two sheets, kept apart: which game is on the table, and how it looks.
+    Mounted only while open, because a <dialog> that is in the document but
+    closed is still a dozen controls in the accessibility tree.
+
+    The draw mode and the winnable pool describe the *next* deal, so changing
+    them never touches the one on the table.
   -->
-  {#if settingsOpen}
-    <SettingsSheet
-      {settings}
+  {#if newGameOpen}
+    <NewGameSheet
+      drawCount={settings.drawCount}
+      winnableOnly={settings.winnableOnly}
+      seed={game.seed}
+      seedDraw={game.drawCount}
       movesAtRisk={won ? 0 : moves}
       dailySeed={dailyToday}
       {dailyDone}
-      onChange={(next) => (settings = next)}
+      streak={daily.current}
+      onDrawCount={(drawCount) => (settings = { ...settings, drawCount })}
+      onWinnableOnly={(winnableOnly) =>
+        (settings = { ...settings, winnableOnly })}
       onNewDeal={newDeal}
       onDaily={startDaily}
       onReplay={replay}
       onStats={() => (statsOpen = true)}
+      onClose={() => (newGameOpen = false)}
+    />
+  {/if}
+
+  {#if settingsOpen}
+    <SettingsSheet
+      {settings}
+      onChange={(next) => (settings = next)}
       onDecks={() => (decksOpen = true)}
-      onRedeal={redeal}
       onClose={() => (settingsOpen = false)}
     />
   {/if}

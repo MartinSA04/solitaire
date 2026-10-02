@@ -6,24 +6,37 @@
     onUndo: () => void;
     onHint: () => void;
     onFinish: () => void;
-    onMenu: () => void;
+    onNewGame: () => void;
+    onSettings: () => void;
   }
 
-  const { canUndo, canFinish, onUndo, onHint, onFinish, onMenu }: Props =
-    $props();
+  const {
+    canUndo,
+    canFinish,
+    onUndo,
+    onHint,
+    onFinish,
+    onNewGame,
+    onSettings,
+  }: Props = $props();
 </script>
 
 <!--
-  The thumb zone, and the three controls docs/notes.md
-  draws: Undo is the most-pressed button in the game, the middle slot is the
-  assist, and ⋯ is everything else — a new deal, the daily, the stats, the
-  settings.
+  The thumb zone on a phone, and the right of the one bar on a desktop. A new
+  game is first because it is what you reach for between games; how the game
+  looks is last, behind a gear, because it is what you reach for least.
 
   The middle slot is Hint until the board is provably won, and Finish from
-  then on. They never both apply: once every card is face up and the stock is
-  spent, the only hint worth giving is "press this".
+  then on.
 -->
 <div class="bar bottom-bar">
+  <button class="control has-icon" type="button" onclick={onNewGame}>
+    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="4.5" y="3" width="11" height="14" rx="2" />
+      <path d="M10 7.5v5M7.5 10h5" />
+    </svg>
+    New game
+  </button>
   <button
     class="control has-icon"
     type="button"
@@ -51,11 +64,16 @@
       Hint
     </button>
   {/if}
-  <button class="control" type="button" aria-label="Menu" onclick={onMenu}>
+  <button
+    class="control"
+    type="button"
+    aria-label="Settings"
+    onclick={onSettings}
+  >
     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
-      <circle class="dot" cx="4.5" cy="10" r="1.4" />
-      <circle class="dot" cx="10" cy="10" r="1.4" />
-      <circle class="dot" cx="15.5" cy="10" r="1.4" />
+      <path d="M3 6h7M14 6h3M3 14h2M9 14h8" />
+      <circle cx="12" cy="6" r="2" />
+      <circle cx="7" cy="14" r="2" />
     </svg>
   </button>
 </div>
@@ -76,6 +94,17 @@
    * them, and a `?` in front of Hint reads as a question rather than a button.
    * Stroked in the label's own colour, so a disabled Undo dims with its text.
    */
+  .control {
+    white-space: nowrap;
+  }
+
+  /* Four controls across a 360px phone: they keep their labels on one line. */
+  @media (max-width: 30rem) {
+    .control {
+      padding: 0 10px;
+    }
+  }
+
   .control.has-icon {
     display: inline-flex;
     align-items: center;
@@ -96,10 +125,5 @@
 
   .has-icon .icon {
     margin: 0;
-  }
-
-  .icon .dot {
-    fill: currentColor;
-    stroke: none;
   }
 </style>

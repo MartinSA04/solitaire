@@ -53,6 +53,19 @@ except one anonymous pageview count, disclosed on `/credits`.
   (`sol:v1:*`). Every field is validated, and anything broken falls back to a
   default in silence.
 
+## Interface
+
+One bar: **New game**, **Undo**, **Hint** (Finish when the deal is won), and
+**Settings**. On a phone it sits at the bottom under the thumb; elsewhere it is
+the right of the top bar. Two sheets, kept apart:
+
+- **New game** chooses which game is on the table: New deal, Daily deal or
+  Replay, each one tap. The draw mode and the winnable pool live here because
+  they describe the next deal. Changing them never touches the current one.
+  Statistics are here too.
+- **Settings** is how the game looks: the table, the deck, the card size and
+  the clock. Nothing in it can end a game.
+
 ## Look
 
 - A look is three attributes on `<html>`: `data-theme`, `data-deck` and

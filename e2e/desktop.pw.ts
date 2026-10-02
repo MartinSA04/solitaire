@@ -67,8 +67,10 @@ test.describe("one bar, where there is no thumb zone", () => {
     expect(await controlsAreOnTop(page)).toBe(true);
     // One set of controls, not two. Two would be two in the accessibility tree
     // and the wrong one would rot.
-    await expect(page.getByRole("button", { name: "Menu" })).toHaveCount(1);
-    await expect(page.locator(".bottom-bar .control")).toHaveCount(3);
+    for (const name of ["New game", /Undo/, "Hint", "Settings"]) {
+      await expect(page.getByRole("button", { name })).toHaveCount(1);
+    }
+    await expect(page.locator(".bottom-bar .control")).toHaveCount(4);
   });
 
   test("and on a phone turned sideways, where the scarce thing is height", async ({
@@ -332,7 +334,7 @@ test.describe("at 200% zoom", () => {
 
     // The collapse is for a phone on its side — short *and* wide. Short and
     // narrow is somebody who has zoomed in, and one bar holding a clock, a
-    // counter and three controls in 195px is three controls on top of a clock.
+    // counter and four controls in 195px is four controls on top of a clock.
     expect(await controlsAreOnTop(page)).toBe(false);
 
     const clock = await page.locator(".clock").boundingBox();
@@ -340,12 +342,12 @@ test.describe("at 200% zoom", () => {
     expect(undo!.y).toBeGreaterThan(clock!.y + clock!.height);
   });
 
-  test("and the menu is still a sheet you can use", async ({ page }) => {
+  test("and the settings are still a sheet you can use", async ({ page }) => {
     await page.goto(DEAL);
     await dealt(page);
-    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("button", { name: "Settings" }).click();
 
-    const sheet = page.getByRole("dialog", { name: "Menu" });
+    const sheet = page.getByRole("dialog", { name: "Settings" });
     await expect(sheet).toBeVisible();
     const box = await sheet.boundingBox();
     expect(box!.x).toBeGreaterThanOrEqual(-1);

@@ -25,7 +25,7 @@ test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
 async function openGallery(page: Page) {
   await page.goto(DEAL);
-  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("button", { name: /^Deck/ }).click();
   const decks = page.getByRole("dialog", { name: "Decks" });
   await expect(decks).toBeVisible();

@@ -209,7 +209,7 @@ test("the debug celebration is a rehearsal, and is not written down", async ({
 
 test("the table and the clock are remembered", async ({ page }) => {
   await page.goto("/?deal=24");
-  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
   await page
     .getByRole("group", { name: "Table" })
     .getByText("Dark", { exact: true })
@@ -292,7 +292,7 @@ test("games played and won are counted, and a win is recorded", async ({
     1: { played: 1, won: 0 },
   });
 
-  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("button", { name: "New game" }).click();
   await page.getByRole("button", { name: "Statistics" }).click();
   const stats = page.getByRole("dialog", { name: "Statistics" });
   await expect(stats).toBeVisible();
@@ -301,11 +301,11 @@ test("games played and won are counted, and a win is recorded", async ({
     "0%",
   );
 
-  // The menu saw itself out on the way here, so Escape goes back to the board
-  // rather than to the sheet it came from.
+  // The New game sheet saw itself out on the way here, so Escape goes back to
+  // the board rather than to the sheet it came from.
   await page.keyboard.press("Escape");
   await expect(stats).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "New game" })).toHaveCount(0);
   await expect(page.locator(".card")).toHaveCount(52);
 });
 

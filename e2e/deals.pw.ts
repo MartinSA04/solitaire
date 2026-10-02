@@ -38,9 +38,9 @@ async function seedOf(page: Page): Promise<number> {
   return (JSON.parse(saved.game) as { seed: number }).seed;
 }
 
-async function openMenu(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Menu" }).click();
-  await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
+async function openNewGame(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "New game" }).click();
+  await expect(page.getByRole("dialog", { name: "New game" })).toBeVisible();
 }
 
 test("the pool is fetched, and the board does not wait for it", async ({
@@ -66,13 +66,13 @@ test("the pool is fetched, and the board does not wait for it", async ({
 
 test("a new deal comes out of the winnable pool", async ({ page }) => {
   await page.goto("/");
-  await openMenu(page);
+  await openNewGame(page);
   // The first deal of a load can beat the fetch, which is why the pool applies
   // from the next deal onward. The daily button turning on is the pool having
   // landed — there is nothing else in the interface that knows.
   await expect(page.getByRole("button", { name: /Daily deal/ })).toBeEnabled();
   await page.getByRole("button", { name: "New deal" }).click();
-  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "New game" })).toHaveCount(0);
 
   const seeds = [...pool(1)];
   expect(seeds).toContain(await seedOf(page));
@@ -80,7 +80,7 @@ test("a new deal comes out of the winnable pool", async ({ page }) => {
 
 test("winnable-only off deals from the whole seed space", async ({ page }) => {
   await page.goto("/");
-  await openMenu(page);
+  await openNewGame(page);
   await page.getByText("Winnable deals only").click();
   await page.getByRole("button", { name: "New deal" }).click();
 
@@ -94,7 +94,7 @@ test("the daily is today's deal, and the same one for everybody", async ({
   page,
 }) => {
   await page.goto("/");
-  await openMenu(page);
+  await openNewGame(page);
 
   const daily = page.getByRole("button", { name: /Daily deal/ });
   await expect(daily).toBeEnabled();
@@ -112,7 +112,7 @@ test("the daily waits for the pool rather than dealing something else", async ({
 }) => {
   await page.route("**/winnable-*.bin", (route) => route.abort());
   await page.goto("/");
-  await openMenu(page);
+  await openNewGame(page);
 
   await expect(page.getByRole("button", { name: /Daily deal/ })).toBeDisabled();
   // And the game is perfectly playable without it: a failed pool is a deal

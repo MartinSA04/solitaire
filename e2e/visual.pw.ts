@@ -129,11 +129,11 @@ async function dress(
   tableLabel: string,
 ): Promise<void> {
   await page.goto(DEAL);
-  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
   await choose(page, "Table", tableLabel);
 
   // The deck is chosen in its own sheet — see e2e/decks.pw.ts — so this leaves
-  // the menu, picks the tile and comes back to the board.
+  // Settings, picks the tile and comes back to the board.
   await page.getByRole("button", { name: /^Deck/ }).click();
   const decks = page.getByRole("dialog", { name: "Decks" });
   await expect(decks).toBeVisible();

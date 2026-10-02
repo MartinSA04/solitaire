@@ -232,8 +232,8 @@ test("the panel is dismissible, and the table behind it is empty", async ({
   await page.keyboard.press("Escape");
   await expect(panel(page)).toBeHidden();
   expect(await visibleCards(page)).toBe(0);
-  // The chrome is back, so the menu — and a new deal — is one tap away.
-  await expect(page.getByRole("button", { name: "Menu" })).toBeVisible();
+  // The chrome is back, so a new deal is one tap away.
+  await expect(page.getByRole("button", { name: "New game" })).toBeVisible();
 });
 
 /**

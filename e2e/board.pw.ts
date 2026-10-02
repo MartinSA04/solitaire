@@ -448,9 +448,9 @@ test("a new deal starts over", async ({ page }) => {
   await page.locator(".slot-stock").tap();
   await expect(page.locator(".top-bar")).toContainText("1 move");
 
-  // A new deal lives in the menu now: the bottom bar's middle slot is the
-  // assist, per the sketch in docs/notes.md.
-  await page.getByRole("button", { name: "Menu" }).click();
+  // A new deal lives in the New game sheet: the bottom bar's middle slot is
+  // the assist, per the sketch in docs/notes.md.
+  await page.getByRole("button", { name: "New game" }).click();
   await page.getByRole("button", { name: "New deal" }).click();
 
   await expect(page.locator(".top-bar")).toContainText("0 moves");

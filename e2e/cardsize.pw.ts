@@ -168,7 +168,7 @@ test("goes back to one page when the cards do", async ({ page }) => {
   await page.getByRole("button", { name: "Columns to the right" }).click();
   await expect.poll(() => onScreen(page, 6), { timeout: 3000 }).toBe(true);
 
-  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
   await page
     .getByRole("group", { name: "Card size" })
     .getByText("Comfortable", { exact: true })

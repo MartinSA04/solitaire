@@ -245,10 +245,9 @@ export const PUT_BACK = "Put back.";
 export const NO_MOVES = "No moves left — undo, or try a new deal.";
 
 /**
- * The keyboard's version of the menu's "are you sure": a second press, rather
- * than a dialog to tab into and back out of. It goes through the same
- * `role="status"` line as the sentence above, so it is heard as well as seen,
- * and it applies at the same number of moves the menu asks at.
+ * The keyboard's "are you sure": a second press, rather than a dialog to tab
+ * into and back out of. It goes through the same `role="status"` line as the
+ * sentence above, so it is heard as well as seen.
  */
 export const CONFIRM_NEW = "Press N again for a new deal.";
 export const CONFIRM_REPLAY = "Press R again to replay this deal.";

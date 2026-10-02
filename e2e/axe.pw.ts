@@ -128,16 +128,22 @@ test("the Large board has none, pager and all", async ({ page }) => {
   expect(describe(results), describe(results)).toBe("");
 });
 
-test("the menu has none", async ({ page }) => {
-  await page.goto(DEAL);
-  await dealt(page);
-  await page.getByRole("button", { name: "Menu" }).click();
+/**
+ * The bar opens two sheets — the game actions and the look — and each is a
+ * surface of its own.
+ */
+for (const name of ["New game", "Settings"]) {
+  test(`the ${name} sheet has none`, async ({ page }) => {
+    await page.goto(DEAL);
+    await dealt(page);
+    await page.getByRole("button", { name }).click();
 
-  const sheet = page.getByRole("dialog", { name: "Menu" });
-  await expect(sheet).toBeVisible();
-  const results = await audit(page, ".sheet");
-  expect(describe(results), describe(results)).toBe("");
-});
+    const sheet = page.getByRole("dialog", { name });
+    await expect(sheet).toBeVisible();
+    const results = await audit(page, ".sheet");
+    expect(describe(results), describe(results)).toBe("");
+  });
+}
 
 /**
  * The gallery is the densest surface in the product — twenty-two radios, each
@@ -148,7 +154,7 @@ test("the menu has none", async ({ page }) => {
 test("the deck gallery has none", async ({ page }) => {
   await page.goto(DEAL);
   await dealt(page);
-  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("button", { name: /^Deck/ }).click();
 
   await expect(page.getByRole("dialog", { name: "Decks" })).toBeVisible();
@@ -159,7 +165,7 @@ test("the deck gallery has none", async ({ page }) => {
 test("the statistics have none", async ({ page }) => {
   await page.goto(DEAL);
   await dealt(page);
-  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("button", { name: "New game" }).click();
   await page.getByRole("button", { name: "Statistics" }).click();
 
   await expect(page.getByRole("dialog", { name: "Statistics" })).toBeVisible();
