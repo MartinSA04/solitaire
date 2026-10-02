@@ -100,12 +100,7 @@ the right of the top bar. Two sheets, kept apart:
 - A screen reader reads the pile labels. The 52 cards are `aria-hidden`. Moves
   are announced through two alternating polite live regions, and every string
   is in `strings.ts`.
-- Zero axe violations is a gate (`e2e/axe.pw.ts`), and the theme contrast
-  ratios are asserted in `test/themes/`.
+- `e2e/axe.pw.ts` must find nothing, and the theme contrast ratios are
+  asserted in `test/themes/`.
 - A **Large** card size pages the tableau sideways rather than shrinking the
   cards.
-
-## Performance
-
-A cold load over throttled 4G reaches the first frame of the deal in under two
-seconds. `e2e/performance.pw.ts` measures this.

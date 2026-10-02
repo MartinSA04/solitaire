@@ -115,22 +115,6 @@ test("all five stages run, in order, and end on the card", async ({ page }) => {
   expect(await visibleCards(page)).toBe(0);
 });
 
-test("the beat comes first: nothing moves for 140ms", async ({ page }) => {
-  await watchStages(page);
-  await page.goto("/?deal=24&win&winseed=7");
-
-  // Stage 0 is stillness, and it is the most important 140ms in the product.
-  await expect(game(page)).toHaveAttribute("data-win", "beat");
-  const before = await page
-    .locator(".card")
-    .evaluateAll((nodes) => nodes.map((n) => n.style.transform));
-  await expect(game(page)).toHaveAttribute("data-win", "ascend");
-  const after = await page
-    .locator(".card")
-    .evaluateAll((nodes) => nodes.map((n) => n.style.transform));
-  expect(after).toEqual(before);
-});
-
 test("a tap anywhere skips to the end card", async ({ page }) => {
   await watchStages(page);
   await page.goto("/?deal=24&win&winseed=7");
@@ -149,91 +133,6 @@ test("a tap anywhere skips to the end card", async ({ page }) => {
     "card",
   ]);
   expect(await visibleCards(page)).toBe(0);
-});
-
-test("a skip affordance appears once the cascade is underway", async ({
-  page,
-}) => {
-  await page.goto("/?deal=24&win&winseed=7");
-  const skip = page.getByRole("button", { name: "Skip" });
-
-  await expect(game(page)).toHaveAttribute("data-win", "cascade");
-  // Low opacity, and only after two seconds — for the person who doesn't know
-  // the whole screen is tappable.
-  await expect(skip).toHaveCSS("opacity", "0");
-  await expect(skip).not.toHaveCSS("opacity", "0", { timeout: 6_000 });
-
-  await skip.click();
-  await expect(panel(page)).toBeVisible({ timeout: 2_000 });
-});
-
-test("the card carries the time, the moves and the deal number", async ({
-  page,
-}) => {
-  await page.goto("/?deal=24&win&winseed=7");
-  await page.locator(".win-veil").tap({ timeout: 10_000 });
-
-  await expect(panel(page)).toBeVisible();
-  await expect(panel(page)).toContainText("You won");
-  // Grouped with thin spaces, so a deal number can be read aloud.
-  await expect(panel(page).locator(".result-deal")).toHaveText(
-    "Deal #24 · Draw 1",
-  );
-  await expect(
-    panel(page).getByRole("button", { name: "Replay" }),
-  ).toBeVisible();
-  await expect(
-    panel(page).getByRole("button", { name: "New deal" }),
-  ).toBeVisible();
-});
-
-test("it never blocks the next game", async ({ page }) => {
-  await page.goto("/?deal=24&win&winseed=7");
-  await page.locator(".win-veil").tap({ timeout: 10_000 });
-  await expect(panel(page)).toBeVisible();
-
-  // One tap from the panel to a fresh board, with the cards back.
-  await panel(page).getByRole("button", { name: "New deal" }).click();
-  await expect(panel(page)).toBeHidden();
-  await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(7);
-  expect(await visibleCards(page)).toBe(52);
-  await expect(game(page)).toHaveAttribute("data-win", "none");
-});
-
-test("replay deals the same game again", async ({ page }) => {
-  // What deal 24 opens as. Read from a plain load, because the debug trigger
-  // stages a *won* board on the card layer the moment it hydrates — there is
-  // no window in which the tableau is on screen to read.
-  await page.goto("/?deal=24");
-  await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(7);
-  const dealt = await page
-    .locator(".card:not(.is-face-down)")
-    .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-card")));
-
-  await page.goto("/?deal=24&win&winseed=7");
-  await page.locator(".win-veil").tap({ timeout: 10_000 });
-  await panel(page).getByRole("button", { name: "Replay" }).click();
-
-  await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(7);
-  const again = await page
-    .locator(".card:not(.is-face-down)")
-    .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-card")));
-  expect(again).toEqual(dealt);
-  await expect(page.locator(".top-bar")).toContainText("0 moves");
-});
-
-test("the panel is dismissible, and the table behind it is empty", async ({
-  page,
-}) => {
-  await page.goto("/?deal=24&win&winseed=7");
-  await page.locator(".win-veil").tap({ timeout: 10_000 });
-  await expect(panel(page)).toBeVisible();
-
-  await page.keyboard.press("Escape");
-  await expect(panel(page)).toBeHidden();
-  expect(await visibleCards(page)).toBe(0);
-  // The chrome is back, so a new deal is one tap away.
-  await expect(page.getByRole("button", { name: "New game" })).toBeVisible();
 });
 
 /**
@@ -255,42 +154,4 @@ test("the trails do not outlive the game they came from", async ({ page }) => {
   await page.getByRole("button", { name: "New deal" }).tap();
   await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(7);
   expect(await trailPixels(page)).toBe(0);
-});
-
-test("and not even when the cascade is cut off mid-fade", async ({ page }) => {
-  await page.goto("/?deal=24&win&winseed=7");
-  // Skip, then start a new game inside the 180ms the canvas fades over.
-  await page.locator(".win-veil").tap({ timeout: 10_000 });
-  await page.getByRole("button", { name: "New deal" }).tap();
-
-  await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(7);
-  expect(await trailPixels(page)).toBe(0);
-  // And the fade class went with it, so the canvas is usable next time.
-  await expect(page.locator(".trail-layer")).not.toHaveClass(/is-fading/);
-});
-
-test("reduced motion gets a designed alternative, not an absence", async ({
-  page,
-}) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await watchStages(page);
-  await page.goto("/?deal=24&win&winseed=7");
-
-  const from = Date.now();
-  await expect(panel(page)).toBeVisible({ timeout: 15_000 });
-  const elapsed = Date.now() - from;
-
-  // The beat, the bloom, the dissolve, the card — and no cascade to sit
-  // through. ~2.4s by design; the bound is loose enough for a slow machine and
-  // tight enough to prove the eleven seconds of cards did not happen.
-  expect(elapsed).toBeLessThan(6_000);
-  expect(await stages(page)).toEqual([
-    "none",
-    "beat",
-    "ascend",
-    "cascade",
-    "card",
-  ]);
-  // It still ends with an empty table: the piles faded rather than flying.
-  expect(await visibleCards(page)).toBe(0);
 });

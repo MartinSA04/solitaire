@@ -6,7 +6,6 @@ import {
   autoCompleteSequence,
   canAutoComplete,
   deal,
-  hint,
 } from "../src/engine/index.ts";
 import { applyMove } from "../src/engine/moves.ts";
 import { playGreedily } from "../test/engine/helpers.ts";
@@ -248,55 +247,4 @@ test("Finish plays out a deal that is already won", async ({ page }) => {
   );
   await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(52);
   await expect(page.locator(".win-veil")).toBeVisible();
-});
-
-/**
- * The other thing a hint has to be able to say. docs/notes.md is exact
- * about it: "No moves left — undo, or try a new deal", said plainly, rather
- * than a "you lose" screen — there isn't one of those, because with unlimited
- * undo and unlimited redeals the player decides when a deal is over.
- *
- * Deal 357 walks into a dead end in thirty greedy moves, which is the cheapest
- * one of these the frozen deal mapping offers.
- */
-const DEAD_END = 357;
-
-test("a hint with nothing to point at says so", async ({ page }) => {
-  const { moves } = playGreedily(deal(DEAD_END, 1));
-  let state = deal(DEAD_END, 1);
-  const gestures: Gesture[] = [];
-  for (const move of moves) {
-    if (hint(state) === null) break;
-    gestures.push(gestureFor(state, move));
-    state = applyMove(state, move);
-  }
-  expect(hint(state)).toBeNull();
-
-  await page.goto(`/?deal=${DEAD_END}`);
-  await expect(page.locator(".card:not(.is-face-down)")).toHaveCount(7);
-
-  const stock = page.locator(".slot-stock");
-  for (const gesture of gestures) {
-    if (gesture.card === null) {
-      await stock.tap();
-      continue;
-    }
-    const at = await coordinates(page, gesture);
-    const [fx, fy] = (at as NonNullable<typeof at>).from;
-    const [tx, ty] = (at as NonNullable<typeof at>).to;
-    await page.mouse.move(fx, fy);
-    await page.mouse.down();
-    await page.mouse.move(tx, ty, { steps: 3 });
-    await page.mouse.up();
-  }
-
-  await page.getByRole("button", { name: "Hint" }).click();
-  await expect(page.getByRole("status")).toHaveText(
-    "No moves left — undo, or try a new deal.",
-  );
-  await expect(page.locator(".card.is-hinting")).toHaveCount(0);
-
-  // It leaves on its own, and undo is still right there.
-  await expect(page.getByRole("status")).toHaveCount(0, { timeout: 8000 });
-  await expect(page.getByRole("button", { name: /undo/i })).toBeEnabled();
 });

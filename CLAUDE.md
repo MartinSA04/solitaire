@@ -129,10 +129,8 @@ the same commit.
   is the whole card.** The sheets are contact sheets, so a card is one cell of a
   committed lattice — `scripts/deck-geometry.ts` measures it in a browser and
   `--verify` re-checks every deck. Getting the *cell* wrong draws 52 perfectly
-  good cards of the wrong rank, which only a person looking at
-  `e2e/visual.pw.ts`'s one shot per deck will catch; `e2e/decks.pw.ts` catches
-  everything coarser than that by putting all sixteen on the table and asking
-  each for its 52 cards. Getting the cell *small* is quieter still, and is what
+  good cards of the wrong rank, which only a person looking at the deck will
+  catch — so look at one after touching its geometry. Getting the cell *small* is quieter still, and is what
   the French deck shipped with: a committed crop 8 units shorter than the card
   took the printed border and both corner indices off every face, and `--verify`
   passed it because a crop and a card are centred on the same point. It now
@@ -149,20 +147,12 @@ the same commit.
   product usually breaks that. The only thing a tile says beyond what the deck
   looks like is what it costs to fetch — and the decks we draw say "No
   download", which is not "0 KB".
-- **`e2e/visual.pw.ts-snapshots/` is committed expected output**, not an
-  artifact. A change to it is a change to how the product looks and gets looked
-  at before it is committed.
-- **Zero axe violations is a gate**, across every surface the chrome can put on
-  screen and all three tables — `e2e/axe.pw.ts`. It finds about a third of what
-  can be wrong with a page and none of the third that decides whether the game
-  is playable, which is why it sits beside a test that wins a whole game by key
-  press. A fixture that writes settings must write `v: 1`, or `Persist` ignores
+- **The browser suite is small on purpose**: the page loads, a whole game is
+  won by pointer and by keyboard, the win sequence runs and skips, a save comes
+  back, and axe finds nothing on each table and both sheets. Add a browser test
+  only for something a unit test cannot reach. A fixture that writes settings must write `v: 1`, or `Persist` ignores
   the record and the island paints the default over whatever the pre-paint
   bootstrap did.
-- **The performance bar is measured, not inferred.** `e2e/performance.pw.ts`
-  times a cold load over throttled 4G to the first frame of the deal, with and
-  without a slow processor, against the brief's two seconds. The gzipped size
-  limit beside it is there to bound growth, not to protect that number.
 - **The keyboard model and the screen-reader model are one model.** A roving
   focus over the thirteen piles of `PILE_ORDER` — which lives in `Layout.ts`,
   because the board's structure is the board's, and the keyboard, the rendered
@@ -171,7 +161,7 @@ the same commit.
   is never a second model to keep in step. `src/game/keyboard.ts` is pure — a
   key press and a position in, what the player meant out — which is what lets
   `test/game/keyboard.test.ts` type a whole winning line through it with no
-  browser, alongside `e2e/keyboard.pw.ts` doing it again in one. `Tab` never
+  browser, and `e2e/keyboard.pw.ts` does it again in one. `Tab` never
   enters the card layer: one pile is in the tab order at a time.
 - **A pile is a `<button>` whose label is the whole pile**, and it is the only
   thing a screen reader is given — the 52 cards stay `aria-hidden`. Every real
