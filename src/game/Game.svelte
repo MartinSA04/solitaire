@@ -19,26 +19,21 @@
     topOf,
   } from "../engine/index.ts";
   import { untrack } from "svelte";
-  import { Sound } from "./Audio.ts";
   import { CardLayer, type DeckArt, type Motion } from "./CardLayer.ts";
   import { Drag, type DragHost } from "./Drag.ts";
   import {
+    type Metrics,
     type PileRef,
     FOUNDATION_ORDER,
     PILE_ORDER,
     POKER_ASPECT,
+    columnSpan,
     metricsFor,
     pageOf,
     pileCards,
     samePile,
   } from "./Layout.ts";
-  import {
-    dealOrder,
-    drawnCards,
-    hintOf,
-    homedCard,
-    predealt,
-  } from "./motion.ts";
+  import { dealOrder, drawnCards, hintOf, predealt } from "./motion.ts";
   import { PULSE_GAP_MS, WinSequence, type WinStage } from "./WinSequence.ts";
   import { Stopwatch } from "./clock.ts";
   import { type BeatenRecord, Persist, beatenRecord } from "./Persist.ts";
@@ -68,7 +63,7 @@
     focusedCards,
     interpret,
   } from "./keyboard.ts";
-  import { type Grab, legalTargets } from "./pickup.ts";
+  import { type Grab, legalTargets, onTop } from "./pickup.ts";
   import {
     BOARD_HELP,
     CONFIRM_NEW,
@@ -143,6 +138,8 @@
   let boardEl: HTMLDivElement | undefined = $state();
   let layerEl: HTMLDivElement | undefined = $state();
   let canvasEl: HTMLCanvasElement | undefined = $state();
+  /** The 52 cards, once the island has mounted them. See CardLayer.ts. */
+  let layer: CardLayer | null = null;
 
   let gameId = $state(0);
   let moves = $state(0);
@@ -296,6 +293,40 @@
    */
   const targets = $derived(legalTargets(position, held ?? dragging));
 
+  /**
+   * The board's measurements, as the chrome sees them. The card layer keeps
+   * its own copy and is not reactive; this one exists for the seven column
+   * slots below, whose highlights are drawn to the column rather than to the
+   * slot at its head.
+   */
+  let metrics: Metrics | null = $state(null);
+
+  /**
+   * What each column slot's highlights cover, as custom properties.
+   *
+   * A slot is only the head of its column, and the cards a highlight is about
+   * are at the foot of it. So a legal target lights the whole column, and the
+   * focus ring wraps exactly the run the space bar would pick up — which is
+   * the selection, drawn as the same ring as the focus rather than a second
+   * one nested inside it. With a card in hand the focus is a destination, and
+   * a destination is the whole pile.
+   */
+  const spans = $derived(
+    position.tableau.map((column, index) => {
+      if (metrics === null) return "";
+      const whole = columnSpan(metrics, column);
+      const run =
+        held === null && focus.at === TABLEAU_AT + index
+          ? columnSpan(
+              metrics,
+              column,
+              column.cards.length - focusedCards(position, focus).length,
+            )
+          : whole;
+      return `--extent: ${whole.height}px; --span-top: ${run.top}px; --span-h: ${run.height}px`;
+    }),
+  );
+
   /** The same shape as {@link targets}: one flag per pile, in PILE_ORDER. */
   const hints = $derived(
     PILE_ORDER.map((ref) => hintTo !== null && samePile(ref, hintTo)),
@@ -324,7 +355,7 @@
   save();
 
   /**
-   * The table, the deck, the back, the sound, the clock, the draw mode and
+   * The table, the deck, the back, the clock, the draw mode and
    * whether deals come out of the winnable pool.
    *
    * Read out of storage, field by validated field, and written back whenever
@@ -334,18 +365,6 @@
    */
   let settings: Settings = $state({ ...stored, drawCount: game.drawCount });
   let settingsOpen = $state(false);
-
-  /**
-   * One audio graph for the whole product, outliving any one deal — the win
-   * sequence plays through this one too. It builds nothing until the first
-   * move asks it to, so a visit that never plays makes no context and no
-   * noise.
-   *
-   * It is audible from the first move, per docs/07, and the settings sheet can
-   * turn it off — through one master gain that ramps rather than clicks — and
-   * a tab that was muted comes back muted.
-   */
-  const sound = new Sound();
 
   /**
    * A deal number for a new game: out of the pool when the player asked for
@@ -404,6 +423,12 @@
     // can empty and a run can be carried off under a selection that named it.
     position = game.state;
     focus = clampFocus(game.state, focus);
+    // A card in the keyboard's hand that is no longer on top of the pile it
+    // was picked up from has gone somewhere without it — an undo, a tap, a
+    // drag — and a hand holding a card that is not there would play whatever
+    // card is there instead.
+    if (held !== null && !onTop(game.state, held)) held = null;
+    showSelection();
     if (game.isWon && !won) {
       won = true;
       // The clock stops at Stage 0, before anything has moved — see docs/06.
@@ -466,15 +491,6 @@
     // measure of how often the tab was opened.
     if (game.movesPlayed === 1) stats = persist.countPlayed(game.drawCount);
 
-    // This runs inside the pointer or click handler that asked for the move,
-    // which is the user gesture the autoplay policy wants. A card going home
-    // gets the ping instead of the slide — it is the one arrival worth a note,
-    // and two sounds at once would only be mud.
-    sound.start();
-    const home = homedCard(before, move);
-    if (home !== null) sound.home(rankOf(home));
-    else sound.move();
-
     // Two moves have a motion of their own, and neither of them is something
     // the gesture that asked for it can know: the cards a draw turns over fan
     // out one after another, and a recycle sweeps the waste back as a block.
@@ -502,6 +518,9 @@
   }
 
   function undo(): void {
+    // The card layer belongs to the win sequence by now, and a won game is
+    // not one to step back into: the panel's own buttons are the way on.
+    if (won) return;
     const undone = game.undo();
     if (undone === null) return;
     forgetHint();
@@ -883,7 +902,6 @@
     save();
   }
 
-  let layer: CardLayer | null = null;
   let sequence: WinSequence | null = null;
   /** The pointer handler, for the one thing the board has to tell it: see `render`. */
   let dragger: Drag | null = null;
@@ -1003,7 +1021,6 @@
       board,
       seed: flags.seed,
       reducedMotion: reducedMotion(),
-      sound,
       foundationTops: () =>
         FOUNDATION_ORDER.map(
           (suit) => topOf(displayed().foundations[suit] ?? []) ?? null,
@@ -1057,79 +1074,85 @@
     const node = layerEl;
     if (board === undefined || node === undefined) return;
 
-    const cards = new CardLayer(node, reducedMotion());
-    layer = cards;
+    // Untracked, all of it, and it matters: this effect owns the card layer,
+    // the drag handler and the resize observer, and it must re-run when the
+    // card elements are rebuilt and at no other time. Everything below reads
+    // state — the card size, the page, the focus, the deck — and any of it
+    // left tracked tears all three down and builds them again: mid-move, which
+    // snaps the move and strands the hint, and mid-celebration, which destroys
+    // the win sequence and leaves the veil up over a board nobody can reach.
+    return untrack(() => {
+      const cards = new CardLayer(node, reducedMotion());
+      layer = cards;
 
-    const host: DragHost = {
-      state: () => game.state,
-      metrics: () => cards.metrics,
-      play,
-      illegal: (run) => {
-        cards.shake(run);
-      },
-      peek: (column) => cards.peek(column, displayed()),
-      hover: (over) => cards.hover(won ? [] : over),
-      carrying: (grabbed) => {
-        dragging = grabbed;
-      },
-    };
-    const drag = new Drag(board, cards, host);
-    dragger = drag;
+      const host: DragHost = {
+        state: () => game.state,
+        metrics: () => cards.metrics,
+        play,
+        illegal: (run) => {
+          cards.shake(run);
+        },
+        peek: (column) => cards.peek(column, displayed()),
+        hover: (over) => cards.hover(won ? [] : over),
+        carrying: (grabbed) => {
+          dragging = grabbed;
+        },
+      };
+      const drag = new Drag(board, cards, host);
+      dragger = drag;
 
-    // Geometry is computed once per resize and never during a move. The first
-    // one is taken here rather than waited for, so that the undealt board is on
-    // screen in the frame the island mounts in.
-    const relayout = (motion: Motion = "instant"): void => {
-      const m = metricsFor(
-        { width: board.clientWidth, height: board.clientHeight },
-        settings.cardSize,
-        page,
-        boardAspect,
-      );
-      pages = m.pages;
-      // A board that has stopped paging, or never started, takes the page back
-      // down with it — which is also what makes changing the card size safe.
-      if (page !== m.page) page = m.page;
-      cards.setMetrics(m, board);
-      cards.render(displayed(), motion);
-    };
-    // Untracked, and it matters: this effect owns the card layer, the drag
-    // handler and the resize observer, and `relayout` reads the card size and
-    // the page. Tracked, turning a page would tear all three down and build
-    // them again.
-    untrack(() => relayout());
-    remeasure = relayout;
-    showSelection();
-    const observer = new ResizeObserver(() => relayout());
-    observer.observe(board);
+      // Geometry is computed once per resize and never during a move. The first
+      // one is taken here rather than waited for, so that the undealt board is on
+      // screen in the frame the island mounts in.
+      const relayout = (motion: Motion = "instant"): void => {
+        const m = metricsFor(
+          { width: board.clientWidth, height: board.clientHeight },
+          settings.cardSize,
+          page,
+          boardAspect,
+        );
+        pages = m.pages;
+        metrics = m;
+        // A board that has stopped paging, or never started, takes the page back
+        // down with it — which is also what makes changing the card size safe.
+        if (page !== m.page) page = m.page;
+        cards.setMetrics(m, board);
+        cards.render(displayed(), motion);
+      };
+      relayout();
+      remeasure = relayout;
+      showSelection();
+      const observer = new ResizeObserver(() => relayout());
+      observer.observe(board);
 
-    // These elements are new — a deal is the one time they are rebuilt — so a
-    // sourced deck has to be pointed at again. The sprite is already in the
-    // document by now, so this is 52 attribute writes and no network.
-    void applyArt(chosenArt());
+      // These elements are new — a deal is the one time they are rebuilt — so a
+      // sourced deck has to be pointed at again. The sprite is already in the
+      // document by now, so this is 52 attribute writes and no network.
+      void applyArt(chosenArt());
 
-    if (flags.debug && !debugged) {
-      debugged = true;
-      dealFrame = requestAnimationFrame(() => {
-        staged = wonBoard();
-        render("instant");
-        celebrate();
-      });
-    } else if (staged !== null) {
-      dealFrame = dealOut();
-    }
+      if (flags.debug && !debugged) {
+        debugged = true;
+        dealFrame = requestAnimationFrame(() => {
+          staged = wonBoard();
+          render("instant");
+          celebrate();
+        });
+      } else if (staged !== null) {
+        dealFrame = dealOut();
+      }
 
-    return () => {
-      cancelAnimationFrame(dealFrame);
-      observer.disconnect();
-      remeasure = null;
-      drag.destroy();
-      if (dragger === drag) dragger = null;
-      cards.destroy();
-      sequence?.destroy();
-      sequence = null;
-      if (layer === cards) layer = null;
-    };
+      return () => {
+        cancelAnimationFrame(dealFrame);
+        observer.disconnect();
+        remeasure = null;
+        drag.destroy();
+        if (dragger === drag) dragger = null;
+        cards.destroy();
+        sequence?.destroy();
+        sequence = null;
+        if (layer === cards) layer = null;
+      };
+    });
   });
 
   /**
@@ -1141,11 +1164,6 @@
   $effect(() => {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  });
-
-  /** The audio graph outlives every deal, but not the island. */
-  $effect(() => {
-    return () => sound.close();
   });
 
   /** Nothing else in the island outlives it either. */
@@ -1201,11 +1219,6 @@
     // Untracked for the same reason as above, and the page needs no resetting:
     // a board that cannot page clamps it back to zero on the way through.
     untrack(() => remeasure?.("move"));
-  });
-
-  /** One master gain for the whole product, and it ramps rather than clicks. */
-  $effect(() => {
-    sound.muted = !settings.sound;
   });
 
   /**
@@ -1414,6 +1427,7 @@
         <button
           class="slot slot-column"
           type="button"
+          style={spans[column]}
           class:is-legal={targets[TABLEAU_AT + column]}
           class:is-hint={hints[TABLEAU_AT + column]}
           tabindex={focus.at === TABLEAU_AT + column ? 0 : -1}
@@ -1523,7 +1537,7 @@
   {/if}
 
   <BottomBar
-    {canUndo}
+    canUndo={canUndo && !won}
     {canFinish}
     onUndo={undo}
     onHint={hint}

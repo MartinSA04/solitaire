@@ -117,6 +117,9 @@ export class Drag {
     cancelAnimationFrame(this.#frame);
     this.#frame = 0;
     this.#release(this.#press);
+    // A deal torn down mid-drag takes the grab with it, or the board goes on
+    // asking which piles would take a card from a deal that is gone.
+    if (this.#press?.held != null) this.#host.carrying(null);
     this.#press = null;
   }
 

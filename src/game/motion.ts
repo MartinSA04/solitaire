@@ -82,23 +82,6 @@ export function predealt(state: GameState): GameState {
 }
 
 /**
- * The card a move is about to send to a foundation, if it is sending one —
- * asked of the position *before* the move, because that is where the card
- * still is. It decides which of the two sounds a move makes: going home is
- * the one arrival in the game that is worth its own note.
- */
-export function homedCard(state: GameState, move: Move): Card | null {
-  switch (move.kind) {
-    case "wasteToFoundation":
-      return topOf(state.waste) ?? null;
-    case "tableauToFoundation":
-      return topOf((state.tableau[move.from] as Column).cards) ?? null;
-    default:
-      return null;
-  }
-}
-
-/**
  * The cards a draw turned over, oldest first — one in draw-1, up to three in
  * draw-3, and fewer than three when the stock is nearly spent. They are the
  * order the draw-3 fan staggers along; the fan is what makes draw-3 readable.

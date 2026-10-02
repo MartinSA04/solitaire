@@ -263,8 +263,6 @@
  * become a sequential bloom with no scaling and no movement, the sweep becomes
  * a static full-table glow, and the cascade becomes the four piles fading out
  * while the bloom expands behind them to fill the table.
- *
- * Audio is untouched: reduced motion is not reduced sound.
  */
 @media (prefers-reduced-motion: reduce) {
   .card.is-pulsing {

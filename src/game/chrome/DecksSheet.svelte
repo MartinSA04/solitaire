@@ -101,12 +101,7 @@
 </script>
 
 <Sheet title="Decks" {onClose}>
-  <p class="sheet-note">
-    Every deck is here from the start. The ones we did not draw are somebody
-    else's artwork and download when you pick one; the size on a tile is what
-    that download costs, and a deck you have used before is already on this
-    device.
-  </p>
+  <p class="sheet-note">Decks with a size download when you pick them, once.</p>
 
   <div class="deck-grid" role="radiogroup" aria-label="Deck">
     <label class="deck-tile">

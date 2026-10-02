@@ -62,6 +62,13 @@ in the same commit.
   for as long as it is on the element; the lift's half is written once on
   `.card`. Written as two shorthands, the hover lift disarmed every move of a
   card under the cursor — which is every card a mouse ever clicks.
+- **Nothing between `.game` and a slot may be a stacking context.** The
+  highlights a pile wears — the focus ring, a legal target, a hint into an
+  empty pile — are pseudo-elements on its slot, z-indexed over the resting
+  cards. A `transform` on `.row-tableau` (it used to page the columns) trapped
+  all seven columns' highlights under the cards with nothing logged, so the
+  row pages with `left`. The same reason puts `.game`'s weave and vignette at
+  `z-index: -1`: the card at the foot of column one rests at 0.
 - **Every lift is given back.** A refused drop drops out of the drag band when
   it lands, a hint's lift comes off with the hint, and a flight's comes off at
   `#scheduleLanding`. A card left in a band nothing else can reach sits over

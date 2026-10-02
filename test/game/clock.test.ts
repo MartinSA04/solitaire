@@ -32,6 +32,19 @@ describe("the stopwatch", () => {
     assert.equal(clock.started, false);
   });
 
+  it("comes back from a save paused, and stays paused when the tab returns", () => {
+    const { clock, advance } = fake();
+    clock.restore(5_000);
+    // Hiding and showing the tab is a pause and a resume; neither is a move.
+    clock.pause();
+    clock.resume();
+    advance(3_000);
+    assert.equal(clock.elapsed, 5_000);
+    clock.start();
+    advance(1_000);
+    assert.equal(clock.elapsed, 6_000);
+  });
+
   it("counts from the first move", () => {
     const { clock, advance } = fake();
     clock.start();

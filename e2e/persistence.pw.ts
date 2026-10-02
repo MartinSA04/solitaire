@@ -207,20 +207,20 @@ test("the debug celebration is a rehearsal, and is not written down", async ({
   expect(await savedGame(page)).toMatchObject({ seed: 24, moves: [] });
 });
 
-test("the table, the deck and the sound are remembered", async ({ page }) => {
+test("the table and the clock are remembered", async ({ page }) => {
   await page.goto("/?deal=24");
   await page.getByRole("button", { name: "Menu" }).click();
   await page
     .getByRole("group", { name: "Table" })
     .getByText("Dark", { exact: true })
     .click();
-  await page.getByText("Sound").click();
+  await page.getByText("Show the clock").click();
   await page.getByRole("button", { name: "Close" }).click();
 
   await page.goto("/?deal=24");
   expect(JSON.parse((await stored(page, SETTINGS)) ?? "{}")).toMatchObject({
     theme: "dark",
-    sound: false,
+    timer: false,
   });
   // And on the document element before the island is anywhere near hydrating,
   // which is what the inline bootstrap in the head is for.

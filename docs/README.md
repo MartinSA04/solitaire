@@ -45,6 +45,6 @@ deliberately. Everything else in these docs is a proposal.
 - **Seeded deals**, a winnable-only option, and a daily deal.
 - **No score**. Time and moves only.
 - **Assists are generous**: unlimited undo, hints, auto-complete, replay-this-deal.
-- **Subtle sound only** — movement and the win. No music.
+- **No sound** — not for movement, not for the win. The motion carries both.
 - **The win sequence is the product's signature** and gets a doc to itself.
 - **Card art is sourced, not drawn** — open-licensed decks, attributed properly.

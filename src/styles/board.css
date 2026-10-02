@@ -42,6 +42,14 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /*
+   * Under everything in the game, not merely before it in the document. The
+   * card at the foot of the first column rests at z-index 0, and at 0 a
+   * positioned element paints in document order — so without this the weave
+   * and the vignette, which come after the board, were drawn over that one
+   * card and nowhere else.
+   */
+  z-index: -1;
 }
 
 .game::before {
@@ -173,7 +181,9 @@ body {
  *
  * **Lightness and a border, never hue** — docs/08 is firm about that, because
  * a highlight that is only a colour is not a highlight to one man in twelve.
- * This is a lighter fill and a ring, and it reads in greyscale.
+ * This is a solid ring and a faint fill, and it reads in greyscale. The fill
+ * is faint because on a column it lies over the cards, and a tint over a face
+ * is a face that is harder to read at the moment it matters.
  *
  * Its own pseudo-element rather than the focus ring's, so a pile can be both
  * the focused one and a legal target without the two arguing, and lifted for
@@ -187,14 +197,14 @@ body {
   border-radius: inherit;
   pointer-events: none;
   z-index: 1100;
-  background: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   box-shadow: 0 0 0 2px var(--accent);
   opacity: 0;
   transition: opacity var(--t-instant) linear;
 }
 
 .slot.is-legal::before {
-  opacity: 0.18;
+  opacity: 1;
 }
 
 /*
@@ -204,18 +214,36 @@ body {
  * same statement about the same pile.
  */
 .slot.is-hint::before {
-  opacity: 0.2;
+  opacity: 1;
   animation: hint-slot 1400ms var(--e-inout) 3;
 }
 
 @keyframes hint-slot {
   0%,
   100% {
-    opacity: 0.2;
+    opacity: 1;
   }
   50% {
-    opacity: 0.04;
+    opacity: 0.35;
   }
+}
+
+/*
+ * A column slot is only the head of its column, and what a highlight is about
+ * is at its foot. Game.svelte writes the column's measurements onto the slot —
+ * `--extent` is the whole column, `--span-*` the run the focus covers — from
+ * Layout.ts's numbers, so CSS still works nothing out. Before they arrive the
+ * fallbacks are the slot itself, which is what an empty column is anyway.
+ */
+.slot-column::before {
+  bottom: auto;
+  height: var(--extent, 100%);
+}
+
+.slot-column::after {
+  top: calc(var(--span-top, 0px) - 2px);
+  bottom: auto;
+  height: calc(var(--span-h, 100%) + 4px);
 }
 
 /* Column 2 of the top row is the space between the waste and the foundations. */
@@ -296,6 +324,15 @@ body {
   inset: 0;
   border-radius: inherit;
   box-shadow: var(--card-shadow-rest);
+}
+
+/*
+ * A card with another squarely on top of it — the stock, a foundation, the
+ * draw-1 waste — casts nothing. Twenty-four shadows stacked in one place are
+ * not one shadow but a black edge, and only the top card's can be seen.
+ */
+.card.is-buried .card-flip {
+  box-shadow: none;
 }
 
 .card.is-face-down .card-flip {
@@ -651,39 +688,33 @@ body {
     opacity: 1;
   }
   50% {
-    opacity: 0.2;
+    opacity: 0.35;
   }
 }
 
 /*
- * What the keyboard has under its selection, and what it is carrying.
+ * What the keyboard is carrying.
  *
- * Static, both of them. A selection sits there for as long as it takes to
- * decide where a card is going, and docs/08 is firm that nothing in the
- * product moves without the player having caused it — a pulsing selection
- * would be the one thing on the board that never stopped.
+ * The selection before it is picked up needs nothing here: the focus ring on
+ * the slot is drawn round exactly the run the space bar would take (see
+ * `.slot-column::after`), so a second ring on the cards would only be the
+ * same statement nested inside the first. Once it is in hand the focus walks
+ * off to look for a destination, and the cards have to say for themselves
+ * that they are coming with it.
  *
- * The ring goes on `.card-flip`, with the card's own shadow, so it turns with
- * the card and cannot outlive a flip. The lift is the drag shadow: a card in
- * hand looks the same whether a finger or the space bar picked it up.
+ * Static. A card sits in hand for as long as it takes to decide where it is
+ * going, and docs/08 is firm that nothing moves without the player having
+ * caused it. The ring is its own layer on `.card-flip` rather than part of its
+ * shadow, so it turns with the card and no shadow rule — the hover lift's, in
+ * particular — can take it off.
  */
-.card.is-selected .card-flip {
+.card.is-held .card-flip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
   box-shadow:
-    var(--card-shadow-rest),
-    0 0 0 2px var(--accent),
-    0 0 0 4px var(--accent-contrast);
-}
-
-.card.is-held .card-flip {
-  box-shadow:
-    var(--card-shadow-rest),
-    0 0 0 2px var(--accent),
-    0 0 0 4px var(--accent-contrast);
-}
-
-.card.is-held.is-lift-foot .card-flip {
-  box-shadow:
-    var(--card-shadow-lift),
     0 0 0 2px var(--accent),
     0 0 0 4px var(--accent-contrast);
 }
@@ -954,8 +985,16 @@ body {
 .row-tableau {
   justify-content: start;
   padding-left: var(--origin-x, 0px);
-  transform: translate3d(var(--page-shift, 0px), 0, 0);
-  transition: transform var(--t-quick) var(--e-out);
+  /*
+   * `left`, not `transform`. A transform makes the row a stacking context, and
+   * then every highlight on a column — the focus ring, a legal target, a hint
+   * into an empty column — is trapped at the row's level, underneath all
+   * fifty-two cards, whatever z-index it asks for. Seven buttons sliding on a
+   * page turn under the Large size is not a layout cost worth that.
+   */
+  position: relative;
+  left: var(--page-shift, 0px);
+  transition: left var(--t-quick) var(--e-out);
 }
 
 /*

@@ -90,8 +90,6 @@ export type Auto = typeof AUTO;
 export interface Settings {
   theme: Theme;
   deck: Deck | Auto;
-  /** Subtle, and on — the argument for it is in docs/07-architecture.md. */
-  sound: boolean;
   /** The clock can be hidden entirely; time is still recorded. docs/02. */
   timer: boolean;
   /**
@@ -131,7 +129,6 @@ export interface Settings {
 export const DEFAULTS: Settings = Object.freeze({
   theme: "warm",
   deck: AUTO,
-  sound: true,
   timer: true,
   cardSize: "comfortable",
   cardIndex: false,

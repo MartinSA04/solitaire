@@ -13,7 +13,7 @@ import {
  * `localStorage`, one key per concern, namespaced and versioned.
  *
  * ```text
- * sol:v1:settings   the look, the sound, the clock, the draw mode, winnable-only
+ * sol:v1:settings   the look, the clock, the draw mode, winnable-only
  * sol:v1:game       the game in progress: a seed, a move list, a clock
  * sol:v1:stats      lifetime counters, per draw mode
  * sol:v1:records    per-deal bests, capped at 500 and evicted least-recent-first
@@ -159,7 +159,6 @@ export class Persist {
     return {
       theme: oneOf(raw.theme, THEMES, DEFAULTS.theme),
       deck: oneOf(raw.deck, [AUTO, ...DECKS], DEFAULTS.deck),
-      sound: boolish(raw.sound, DEFAULTS.sound),
       timer: boolish(raw.timer, DEFAULTS.timer),
       cardSize: oneOf(raw.cardSize, CARD_SIZES, DEFAULTS.cardSize),
       cardIndex: boolish(raw.cardIndex, DEFAULTS.cardIndex),

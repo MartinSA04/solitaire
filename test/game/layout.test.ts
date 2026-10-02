@@ -19,6 +19,7 @@ import {
   POKER_ASPECT,
   columnHeight,
   columnOffsets,
+  columnSpan,
   dropTarget,
   hitTest,
   metricsFor,
@@ -224,6 +225,39 @@ describe("peeking a column", () => {
     // Every other column is exactly where it was.
     const elsewhere = (state.tableau[0] as { cards: Card[] }).cards[0] as Card;
     assert.deepEqual(open[elsewhere], shut[elsewhere]);
+  });
+});
+
+describe("the span a highlight covers", () => {
+  const m = metricsFor(PHONE);
+  const BURIED = { cards: [0, 1, 2, 3, 4], down: 3 };
+
+  it("is the slot for an empty column", () => {
+    assert.deepEqual(columnSpan(m, { cards: [], down: 0 }), {
+      top: 0,
+      height: m.cardH,
+    });
+  });
+
+  it("is the whole column by default, the same height columnHeight gives", () => {
+    const span = columnSpan(m, BURIED);
+    assert.equal(span.top, 0);
+    assert.equal(span.height, columnHeight(m, BURIED));
+  });
+
+  it("starts at the card it is asked from and ends at the top card", () => {
+    const offsets = columnOffsets(m, BURIED);
+    const span = columnSpan(m, BURIED, 4);
+    assert.equal(span.top, offsets[4]);
+    assert.equal(span.height, m.cardH);
+    const run = columnSpan(m, BURIED, 3);
+    assert.equal(run.top, offsets[3]);
+    assert.equal(round(run.top + run.height), round(columnHeight(m, BURIED)));
+  });
+
+  it("clamps a reach that runs off either end of the column", () => {
+    assert.deepEqual(columnSpan(m, BURIED, -2), columnSpan(m, BURIED, 0));
+    assert.deepEqual(columnSpan(m, BURIED, 99), columnSpan(m, BURIED, 4));
   });
 });
 

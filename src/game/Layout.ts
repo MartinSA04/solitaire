@@ -529,9 +529,29 @@ export function columnOffsets(
 
 /** How tall a column stands on screen, compression included. */
 export function columnHeight(m: Metrics, column: Column): number {
-  if (column.cards.length === 0) return m.cardH;
+  return columnSpan(m, column).height;
+}
+
+/**
+ * The box round a column's cards from the `from`th down to its top card,
+ * measured from the top of the column — what a ring round "these cards" has
+ * to cover. The slot's own highlights are drawn to it, because the slot is
+ * only the head of the column and the cards that matter are at its foot. An
+ * empty column is its slot.
+ */
+export function columnSpan(
+  m: Metrics,
+  column: Column,
+  from = 0,
+): { top: number; height: number } {
   const offsets = columnOffsets(m, column);
-  return (offsets[offsets.length - 1] as number) + m.cardH;
+  if (offsets.length === 0) return { top: 0, height: m.cardH };
+  const first = Math.min(Math.max(0, from), offsets.length - 1);
+  const top = offsets[first] as number;
+  return {
+    top,
+    height: (offsets[offsets.length - 1] as number) - top + m.cardH,
+  };
 }
 
 export interface Hit {

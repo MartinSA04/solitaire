@@ -165,9 +165,3 @@ async function sprite(url: string): Promise<string | null> {
   const response = await fetch(url);
   return response.ok ? await response.text() : null;
 }
-
-/** Test seam: there is one document, so there is one cache. */
-export function forgetDeckArt(): void {
-  clearDeckArt();
-  attempts.clear();
-}

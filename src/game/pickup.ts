@@ -75,6 +75,21 @@ export function legalTargets(
   );
 }
 
+/**
+ * Whether what is in hand is still on top of the pile it came from. A move
+ * made some other way — an undo, a tap — can take it away, and a hand that
+ * goes on holding it would play whichever card is there now instead: a drop
+ * is a pile and a count, not the cards themselves.
+ */
+export function onTop(state: GameState, held: Grab): boolean {
+  const pile = pileCards(state, held.from);
+  const top = pile.slice(pile.length - held.cards.length);
+  return (
+    top.length === held.cards.length &&
+    top.every((card, i) => card === held.cards[i])
+  );
+}
+
 function intent(held: Grab, onto: PileRef): Move | null {
   const count = held.cards.length;
   const bottom = held.cards[0] as Card;

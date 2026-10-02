@@ -163,6 +163,14 @@ A 3px `--accent` ring with a 2px offset and a contrasting inner stroke, so it's
 visible on any table colour. Always visible when navigating by keyboard
 (`:focus-visible`), never shown for pointer interaction.
 
+On a tableau column the ring is drawn round **the selection** — exactly the run
+the space bar would pick up, from one card to the whole fanned run as `↑`
+extends it — rather than round the slot at the head of the column, which is
+usually under a face-down card. One ring says both where the focus is and what
+it covers; a second ring on the cards would be the same statement nested inside
+the first. With a card in hand the focus is looking for a destination, so the
+ring is the whole column and the cards in hand wear their own ring and lift.
+
 ## Screen readers
 
 The board is a labelled `application`-role region with a documented key model, and

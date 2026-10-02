@@ -134,6 +134,8 @@ export class CardLayer {
   #surrendered = false;
   #hinted: Card[] = [];
   #selected: Card[] = [];
+  /** Whether the selection is in the keyboard's hand, and so owns the lift. */
+  #holding = false;
   #hovered: Card[] = [];
   /** The card at the foot of whatever is currently lifted; see {@link lift}. */
   #foot: Card | null = null;
@@ -281,6 +283,7 @@ export class CardLayer {
     if (m === null || this.#surrendered) return;
 
     const next = placeAll(m, state, this.#peek);
+    const buried = buriedCards(next);
     // `null` is "arrive immediately": no class, so no transition is armed.
     const style = motion === "instant" ? null : MOTION[motion];
     const delays = this.#delays(style, order);
@@ -293,6 +296,8 @@ export class CardLayer {
       const was = this.#placements[card];
       const moved = was === undefined || was.x !== to.x || was.y !== to.y;
       const turned = was !== undefined && was.faceUp !== to.faceUp;
+
+      element.classList.toggle("is-buried", buried[card] === true);
 
       // A card under the pointer is the drag's to write. Its new resting place
       // is still recorded below, because that is what it springs back to.
@@ -321,6 +326,11 @@ export class CardLayer {
           last = Math.max(last, delay);
         }
         element.style.zIndex = String(moved ? Z_FLIGHT + to.z : to.z);
+      }
+      // A hint is drawn by being lifted clear of the fan it sits in, and a
+      // re-render that is not a move — a resize, a peek — must not sink it.
+      if (this.#hinted.includes(card)) {
+        element.style.zIndex = String(Z_FLIGHT + to.z);
       }
 
       element.classList.toggle("is-face-down", !to.faceUp);
@@ -490,11 +500,10 @@ export class CardLayer {
    * What the keyboard has under its selection, and whether it is in hand.
    *
    * The roving focus lives on the thirteen pile elements, which is what a
-   * screen reader reads; this is the same position drawn for somebody who can
-   * see it. It is static — an outline and, once picked up, a lift — because
-   * the selection can sit there for as long as it takes to decide where a card
-   * is going, and the only continuous motion in the product is the win
-   * cascade.
+   * screen reader reads, and its ring is drawn round the selected run — so
+   * `is-selected` draws nothing itself. It marks which cards the selection
+   * covers; once they are picked up, `is-held` rings them and lifts them,
+   * because by then the focus has gone looking for somewhere to put them.
    *
    * Cleared and re-applied wholesale on every change, because it is at most a
    * dozen elements and a diff would be more code than the write it saves.
@@ -507,7 +516,11 @@ export class CardLayer {
       if (held) element.classList.add("is-held");
       this.#selected.push(card);
     }
+    // Every lift is given back: a hand that has just emptied hands the shadow
+    // to whatever the pointer is over, or to nothing.
     if (held) this.lift(cards);
+    else if (this.#holding) this.lift(this.#hovered);
+    this.#holding = held;
   }
 
   clearSelection(): void {
@@ -542,7 +555,7 @@ export class CardLayer {
     }
     // A hovered run is lifted as one thing too, so it casts one shadow — but
     // not while something is genuinely in hand, which owns the mark.
-    if (this.#held.length === 0) this.lift(this.#hovered);
+    if (this.#held.length === 0 && !this.#holding) this.lift(this.#hovered);
   }
 
   /**
@@ -589,6 +602,7 @@ export class CardLayer {
     this.hover([]);
     this.#surrendered = true;
     this.#held = [];
+    this.#holding = false;
     this.lift([]);
     for (let card = 0; card < DECK_SIZE; card++) {
       const element = this.#elements[card] as HTMLElement;
@@ -596,6 +610,7 @@ export class CardLayer {
         ...MOTION_CLASSES,
         "is-returning",
         "is-dragging",
+        "is-buried",
       );
       element.style.removeProperty("--delay");
       element.classList.add("is-cascading");
@@ -678,6 +693,20 @@ export class CardLayer {
 
 function translate(x: number, y: number): string {
   return `translate3d(${x}px, ${y}px, 0)`;
+}
+
+/**
+ * The cards with another squarely on top of them, by card number. Only the
+ * top of a square stack is ever seen, so only it should cast a shadow — see
+ * `.is-buried` in board.css.
+ */
+function buriedCards(placements: readonly Placement[]): boolean[] {
+  const top = new Map<string, number>();
+  for (const at of placements) {
+    const key = `${at.x},${at.y}`;
+    top.set(key, Math.max(top.get(key) ?? -Infinity, at.z));
+  }
+  return placements.map((at) => at.z < (top.get(`${at.x},${at.y}`) as number));
 }
 
 /** Two runs are the same run if they hold the same cards in the same order. */

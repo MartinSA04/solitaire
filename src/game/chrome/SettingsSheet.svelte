@@ -341,15 +341,6 @@
     <label class="switch">
       <input
         type="checkbox"
-        checked={settings.sound}
-        onchange={(event) => choose({ sound: event.currentTarget.checked })}
-      />
-      <span class="track" aria-hidden="true"></span>
-      <span class="choice-label">Sound</span>
-    </label>
-    <label class="switch">
-      <input
-        type="checkbox"
         checked={settings.timer}
         onchange={(event) => choose({ timer: event.currentTarget.checked })}
       />
@@ -580,13 +571,14 @@
   .sheet-foot a,
   .sheet-foot .link {
     display: inline-block;
+    /* Before `line-height`, which the shorthand would otherwise reset. */
+    font: inherit;
     min-height: 44px;
     line-height: 44px;
     padding: 0;
     border: 0;
     background: none;
     color: var(--chrome-fg-dim);
-    font: inherit;
     text-decoration: underline;
     cursor: pointer;
   }

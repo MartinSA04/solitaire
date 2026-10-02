@@ -88,7 +88,6 @@ src/
     WinSequence.ts     the five stages, the physics loop  ← see 06
     cascade.ts         the cascade as arithmetic — pure, no DOM
     Trails.ts          the canvas comet tails
-    Audio.ts           WebAudio graph, sample-free synthesis
     DeckArt.ts         fetches a sourced sprite into the document, keeps it
                        in Cache Storage, and attaches exactly one at a time
     settings.ts        the chosen look, as data → three attributes on <html>
@@ -236,7 +235,7 @@ invalidate on deploy. See [04](04-art-direction.md) and
 `localStorage`, one key per concern, all namespaced and versioned.
 
 ```text
-sol:v1:settings     theme, deck, sound, timer, cardSize, cardIndex,
+sol:v1:settings     theme, deck, timer, cardSize, cardIndex,
                     winnableOnly, drawCount
 sol:v1:game         the in-progress game (see below)
 sol:v1:stats        lifetime counters, per draw mode
@@ -303,26 +302,6 @@ silently become a *different* game. That's the second reason it's frozen.
 - **Nothing is ever written that identifies the player.** No IDs, no timestamps
   beyond what the features need, no first-seen date.
 
-## Audio
-
-WebAudio, **synthesised, no sample files**. The entire sound design —
-[the pentatonic bounce notes](06-win-sequence.md), card slides, the foundation
-chime — is oscillators and filtered noise bursts. Reasons: zero bytes to download,
-zero licensing questions, and velocity/pitch mapping is free.
-
-- The `AudioContext` is created lazily **on first user gesture** — browsers block it
-  otherwise, and creating one on load is a battery cost for a silent visit.
-- Card movement: a short filtered-noise burst, ~25ms, pitch varying slightly per
-  move so repeated moves don't machine-gun.
-- Foundation drop: a soft sine ping.
-- Everything runs through a master gain the mute switch sets to 0 with a 40ms ramp
-  (an instant gain change clicks).
-- Respects the setting from first load, and the setting defaults to **on** for
-  subtle sounds, **which means the first card the player moves makes a small noise**
-  — a deliberate choice, since an unexpected sound on a bus is exactly the kind of
-  thing that makes someone close a tab. Revisit if it feels wrong in testing; the
-  alternative is off-by-default with a one-time hint.
-
 ## Build
 
 Unchanged from the scaffolding — `astro build` to `dist/`, deployed by
@@ -377,7 +356,6 @@ Flagged rather than hidden:
   the move you *wanted* is the other half, it is the half the bar in
   [09](09-roadmap.md) actually asks about, and it can only be judged by
   playing.
-- **Sound on by default** (above). Genuinely uncertain.
 - ~~**Pool size and daily-pool freezing.**~~ Settled by how the pool is
   generated: candidates are consecutive seeds from 0 upward, so the file is
   sorted and append-only at once and the daily's frozen prefix cannot move under

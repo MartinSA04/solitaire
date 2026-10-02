@@ -49,7 +49,8 @@ The risky part, early. See [06](06-win-sequence.md).
 
 - All five stages, with a debug trigger so it can be run without winning.
 - Canvas trail layer, physics loop with fixed timestep, deterministic test mode.
-- WebAudio synthesis: the arpeggio and the pentatonic bounce notes.
+- ~~WebAudio synthesis: the arpeggio and the pentatonic bounce notes.~~ Built,
+  then taken out: the game is silent.
 - The reduced-motion alternative, built at the same time — not retrofitted.
 - Graceful degradation ladder.
 - Playwright performance trace on a throttled profile.
@@ -78,7 +79,8 @@ The polish pass that turns M1's "works" into "nice". This is where the
 - The timing and easing scales; every move animation in the table.
 - The deal stagger, the real card flip, the draw-3 fan, the waste recycle sweep.
 - Drop settle with overshoot, illegal-move shake, long-press peek.
-- Card movement and foundation sounds.
+- ~~Card movement and foundation sounds.~~ Built, then taken out with the rest
+  of the sound.
 - Auto-move heuristic tuning — the flagged uncertainty from
   [07](07-architecture.md). Judged by playing fifty games, not by reasoning.
 
@@ -87,8 +89,7 @@ surprising. The auto-move heuristic picks the move you wanted ≥ 95% of the tim
 
 Built: the timing and easing scales, every motion in the catalogue — the deal
 stagger, the real flip, the draw fan, the recycle sweep, the drop settle, the
-illegal-move shake, the slower undo — the long-press peek, and both sounds, on
-the same audio graph as the win sequence.
+illegal-move shake, the slower undo — and the long-press peek.
 
 The auto-move heuristic has been *measured* rather than tuned, because it
 turned out there was nothing to tune. `scripts/audit-automove.ts` plays a

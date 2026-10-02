@@ -83,7 +83,6 @@ export class Stopwatch {
     this.reset();
     if (elapsedMs <= 0) return;
     this.#accumulated = elapsedMs;
-    this.#started = true;
   }
 
   reset(): void {

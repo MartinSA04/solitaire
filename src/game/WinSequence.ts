@@ -1,5 +1,4 @@
 import { type Card, DECK_SIZE, suitOf } from "../engine/index.ts";
-import { type Sound } from "./Audio.ts";
 import { type CardLayer } from "./CardLayer.ts";
 import { pileOrigin } from "./Layout.ts";
 import {
@@ -24,8 +23,8 @@ import {
  * The win sequence: the reason to build this site. docs/06-win-sequence.md is
  * the specification and this file is the whole of the implementation of its
  * timeline — the visuals of Stages 1 and 3 are CSS (`src/styles/win.css`), the
- * physics is `cascade.ts`, the trails are `Trails.ts`, the sound is
- * `Audio.ts`, and Stage 4 is a Svelte panel.
+ * physics is `cascade.ts`, the trails are `Trails.ts`, and Stage 4 is
+ * a Svelte panel.
  *
  * Two rules constrain everything here:
  *
@@ -128,8 +127,6 @@ export interface WinOptions {
    */
   seed: number | null;
   reducedMotion: boolean;
-  /** The product's one audio graph. Owned by the caller, not by the sequence. */
-  sound: Sound;
   /** The visible card on each foundation, ♠ ♥ ♦ ♣, for Stage 1's pulses. */
   foundationTops: () => readonly (Card | null)[];
   onStage: (stage: WinStage) => void;
@@ -137,7 +134,6 @@ export interface WinOptions {
 
 export class WinSequence {
   readonly #options: WinOptions;
-  readonly #audio: Sound;
   readonly #trails: Trails;
 
   #stage: WinStage = "none";
@@ -164,7 +160,6 @@ export class WinSequence {
 
   constructor(options: WinOptions) {
     this.#options = options;
-    this.#audio = options.sound;
     this.#trails = new Trails(options.canvas);
   }
 
@@ -172,14 +167,9 @@ export class WinSequence {
     return this.#stage;
   }
 
-  /**
-   * Called from the move that won the game — which is also the user gesture
-   * the browser's autoplay policy wants, and the only reason there can be any
-   * sound at all.
-   */
+  /** Called from the move that won the game. */
   start(): void {
     if (this.#stage !== "none") return;
-    this.#audio.start();
     this.#enter("beat");
     this.#after(BEAT_MS, () => this.#ascend());
   }
@@ -187,13 +177,12 @@ export class WinSequence {
   /**
    * A tap anywhere during Stages 1–3. It must feel like a choice, not like an
    * interruption being punished: ~300ms to the panel, with the canvas fading
-   * and the voices releasing rather than either being cut off.
+   * rather than being cut off.
    */
   skip(): void {
     if (this.#stage === "none" || this.#stage === "card") return;
     this.#stopLoop();
     this.#clearTimers();
-    this.#audio.release();
 
     for (const body of this.#bodies) body.alive = false;
     for (let card = 0; card < DECK_SIZE; card++) {
@@ -218,9 +207,6 @@ export class WinSequence {
     // trails stay lying over whatever board replaces this one.
     this.#trails.clear();
     this.#options.canvas.classList.remove("is-fading");
-    // Released, not closed: the graph outlives the celebration, and the next
-    // game is played through the same one.
-    this.#audio.release();
   }
 
   // ------------------------------------------------------------- stage 1
@@ -228,13 +214,11 @@ export class WinSequence {
   /**
    * Ascension: the board acknowledges what happened before it destroys itself.
    * The pulses, the light sweep and the chrome fade are all CSS keyed off the
-   * stage; what has to happen in here is taking the cards off transitions and
-   * putting the arpeggio in time with the pulses.
+   * stage; what has to happen in here is taking the cards off transitions.
    */
   #ascend(): void {
     this.#enter("ascend");
     this.#options.layer.surrender();
-    this.#audio.arpeggio();
 
     // The four foundation tops pulse ♠ ♥ ♦ ♣ in turn. Under the debug trigger
     // a foundation may be empty, in which case its slot blooms alone.
@@ -348,7 +332,7 @@ export class WinSequence {
     this.#frame = requestAnimationFrame(this.#tick);
   };
 
-  /** One fixed physics step, plus the launches and the sounds it produced. */
+  /** One fixed physics step, plus the launches it produced. */
   #advance(dt: number): void {
     const bounds = this.#bounds;
     if (bounds === null) return;
@@ -367,11 +351,9 @@ export class WinSequence {
       this.#launched += 1;
     }
 
-    const progress = this.#launched / this.#order.length;
     for (const body of this.#bodies) {
       if (!body.alive) continue;
-      const impact = step(body, dt, bounds);
-      if (impact !== null) this.#audio.bounce(impact, progress, body.bounces);
+      step(body, dt, bounds);
       if (!body.alive) this.#options.layer.hide(body.card);
     }
   }
@@ -434,9 +416,6 @@ export class WinSequence {
       this.#options.layer.hide(card, visible.has(card));
     }
     this.#after(DISSOLVE_MS, () => {
-      // Stage 3 is skipped here, but the arpeggio still frames it: reduced
-      // motion is not reduced sound.
-      this.#audio.arpeggio(true);
       this.#options.layer.settle();
       this.#enter("card");
     });
@@ -447,7 +426,6 @@ export class WinSequence {
   #clear(): void {
     this.#enter("clear");
     this.#options.layer.settle();
-    this.#audio.arpeggio(true);
     this.#trails.bloom();
     this.#washOut();
     this.#after(CLEAR_MS, () => this.#enter("card"));

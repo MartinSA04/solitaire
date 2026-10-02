@@ -131,9 +131,10 @@ Desktop adds:
   pointing at.
 - The legal-target highlight belongs to whatever is carrying the cards, which
   means the space bar gets it too — see [08](08-accessibility.md). It is a
-  lighter fill and a ring, never a hue, and it is computed once when the pickup
-  starts: what a pile will accept is a fact about the position, and the
-  position does not change while a card is in the air.
+  solid ring and a faint fill, never a hue, round the **whole pile** — on a
+  column that is every card in it, not the slot at its head — and it is
+  computed once when the pickup starts: what a pile will accept is a fact about
+  the position, and the position does not change while a card is in the air.
 - Keyboard shortcuts — see [08 — Accessibility](08-accessibility.md).
 - A wider settings sheet as a centred dialog rather than a bottom sheet.
 

@@ -8,6 +8,7 @@ import {
   dropMove,
   grab,
   legalTargets,
+  onTop,
 } from "../../src/game/pickup.ts";
 import { makeState, showCards } from "../engine/helpers.ts";
 
@@ -210,5 +211,23 @@ describe("where a pickup could go", () => {
     const state = makeState({ tableau: ["9♠ 8♥", "T♥", "T♦"] });
     const run = held(state, { pile: "tableau", column: 0 }, 0);
     assert.deepEqual(targetNames(state, run), ["column 1", "column 2"]);
+  });
+});
+
+describe("whether a hand still holds what it picked up", () => {
+  const state = makeState({ waste: "9♣ 4♦", tableau: ["K♠ | Q♥ J♣"] });
+  const fromWaste = grab(state, at(state, { pile: "waste" }, 1)) as Grab;
+  const run = grab(state, at(state, { pile: "tableau", column: 0 }, 1)) as Grab;
+
+  it("does while its cards are the top of the pile they came from", () => {
+    assert.ok(onTop(state, fromWaste));
+    assert.ok(onTop(state, run));
+  });
+
+  it("does not once the pile has changed under it", () => {
+    // An undo that put the waste card back in the stock, and a column that
+    // gained a card on top of the run.
+    assert.equal(onTop(makeState({ waste: "9♣" }), fromWaste), false);
+    assert.equal(onTop(makeState({ tableau: ["K♠ | Q♥ J♣ T♦"] }), run), false);
   });
 });
